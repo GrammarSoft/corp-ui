@@ -1,0 +1,49 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_vendor/autoload.php';
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = NORMAL");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE hits (
+	hit_id INTEGER NOT NULL,
+	hit_pos INTEGER NOT NULL,
+	hit_text TEXT NOT NULL,
+	PRIMARY KEY (hit_id)
+) WITHOUT ROWID");
+
+$db->beginTransaction();
+$ins = $db->prepare("INSERT INTO hits (hit_id, hit_pos, hit_text) VALUES (?, ?, ?)");
+
+for ($i=1,$n=0 ; $line = fgets(STDIN) ; ++$i) {
+	if (!preg_match('~^#(\d+) < (.+?) >\s*$~', $line, $m)) {
+		fprintf(STDERR, "No match: %s", $line);
+		continue;
+	}
+	++$n;
+	$ins->execute([$n, intval($m[1]), $m[2]]);
+
+	if ($i % 10000 == 0) {
+		$db->commit();
+		$db->beginTransaction();
+	}
+}
+
+$db->commit();
+$db->exec("PRAGMA ignore_check_constraints = OFF");
+$db->exec("VACUUM");

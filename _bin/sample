@@ -1,0 +1,30 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+
+mt_srand(42);
+
+$wc = $argv[1] ?? 'out.wc';
+$max = $argv[2] ?? 100000;
+
+$lines = [];
+$i = 0;
+for (; $i<$max && $line = fgets(STDIN) ; ++$i) {
+	$lines[] = $line;
+}
+
+if ($i == $max) {
+	while ($line = fgets(STDIN)) {
+		$lines[mt_rand(0, $max-1)] = $line;
+		++$i;
+
+		$skip = mt_rand(0, $i / $max);
+		for ($j=0 ; $j<$skip && $line = fgets(STDIN) ; ++$j) {
+			++$i;
+		}
+	}
+}
+
+file_put_contents($wc, "$i\n");
+foreach ($lines as $line) {
+	echo $line;
+}

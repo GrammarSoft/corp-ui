@@ -1,0 +1,43 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_vendor/autoload.php';
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->beginTransaction();
+$line = trim(fgets(STDIN), "# \t\r\n");
+$db->prepexec("INSERT OR REPLACE INTO meta VALUES ('cols', ?)", [$line]);
+
+$ins = $db->prepare("INSERT OR REPLACE INTO contexts (hit_id, c_begin, c_end, c_text) VALUES (?, ?, ?, ?)");
+
+$start = 0;
+$end = 0;
+$id = 0;
+$lines = '';
+for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
+	if (preg_match('~^# (\d+),(\d+),(\d+)$~', $line, $m)) {
+		if (!empty($lines)) {
+			$ins->execute([$id, $start, $end, trim($lines)]);
+		}
+		$start = $m[1];
+		$end = $m[2];
+		$id = $m[3];
+		$lines = '';
+	}
+	else {
+		$lines .= $line;
+	}
+
+	if ($i % 100 == 0) {
+		$db->commit();
+		$db->beginTransaction();
+	}
+}
+
+if (!empty($lines)) {
+	$ins->execute([$id, $start, $end, trim($lines)]);
+}
+
+$db->commit();
