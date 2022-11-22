@@ -11,6 +11,7 @@ declare(strict_types=1);
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css" rel="stylesheet">
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
 
+	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
 <body>
@@ -71,7 +72,7 @@ XSH;
 		shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
 	}
 
-	echo '<div class="container-fluid my-3"><div class="row align-items-start row-cols-auto">';
+	echo '<div class="container-fluid my-3"><div class="row"><div class="col" id="qpages" data-max="0">…</div></div><div class="row align-items-start row-cols-auto">';
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		echo '<div class="col qresults" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
 	}

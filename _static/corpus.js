@@ -35,6 +35,8 @@
 		cs: {},
 		context: 15,
 		pagesize: 40,
+		max_n: 0,
+		offset: 1,
 		};
 
 	function u_length(str) {
@@ -43,6 +45,86 @@
 
 	function escHTML(t) {
 		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+	}
+
+	function repaginate() {
+		let html = '<ul class="pagination">';
+		let pgs = Math.ceil(state.max_n / state.pagesize);
+		html += '<li class="page-item qpage-prev"><a href="#" class="page-link qpage" data-which="'+Math.max(state.offset - state.pagesize, 1)+'">&laquo;</a></li>';
+
+		if (pgs > 10) {
+			html += '<li class="page-item"><span class="page-link"><select class="form-select form-select-sm qpagesel">';
+			for (let i = 0 ; i<pgs ; ++i) {
+				html += '<option value="'+(i*state.pagesize+1)+'">'+(i+1)+'</option>';
+			}
+			html += '</select></span></li>';
+		}
+		else {
+			for (let i = 0 ; i<pgs ; ++i) {
+				html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+((i*state.pagesize+1))+'">'+(i+1)+'</a></li>';
+			}
+		}
+		html += '<li class="page-item qpage-next"><a href="#" class="page-link qpage" data-which="'+(state.offset + state.pagesize)+'">&raquo;</a></li>';
+		html += '</ul>';
+		$('#qpages').html(html);
+
+		pageToggleButtons();
+
+		$('.qpage').click(function(e) {
+			e.preventDefault();
+
+			let p = $(this).attr('data-which');
+			if (!p) {
+				p = $(this).text();
+			}
+
+			loadOffset(parseInt(p));
+
+			return false;
+		});
+		$('.qpagesel').change(function() {
+			let p = $(this).val();
+			loadOffset(parseInt(p));
+		});
+	}
+
+	function pageToggleButtons() {
+		$('.qpagesel').val(state.offset);
+		$('.qpage-prev').find('.qpage').attr('data-which', Math.max(state.offset - state.pagesize, 1));
+		$('.qpage-next').find('.qpage').attr('data-which', state.offset + state.pagesize);
+
+		$('#qpages').find('.page-item').removeClass('disabled');
+		$('#qpages').find('.qpage[data-which="'+state.offset+'"]').parent().addClass('disabled');
+
+		if (state.offset == 1) {
+			$('.qpage-prev').addClass('disabled');
+		}
+		if (state.offset >= state.max_n - state.pagesize) {
+			$('.qpage-next').addClass('disabled');
+		}
+	}
+
+	function loadOffset(p) {
+		state.offset = p;
+
+		pageToggleButtons();
+
+		let rq = {
+			a: 'load',
+			h: state.hash,
+			c: state.context,
+			rs: {},
+			ts: [],
+			};
+
+		$('.qresults').each(function() {
+			let id = $(this).attr('id');
+			rq.rs[id] = {s: state.offset, n: state.pagesize, c: state.context};
+			rq.ts.push(id);
+		});
+
+		$('.qbody > table').addClass('opacity-25');
+		$.getJSON('./callback.php', rq).done(handleLoad);
 	}
 
 	function handleLoad(rv) {
@@ -66,15 +148,32 @@
 				let c = $('#'+corp);
 				state.ts[corp] = rv.ts[corp];
 				c.find('.qtotal').text(rv.ts[corp].n);
+				state.max_n = Math.max(rv.ts[corp].n, state.max_n);
+
 				if (!rv.ts[corp].d) {
 					c.find('.qtotal').text(rv.ts[corp].n + '…');
+				}
+				else {
+					if (rv.ts[corp].n === 0) {
+						let c = $('#'+corp);
+						c.find('.qrange').text('0');
+						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
+					}
 				}
 			}
 		}
 
+		if (parseInt($('#qpages').attr('data-max')) < state.max_n) {
+			repaginate();
+			$('#qpages').attr('data-max', state.max_n);
+		}
+
 		if (rv.hasOwnProperty('rs')) {
 			for (let corp in rv.rs) {
-				if (!rv.rs[corp].es.length && (rv.rs[corp].s < rv.ts[corp].n || !rv.ts[corp].n)) {
+				if (!rv.rs[corp].es.length && (rv.rs[corp].s < state.ts[corp].n || !state.ts[corp].n)) {
+					if (!state.ts[corp].n && state.ts[corp].d) {
+						continue;
+					}
 					rq.rs[corp] = {
 						s: rv.rs[corp].s,
 						n: state.pagesize,
@@ -86,12 +185,18 @@
 				rq.cs[corp] = {};
 
 				let c = $('#'+corp);
+				if (!rv.rs[corp].es.length) {
+					c.find('.qrange').text('…');
+					c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
+					continue;
+				}
+
 				c.find('.qrange').text(rv.rs[corp].es[0].i+' to '+(rv.rs[corp].es[rv.rs[corp].es.length-1].i));
 				let html = '<table class="table table-striped table-hover my-3">';
 				//html += '<thead><tr class="text-center"><th>#</th><th>LHS</th><th class="text-center">Hit</th><th>RHS</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.rs[corp].es.length ; ++i) {
-					html += '<tr id="'+corp+'-'+rv.rs[corp].es[i].i+'" data-p="'+rv.rs[corp].es[i].p+'"><td>'+rv.rs[corp].es[i].i+'</td><td>…</td><td class="text-center fw-bold">'+escHTML(rv.rs[corp].es[i].t)+'</td><td>…</td></tr>';
+					html += '<tr id="'+corp+'-'+rv.rs[corp].es[i].i+'" data-p="'+rv.rs[corp].es[i].p+'"><td class="qpending">'+rv.rs[corp].es[i].i+'</td><td>…</td><td class="text-center fw-bold">'+escHTML(rv.rs[corp].es[i].t)+'</td><td>…</td></tr>';
 					rq.cs[corp][rv.rs[corp].es[i].i] = 1;
 				}
 				html += '</tbody></table>';
@@ -196,6 +301,11 @@
 					html += '</td>';
 					row.html(html);
 				}
+
+				rq.cs[corp] = {};
+				$('#'+corp).find('.qpending').each(function() {
+					rq.cs[corp][parseInt($(this).text())] = 1;
+				});
 			}
 		}
 
@@ -209,7 +319,7 @@
 		}
 
 		if (retry) {
-			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 2000);
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 250);
 		}
 	}
 
@@ -225,7 +335,7 @@
 
 		$('.qresults').each(function() {
 			let id = $(this).attr('id');
-			rq.rs[id] = {s: 1, n: state.pagesize, c: state.context};
+			rq.rs[id] = {s: state.offset, n: state.pagesize, c: state.context};
 			rq.ts.push(id);
 		});
 
