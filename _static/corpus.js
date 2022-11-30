@@ -28,15 +28,22 @@
 }(typeof self !== 'undefined' ? self : this, function () {
 	'use strict';
 
+	const Defs = {
+		context: 15,
+		context_chars: 60,
+		pagesize: 50,
+		offset: 1,
+		};
+
 	let state = {
 		h: '',
 		rs: {},
 		ts: {},
 		cs: {},
-		context: 15,
-		pagesize: 50,
+		context: Defs.context,
+		pagesize: Defs.pagesize,
 		max_n: 0,
-		offset: 1,
+		offset: Defs.offset,
 		};
 
 	let fields = {};
@@ -86,13 +93,13 @@
 				p = $(this).text();
 			}
 
-			loadOffset(parseInt(p));
+			loadOffset(parseInt(p), true);
 
 			return false;
 		});
 		$('.qpagesel').change(function() {
 			let p = $(this).val();
-			loadOffset(parseInt(p));
+			loadOffset(parseInt(p), true);
 		});
 	}
 
@@ -112,8 +119,22 @@
 		}
 	}
 
-	function loadOffset(p) {
+	function loadOffset(p, h) {
 		state.offset = p;
+
+		if (h) {
+			let url = new URL(window.location);
+			url.searchParams.set('offset', state.offset);
+			if (state.offset === Defs.offset) {
+				url.searchParams.delete('offset');
+			}
+			url.searchParams.set('pagesize', state.pagesize);
+			if (state.pagesize === Defs.pagesize) {
+				url.searchParams.delete('pagesize');
+			}
+			window.history.pushState({}, '', url);
+			console.log(window.history);
+		}
 
 		pageToggleButtons();
 
@@ -311,7 +332,7 @@
 					}
 
 					let html = '<td><a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet">TW</a></td><td class="text-end">';
-					while (parts.p.length > 1 && parts.ptz > 60) {
+					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
 						parts.pz.shift();
@@ -320,7 +341,7 @@
 					html += '</td><td class="text-start"><span class="fw-bold me-1">';
 					html += parts.m.join(' ');
 					html += '</span> ';
-					while (parts.s.length > 1 && parts.stz > 60) {
+					while (parts.s.length > 1 && parts.stz > Defs.context_chars) {
 						parts.stz -= parts.sz[parts.s.length-1] + 1;
 						parts.s.pop();
 						parts.sz.pop();
@@ -353,6 +374,11 @@
 
 	function contentLoaded() {
 		state.hash = g_hash;
+
+		let params = (new URL(window.location)).searchParams;
+		state.offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
+		state.pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
+
 		let rq = {
 			a: 'load',
 			h: state.hash,
@@ -374,10 +400,22 @@
 			state.pagesize = n;
 			state.offset = Math.floor(state.offset/n)*n + 1;
 			repaginate();
-			loadOffset(state.offset);
+			loadOffset(state.offset, true);
 		});
 
 		setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 500);
+
+		window.addEventListener('popstate', function(e) {
+			console.log([e, window.location]);
+			let params = (new URL(window.location)).searchParams;
+			let offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
+			let pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
+			if (offset != state.offset || pagesize != state.pagesize) {
+				state.offset = offset;
+				state.pagesize = pagesize;
+				loadOffset(state.offset, false);
+			}
+		});
 	}
 
 	if (document.readyState === 'loading') {
