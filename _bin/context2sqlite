@@ -1,7 +1,7 @@
 #!/usr/bin/php -d memory_limit=8G
 <?php
 declare(strict_types=1);
-require_once __DIR__.'/../_vendor/autoload.php';
+require_once __DIR__.'/../_inc/lib.php';
 
 $db_file = $argv[1] ?? 'out.sqlite';
 $db = new \TDC\PDO\SQLite($db_file);
@@ -9,6 +9,8 @@ $db = new \TDC\PDO\SQLite($db_file);
 $db->beginTransaction();
 $line = trim(fgets(STDIN), "# \t\r\n");
 $db->prepexec("INSERT OR REPLACE INTO meta VALUES ('cols', ?)", [$line]);
+
+$fields = array_flip(explode("\t", $line));
 
 $ins = $db->prepare("INSERT OR REPLACE INTO contexts (hit_id, c_begin, c_end, c_text) VALUES (?, ?, ?, ?)");
 
@@ -27,6 +29,26 @@ for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
 		$lines = '';
 	}
 	else {
+		// Omit certain fields if they are identical to the source field
+		if (array_key_exists('word_lc', $fields)) {
+			$line = explode("\t", trim($line));
+			if ($line[$fields['lex_nd']] === $line[$fields['word_nd']]) {
+				$line[$fields['lex_nd']] = '';
+			}
+			if ($line[$fields['word_nd']] === $line[$fields['word_lc']]) {
+				$line[$fields['word_nd']] = '';
+			}
+			if ($line[$fields['word_lc']] === $line[$fields['word']]) {
+				$line[$fields['word_lc']] = '';
+			}
+			if ($line[$fields['lex_lc']] === $line[$fields['lex']]) {
+				$line[$fields['lex_lc']] = '';
+			}
+			if ($line[$fields['lex']] === $line[$fields['word']]) {
+				$line[$fields['lex']] = '';
+			}
+			$line = implode("\t", $line)."\n";
+		}
 		$lines .= $line;
 	}
 

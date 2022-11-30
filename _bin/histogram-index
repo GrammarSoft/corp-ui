@@ -1,0 +1,125 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$hist = [
+	'utc' => [],
+	'local' => [],
+	];
+
+$last_utc = [];
+$last_local = [];
+$last_article = null;
+
+while ($line = fgets(STDIN)) {
+	if (preg_match('~^<s ~u', $line)) {
+		$last_utc = [];
+		$last_local = [];
+
+		if (preg_match('~ stamp="(\d+)-(\d+)-(\d+) (\d+)~u', $line, $m)) {
+			$last_utc['Y'] = $m[1];
+			$last_utc['Y-m'] = "{$m[1]}{$m[2]}";
+			$last_utc['Y-m-d'] = "{$m[1]}{$m[2]}{$m[3]}";
+			$last_utc['Y-m-d H'] = "{$m[1]}{$m[2]}{$m[3]}{$m[4]}";
+			$last_utc['H'] = $m[4];
+		}
+		if (preg_match('~ lstamp="(\d+)-(\d+)-(\d+) (\d+)~u', $line, $m)) {
+			$last_local['Y'] = $m[1];
+			$last_local['Y-m'] = "{$m[1]}{$m[2]}";
+			$last_local['Y-m-d'] = "{$m[1]}{$m[2]}{$m[3]}";
+			$last_local['Y-m-d H'] = "{$m[1]}{$m[2]}{$m[3]}{$m[4]}";
+			$last_local['H'] = $m[4];
+		}
+
+		if (preg_match('~ (?:tweet|article|title)="(\d+)~u', $line, $m)) {
+			if ($last_article !== $m[1]) {
+				foreach ($last_utc as $v) {
+					$hist['utc'][$last_utc['Y']]['U'.$v]['a'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['a'] ?? 0) + 1;
+				}
+				foreach ($last_local as $v) {
+					$hist['local'][$last_local['Y']]['L'.$v]['a'] = ($hist['local'][$last_local['Y']]['L'.$v]['a'] ?? 0) + 1;
+				}
+				$last_article = $m[1];
+			}
+		}
+
+		foreach ($last_utc as $v) {
+			$hist['utc'][$last_utc['Y']]['U'.$v]['s'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['s'] ?? 0) + 1;
+		}
+		foreach ($last_local as $v) {
+			$hist['local'][$last_local['Y']]['L'.$v]['s'] = ($hist['local'][$last_local['Y']]['L'.$v]['s'] ?? 0) + 1;
+		}
+		continue;
+	}
+
+	if (preg_match('~^</s>~u', $line) || preg_match('~^¤+\t~u', $line)) {
+		continue;
+	}
+
+	if (preg_match('~^([^\t]+)\t([^\t]+)~u', $line, $m) && (preg_match('~[\pL\pN\pM]~u', $m[1]) || preg_match('~^emo~u', $m[2]))) {
+		foreach ($last_utc as $v) {
+			$hist['utc'][$last_utc['Y']]['U'.$v]['w'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['w'] ?? 0) + 1;
+		}
+		foreach ($last_local as $v) {
+			$hist['local'][$last_local['Y']]['L'.$v]['w'] = ($hist['local'][$last_local['Y']]['L'.$v]['w'] ?? 0) + 1;
+		}
+	}
+
+	foreach ($last_utc as $v) {
+		$hist['utc'][$last_utc['Y']]['U'.$v]['t'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['t'] ?? 0) + 1;
+	}
+	foreach ($last_local as $v) {
+		$hist['local'][$last_local['Y']]['L'.$v]['t'] = ($hist['local'][$last_local['Y']]['L'.$v]['t'] ?? 0) + 1;
+	}
+}
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE hist_local (
+	h_group INTEGER NOT NULL,
+	h_articles INTEGER NOT NULL,
+	h_sentences INTEGER NOT NULL,
+	h_tokens INTEGER NOT NULL,
+	h_words INTEGER NOT NULL,
+	PRIMARY KEY (h_group)
+) WITHOUT ROWID");
+
+$db->beginTransaction();
+
+foreach ($hist as $which => $ys) {
+	foreach ($ys as $year => $vs) {
+		$db->exec("CREATE TABLE hist_{$which}_{$year} (
+	h_group INTEGER NOT NULL,
+	h_articles INTEGER NOT NULL,
+	h_sentences INTEGER NOT NULL,
+	h_tokens INTEGER NOT NULL,
+	h_words INTEGER NOT NULL,
+	PRIMARY KEY (h_group)
+) WITHOUT ROWID");
+		$ins = $db->prepare("INSERT INTO hist_{$which}_{$year} (h_group, h_articles, h_sentences, h_tokens, h_words) VALUES (?, ?, ?, ?, ?)");
+		foreach ($vs as $k => $v) {
+			$k = intval(ltrim(substr($k, 1), '0'));
+			$ins->execute([$k, ($v['a'] ?? 0), ($v['s'] ?? 0), ($v['t'] ?? 0), ($v['w'] ?? 0)]);
+		}
+	}
+}
+
+$db->commit();
+$db->exec("PRAGMA ignore_check_constraints = OFF");
+$db->exec("VACUUM");

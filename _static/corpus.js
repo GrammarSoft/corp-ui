@@ -34,10 +34,17 @@
 		ts: {},
 		cs: {},
 		context: 15,
-		pagesize: 40,
+		pagesize: 50,
 		max_n: 0,
 		offset: 1,
 		};
+
+	let fields = {};
+	let num_fields = 0;
+	'word	lex	extra	pos	morph	func	role	dself	dparent	word_lc	word_nd	lex_lc	lex_nd'.split(/\t/).forEach(function(e, i) {
+		fields[e] = i;
+		num_fields = i + 1;
+	});
 
 	function u_length(str) {
 		return [...str].length;
@@ -52,18 +59,19 @@
 		let pgs = Math.ceil(state.max_n / state.pagesize);
 		html += '<li class="page-item qpage-prev"><a href="#" class="page-link qpage" data-which="'+Math.max(state.offset - state.pagesize, 1)+'">&laquo;</a></li>';
 
-		if (pgs > 10) {
+		let i = 0;
+		for ( ; i<pgs && i<10 ; ++i) {
+			html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+((i*state.pagesize+1))+'">'+(i+1)+'</a></li>';
+		}
+		if (pgs >= 10) {
 			html += '<li class="page-item"><span class="page-link"><select class="form-select form-select-sm qpagesel">';
-			for (let i = 0 ; i<pgs ; ++i) {
+			for ( ; i<pgs-1 ; ++i) {
 				html += '<option value="'+(i*state.pagesize+1)+'">'+(i+1)+'</option>';
 			}
 			html += '</select></span></li>';
+			html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+(((pgs-1)*state.pagesize+1))+'">'+(pgs)+'</a></li>';
 		}
-		else {
-			for (let i = 0 ; i<pgs ; ++i) {
-				html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+((i*state.pagesize+1))+'">'+(i+1)+'</a></li>';
-			}
-		}
+
 		html += '<li class="page-item qpage-next"><a href="#" class="page-link qpage" data-which="'+(state.offset + state.pagesize)+'">&raquo;</a></li>';
 		html += '</ul>';
 		$('#qpages').html(html);
@@ -113,13 +121,15 @@
 			a: 'load',
 			h: state.hash,
 			c: state.context,
-			rs: {},
+			s: state.offset,
+			n: state.pagesize,
+			rs: [],
 			ts: [],
 			};
 
 		$('.qresults').each(function() {
 			let id = $(this).attr('id');
-			rq.rs[id] = {s: state.offset, n: state.pagesize, c: state.context};
+			rq.rs.push(id);
 			rq.ts.push(id);
 		});
 
@@ -133,7 +143,9 @@
 			a: 'load',
 			h: rv.h,
 			c: rv.c,
-			rs: {},
+			s: rv.s,
+			n: rv.n,
+			rs: [],
 			ts: [],
 			cs: {},
 			};
@@ -170,14 +182,11 @@
 
 		if (rv.hasOwnProperty('rs')) {
 			for (let corp in rv.rs) {
-				if (!rv.rs[corp].es.length && (rv.rs[corp].s < state.ts[corp].n || !state.ts[corp].n)) {
+				if (!rv.rs[corp].length && (rv.s < state.ts[corp].n || !state.ts[corp].n)) {
 					if (!state.ts[corp].n && state.ts[corp].d) {
 						continue;
 					}
-					rq.rs[corp] = {
-						s: rv.rs[corp].s,
-						n: state.pagesize,
-						};
+					rq.rs.push(corp);
 					retry = true;
 					continue;
 				}
@@ -185,19 +194,19 @@
 				rq.cs[corp] = {};
 
 				let c = $('#'+corp);
-				if (!rv.rs[corp].es.length) {
+				if (!rv.rs[corp].length) {
 					c.find('.qrange').text('…');
 					c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
 					continue;
 				}
 
-				c.find('.qrange').text(rv.rs[corp].es[0].i+' to '+(rv.rs[corp].es[rv.rs[corp].es.length-1].i));
+				c.find('.qrange').text(rv.rs[corp][0].i+' to '+(rv.rs[corp][rv.rs[corp].length-1].i));
 				let html = '<table class="table table-striped table-hover my-3">';
 				//html += '<thead><tr class="text-center"><th>#</th><th>LHS</th><th class="text-center">Hit</th><th>RHS</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
-				for (let i=0 ; i<rv.rs[corp].es.length ; ++i) {
-					html += '<tr id="'+corp+'-'+rv.rs[corp].es[i].i+'" data-p="'+rv.rs[corp].es[i].p+'"><td class="qpending">'+rv.rs[corp].es[i].i+'</td><td>…</td><td class="text-center fw-bold">'+escHTML(rv.rs[corp].es[i].t)+'</td><td>…</td></tr>';
-					rq.cs[corp][rv.rs[corp].es[i].i] = 1;
+				for (let i=0 ; i<rv.rs[corp].length ; ++i) {
+					html += '<tr id="'+corp+'-'+rv.rs[corp][i].i+'" data-p="'+rv.rs[corp][i].p+'"><td class="qpending opacity-25">'+rv.rs[corp][i].i+'</td><td class="opacity-25">…loading…</td><td class="text-center fw-bold opacity-25">'+escHTML(rv.rs[corp][i].t)+'</td><td class="opacity-25">…loading…</td></tr>';
+					rq.cs[corp][rv.rs[corp][i].i] = 1;
 				}
 				html += '</tbody></table>';
 				c.find('.qbody').html(html);
@@ -262,6 +271,25 @@
 						else {
 							if (good) {
 								let tabs = ts[j].split(/\t/);
+								while (tabs.length < num_fields) {
+									tabs.push('');
+								}
+								if (!tabs[fields['lex']].length) {
+									tabs[fields['lex']] = tabs[fields['word']];
+								}
+								if (!tabs[fields['lex_lc']].length) {
+									tabs[fields['lex_lc']] = tabs[fields['lex']];
+								}
+								if (!tabs[fields['word_lc']].length) {
+									tabs[fields['word_lc']] = tabs[fields['word']];
+								}
+								if (!tabs[fields['word_nd']].length) {
+									tabs[fields['word_nd']] = tabs[fields['word_lc']];
+								}
+								if (!tabs[fields['lex_nd']].length) {
+									tabs[fields['lex_nd']] = tabs[fields['word_nd']];
+								}
+
 								let title = escHTML(tabs.join("\n"));
 								if (n < p) {
 									parts.p.push('<span title="'+title+'">'+escHTML(tabs[0])+'</span>');
@@ -329,14 +357,24 @@
 			a: 'load',
 			h: state.hash,
 			c: state.context,
-			rs: {},
+			s: state.offset,
+			n: state.pagesize,
+			rs: [],
 			ts: [],
 			};
 
 		$('.qresults').each(function() {
 			let id = $(this).attr('id');
-			rq.rs[id] = {s: state.offset, n: state.pagesize, c: state.context};
+			rq.rs.push(id);
 			rq.ts.push(id);
+		});
+
+		$('#qpagesize').change(function() {
+			let n = parseInt($(this).val());
+			state.pagesize = n;
+			state.offset = Math.floor(state.offset/n)*n + 1;
+			repaginate();
+			loadOffset(state.offset);
 		});
 
 		setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 500);

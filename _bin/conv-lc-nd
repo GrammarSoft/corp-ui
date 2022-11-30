@@ -1,0 +1,45 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+// Adaptation of pipe: uconv -x any-name | perl -wpne 's/ WITH [^}]+//g;' | uconv -x name-any | uconv -x any-latin -t iso-8859-1 -c | uconv -f iso-8859-1 -t ascii -x latin-ascii -c
+// See also https://stackoverflow.com/a/13586843/145919
+
+$cache = [];
+
+$any2nfc = Transliterator::create('any-nfc');
+$any2name = Transliterator::create('any-name');
+$name2any = Transliterator::create('name-any');
+$any2lower = Transliterator::create('any-lower');
+$any2latin = Transliterator::create('any-latin');
+$latin2ascii = Transliterator::create('latin-ascii');
+$remove = Transliterator::create('[:Modifier_Symbol:] remove; [\u0100-\u7fff] remove;');
+
+while ($line = fgets(STDIN)) {
+	if (array_key_exists($line, $cache)) {
+		echo $cache[$line];
+		continue;
+	}
+	if (count($cache) > 10000000) {
+		$cache = [];
+	}
+
+	$org = $line;
+	$line = $any2nfc->transliterate($line);
+
+	// Converts all characters to their name, because that's easier to normalize
+	$line = $any2name->transliterate($line);
+	$line = str_replace(' DOTLESS ', ' ', $line); // Dotless i (ı) and any other potential dotless variant
+	$line = preg_replace('~ WITH [^}]+~', '', $line); // Diacritics are all WITH something, so just remove the WITH part
+	$line = $name2any->transliterate($line);
+
+	$line = $any2lower->transliterate($line);
+	$line = $any2latin->transliterate($line);
+	$line = $latin2ascii->transliterate($line);
+	$line = $remove->transliterate($line);
+
+	echo $line;
+	$cache[$org] = $line;
+	$cache[$line] = $line;
+}

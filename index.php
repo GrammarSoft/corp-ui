@@ -72,17 +72,13 @@ XSH;
 		shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
 	}
 
-	echo '<div class="container-fluid my-3"><div class="row"><div class="col" id="qpages" data-max="0">…</div></div><div class="row align-items-start row-cols-auto">';
+	echo '<div class="container-fluid my-3"><div class="row"><div class="col" id="qpages" data-max="0">…</div><div class="col"><select class="form-select form-select-sm" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div></div><div class="row align-items-start row-cols-auto">';
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		echo '<div class="col qresults" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
 	}
 	echo '</div></div>';
 	echo '<script>let g_hash = "'.$hash.'"; let g_focus = "'.$focus.'";</script>';
 }
-
-// corpquery /home/manatee/registry/ger_twitter_2021 '[word="[Cc]orona"]' -c 0 -l '	' -a 'word' | /var/www/html/_bin/sample CACHEPATH.wc | sort -n '-t#' '-k2' >CACHEPATH.txt
-
-// Re-encode with ~u2044 as /
 
 ?>
 
@@ -112,7 +108,7 @@ foreach ($GLOBALS['-corpora'] as $group => $cs) {
 </div>
 <div class="col">
 	<button type="submit" class="btn btn-primary" name="s" value="n">Search</button>
-	<button type="submit" class="btn btn-outline-primary" name="s" value="r">Refine</button>
+	<!-- <button type="submit" class="btn btn-outline-primary" name="s" value="r">Refine</button> -->
 </div>
 </div>
 </form>

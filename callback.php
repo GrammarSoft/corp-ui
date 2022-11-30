@@ -37,14 +37,18 @@ while ($a === 'load') {
 
 	$context = min(max(intval($_REQUEST['c'] ?? 7), 0), 15);
 	$rv['c'] = $context;
+	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
+	$rv['s'] = $offset;
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$rv['n'] = $pagesize;
 
 	$corps = [];
 	$rs = [];
 	$ts = [];
 	$cs = [];
 	if (!empty($_REQUEST['rs']) && is_array($_REQUEST['rs'])) {
-		$rs = filter_corpora_k($_REQUEST['rs']);
-		$corps = array_merge($corps, array_keys($rs));
+		$rs = filter_corpora_v($_REQUEST['rs']);
+		$corps = array_merge($corps, $ts);
 	}
 	if (!empty($_REQUEST['ts']) && is_array($_REQUEST['ts'])) {
 		$ts = filter_corpora_v($_REQUEST['ts']);
@@ -74,18 +78,14 @@ while ($a === 'load') {
 		}
 	}
 
-	foreach ($rs as $corp => $r) {
+	foreach ($rs as $corp) {
 		if (!array_key_exists($corp, $dbs)) {
 			$rv['info'][] = 'I010: Not loaded '.$corp;
 			continue;
 		}
 
-		$hits = $dbs[$corp]->prepexec("SELECT hit_id as i, hit_pos as p, hit_text as t FROM hits WHERE hit_id >= ? AND hit_id < ? ORDER BY hit_id ASC", [intval($r['s']), intval($r['s'])+intval($r['n'])])->fetchAll();
-		$rv['rs'][$corp] = [
-			's' => intval($r['s']),
-			'n' => intval($r['n']),
-			'es' => $hits,
-			];
+		$hits = $dbs[$corp]->prepexec("SELECT hit_id as i, hit_pos as p, hit_text as t FROM hits WHERE hit_id >= ? AND hit_id < ? ORDER BY hit_id ASC", [$offset, $offset+$pagesize])->fetchAll();
+		$rv['rs'][$corp] = $hits;
 
 		foreach ($hits as $hit) {
 			$cs[$corp]['rs'][$hit['i']] = $hit['p'];

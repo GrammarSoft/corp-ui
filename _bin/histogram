@@ -1,0 +1,44 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+// corpquery ~/registry/dan_twitter '(<s>[] within (<s/> containing [word="[uU]krain.*"])) within <s/>' -c 0 -s s.tweet,s.lstamp | ~/public_html/_bin/histogram
+
+$group = '(\d+-\d+-\d+)';
+if (!empty($argv[1])) {
+	if ($argv[1] === 'y') {
+		$group = '(\d+)';
+	}
+	else if ($argv[1] === 'm') {
+		$group = '(\d+-\d+)';
+	}
+	else if ($argv[1] === 'd') {
+		// Default
+	}
+	else if ($argv[1] === 'h') {
+		$group = '(\d+-\d+-\d+ \d+)';
+	}
+	else if ($argv[1] === 'i') {
+		$group = '(\d+-\d+-\d+ \d+:\d+)';
+	}
+	else if ($argv[1] === 'H') {
+		$group = '\d+-\d+-\d+ (\d+)';
+	}
+	else if ($argv[1] === 'I') {
+		$group = '\d+-\d+-\d+ (\d+:\d+)';
+	}
+}
+
+$hist = [];
+
+while ($line = fgets(STDIN)) {
+	if (preg_match('~ lstamp='.$group.'~', $line, $m)) {
+		if (!array_key_exists($m[1], $hist)) {
+			$hist[$m[1]] = 0;
+		}
+		++$hist[$m[1]];
+	}
+}
+
+echo json_encode_vb($hist, JSON_PRETTY_PRINT);
