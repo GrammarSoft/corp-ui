@@ -190,7 +190,7 @@ XSH;
 		$off_sel .= '<option value="'.$i.'"'.$sel.'>'.$i.'</option>'."\n";
 	}
 
-	echo '<div class="container-fluid my-3"><div class="row align-items-start"><div class="col-2">';
+	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
 	echo '<div class="card text-bg-light mb-3"><div class="card-body">';
 	echo <<<XHTML
 <form method="GET">
@@ -226,12 +226,12 @@ XSH;
 XHTML;
 	echo '</div></div>';
 	echo '<div class="card text-bg-light mb-3">';
-	echo '<div class="card-body"><label for="qpagesize" class="form-label fw-bold">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>';
+	echo '<div class="card-body"><div class="mb-3"><label for="qpagesize" class="form-label fw-bold">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>';
 	if ($_REQUEST['s'] === 's') {
-		echo '<div class="card-body"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
+		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
-	echo '</div>';
-	echo '</div><div class="col-10">';
+	echo '</div></div>';
+	echo '</div><div class="col">';
 	echo '<div class="container-fluid my-3">';
 	echo '<div class="row"><div class="col qpages">…</div></div>';
 	echo '<div class="row align-items-start row-cols-auto">';
