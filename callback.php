@@ -21,13 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 	die();
 }
 
-while ($a === 'load') {
+while ($a === 'conc') {
 	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
 		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
 		break;
 	}
 	$hash = $_REQUEST['h'];
-	$rv['h'] = $hash;
 	$folder = '/home/manatee/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
@@ -171,6 +170,85 @@ while ($a === 'load') {
 					$hash_rn = substr(sha256_lc20($rngs), 0, 8);
 					shell_exec("nice -n10 /usr/bin/time -f '%e' -o $hash-$corp.$context-$hash_rn.time /home/manatee/public_html/_bin/decodevert-ranges /home/manatee/registry/$corp $rngs | /home/manatee/public_html/_bin/context2sqlite $hash-$corp.$context.sqlite >$hash-$corp.$context-$hash_rn.err 2>&1 &");
 				}
+			}
+		}
+	}
+
+	break;
+}
+
+while ($a === 'freq') {
+	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
+		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	if (empty($_REQUEST['hf']) || !preg_match('~^[a-z0-9]{8}$~', $_REQUEST['hf'])) {
+		$rv['errors'][] = 'E040: Invalid frequency hash '.$_REQUEST['hf'];
+		break;
+	}
+	if (empty($_REQUEST['t']) || !preg_match('~^(abc|freq|relfreq)$~', $_REQUEST['t'])) {
+		$rv['errors'][] = 'E030: Invalid type '.$_REQUEST['t'];
+		break;
+	}
+
+	$hash = $_REQUEST['h'];
+	$hash_freq = $_REQUEST['hf'];
+	$folder = '/home/manatee/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	if (!is_dir($folder)) {
+		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	chdir($folder);
+
+	$type = $_REQUEST['t'];
+	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
+	$rv['s'] = $offset;
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$rv['n'] = $pagesize;
+
+	$corps = [];
+	$cs = [];
+	if (!empty($_REQUEST['cs']) && is_array($_REQUEST['cs'])) {
+		$cs = filter_corpora_v($_REQUEST['cs']);
+		$corps = array_merge($corps, $cs);
+	}
+	sort($corps);
+	$corps = array_unique($corps);
+
+	clearstatcache();
+	$dbs = [];
+	foreach ($corps as $corp) {
+		if (!file_exists("$hash-$corp.freq-$hash_freq.sqlite") || !filesize("$hash-$corp.freq-$hash_freq.sqlite")) {
+			$rv['info'][] = 'Not ready '.$corp;
+			continue;
+		}
+		$dbs[$corp] = new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+	}
+
+	foreach ($cs as $corp) {
+		if (!array_key_exists($corp, $dbs)) {
+			$rv['info'][] = 'I010: Not loaded '.$corp;
+			continue;
+		}
+
+		$rv['cs'][$corp] = [
+			'n' => 0,
+			't' => 0,
+			'd' => 1,
+			'f' => [],
+			];
+
+		if (!file_exists("$hash-$corp.freq-$hash_freq.time") || !filesize("$hash-$corp.freq-$hash_freq.time")) {
+			$rv['cs'][$corp]['d'] = 0;
+		}
+
+		$rv['cs'][$corp]['n'] = intval($dbs[$corp]->prepexec("SELECT MAX(rowid) as cnt FROM freqs")->fetchAll()[0]['cnt'] ?? 0);
+		$rv['cs'][$corp]['t'] = intval($dbs[$corp]->prepexec("SELECT value FROM meta WHERE key = 'total'")->fetchAll()[0]['value'] ?? 1);
+
+		if ($type === 'freq') {
+			$res = $dbs[$corp]->prepexec("SELECT freq_text, freq_abs FROM freqs ORDER BY freq_abs DESC, freq_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			while ($row = $res->fetch()) {
+				$rv['cs'][$corp]['f'][] = [$row['freq_text'], intval($row['freq_abs'])];
 			}
 		}
 	}

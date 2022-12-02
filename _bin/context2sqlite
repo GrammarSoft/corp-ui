@@ -32,6 +32,9 @@ for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
 		// Omit certain fields if they are identical to the source field
 		if (array_key_exists('word_lc', $fields)) {
 			$line = explode("\t", trim($line));
+			while (count($line) < count($fields)) {
+				$line[] = '';
+			}
 			if ($line[$fields['lex_nd']] === $line[$fields['word_nd']]) {
 				$line[$fields['lex_nd']] = '';
 			}

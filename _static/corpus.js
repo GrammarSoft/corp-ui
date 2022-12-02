@@ -29,6 +29,8 @@
 	'use strict';
 
 	const Defs = {
+		focus: 'word',
+		focus_n: 0,
 		context: 15,
 		context_chars: 60,
 		pagesize: 50,
@@ -40,10 +42,15 @@
 		rs: {},
 		ts: {},
 		cs: {},
+		focus: Defs.focus,
+		focus_n: Defs.focus_n,
 		context: Defs.context,
 		pagesize: Defs.pagesize,
 		max_n: 0,
+		prev_max_n: 0,
 		offset: Defs.offset,
+		named: [],
+		last_rv: null,
 		};
 
 	let fields = {};
@@ -58,30 +65,42 @@
 	}
 
 	function escHTML(t) {
+		if (typeof(t) !== 'string') {
+			t = t.toString();
+		}
 		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 	}
 
 	function repaginate() {
+		let url = new URL(window.location);
+		url.searchParams.set('pagesize', state.pagesize);
+
 		let html = '<ul class="pagination">';
 		let pgs = Math.ceil(state.max_n / state.pagesize);
-		html += '<li class="page-item qpage-prev"><a href="#" class="page-link qpage" data-which="'+Math.max(state.offset - state.pagesize, 1)+'">&laquo;</a></li>';
+		url.searchParams.set('offset', Math.max(state.offset - state.pagesize, 1));
+		html += '<li class="page-item qpage-prev"><a href="'+escHTML(url)+'" class="page-link qpage" data-which="'+Math.max(state.offset - state.pagesize, 1)+'">&laquo;</a></li>';
 
 		let i = 0;
 		for ( ; i<pgs && i<10 ; ++i) {
-			html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+((i*state.pagesize+1))+'">'+(i+1)+'</a></li>';
+			url.searchParams.set('offset', i*state.pagesize+1);
+			html += '<li class="page-item"><a href="'+escHTML(url)+'" class="page-link qpage" data-which="'+(i*state.pagesize+1)+'">'+(i+1)+'</a></li>';
 		}
-		if (pgs >= 10) {
-			html += '<li class="page-item"><span class="page-link"><select class="form-select form-select-sm qpagesel">';
-			for ( ; i<pgs-1 ; ++i) {
-				html += '<option value="'+(i*state.pagesize+1)+'">'+(i+1)+'</option>';
+		if (pgs > 10) {
+			if (pgs > 11) {
+				html += '<li class="page-item"><span class="page-link"><select class="form-select form-select-sm qpagesel">';
+				for ( ; i<pgs-1 ; ++i) {
+					html += '<option value="'+(i*state.pagesize+1)+'">'+(i+1)+'</option>';
+				}
+				html += '</select></span></li>';
 			}
-			html += '</select></span></li>';
-			html += '<li class="page-item"><a href="#" class="page-link qpage" data-which="'+(((pgs-1)*state.pagesize+1))+'">'+(pgs)+'</a></li>';
+			url.searchParams.set('offset', (pgs-1)*state.pagesize+1);
+			html += '<li class="page-item"><a href="'+escHTML(url)+'" class="page-link qpage" data-which="'+((pgs-1)*state.pagesize+1)+'">'+(pgs)+'</a></li>';
 		}
 
-		html += '<li class="page-item qpage-next"><a href="#" class="page-link qpage" data-which="'+(state.offset + state.pagesize)+'">&raquo;</a></li>';
+		url.searchParams.set('offset', state.offset + state.pagesize);
+		html += '<li class="page-item qpage-next"><a href="'+escHTML(url)+'" class="page-link qpage" data-which="'+(state.offset + state.pagesize)+'">&raquo;</a></li>';
 		html += '</ul>';
-		$('#qpages').html(html);
+		$('.qpages').html(html);
 
 		pageToggleButtons();
 
@@ -104,12 +123,17 @@
 	}
 
 	function pageToggleButtons() {
-		$('.qpagesel').val(state.offset);
-		$('.qpage-prev').find('.qpage').attr('data-which', Math.max(state.offset - state.pagesize, 1));
-		$('.qpage-next').find('.qpage').attr('data-which', state.offset + state.pagesize);
+		let url = new URL(window.location);
+		url.searchParams.set('pagesize', state.pagesize);
 
-		$('#qpages').find('.page-item').removeClass('disabled');
-		$('#qpages').find('.qpage[data-which="'+state.offset+'"]').parent().addClass('disabled');
+		$('.qpagesel').val(state.offset);
+		url.searchParams.set('offset', Math.max(state.offset - state.pagesize, 1));
+		$('.qpage-prev').find('.qpage').attr('href', url.toString()).attr('data-which', Math.max(state.offset - state.pagesize, 1));
+		url.searchParams.set('offset', state.offset + state.pagesize);
+		$('.qpage-next').find('.qpage').attr('href', url.toString()).attr('data-which', state.offset + state.pagesize);
+
+		$('.qpages').find('.page-item').removeClass('disabled');
+		$('.qpages').find('.qpage[data-which="'+state.offset+'"]').parent().addClass('disabled');
 
 		if (state.offset == 1) {
 			$('.qpage-prev').addClass('disabled');
@@ -122,8 +146,8 @@
 	function loadOffset(p, h) {
 		state.offset = p;
 
+		let url = new URL(window.location);
 		if (h) {
-			let url = new URL(window.location);
 			url.searchParams.set('offset', state.offset);
 			if (state.offset === Defs.offset) {
 				url.searchParams.delete('offset');
@@ -133,36 +157,65 @@
 				url.searchParams.delete('pagesize');
 			}
 			window.history.pushState({}, '', url);
-			console.log(window.history);
 		}
 
 		pageToggleButtons();
 
-		let rq = {
-			a: 'load',
-			h: state.hash,
-			c: state.context,
-			s: state.offset,
-			n: state.pagesize,
-			rs: [],
-			ts: [],
-			};
+		if ($('.qresults').length) {
+			let rq = {
+				a: 'conc',
+				h: state.hash,
+				c: state.context,
+				s: state.offset,
+				n: state.pagesize,
+				rs: [],
+				ts: [],
+				};
 
-		$('.qresults').each(function() {
-			let id = $(this).attr('id');
-			rq.rs.push(id);
-			rq.ts.push(id);
-		});
+			$('.qresults').each(function() {
+				let id = $(this).attr('id');
+				rq.rs.push(id);
+				rq.ts.push(id);
+			});
 
-		$('.qbody > table').addClass('opacity-25');
-		$.getJSON('./callback.php', rq).done(handleLoad);
+			$('.qbody > table').addClass('opacity-25');
+			$.getJSON('./callback.php', rq).done(handleConc);
+		}
+
+		if ($('.qfreqs').length) {
+			let rq = {
+				a: 'freq',
+				t: url.searchParams.get('s'),
+				h: state.hash,
+				hf: state.hash_freq,
+				s: state.offset,
+				n: state.pagesize,
+				cs: [],
+				};
+
+			$('.qfreqs').each(function() {
+				let id = $(this).attr('id');
+				rq.cs.push(id);
+			});
+
+			$('.qbody > table').addClass('opacity-25');
+			$.getJSON('./callback.php', rq).done(handleFreq);
+		}
 	}
 
-	function handleLoad(rv) {
+	function appendIfNot0(tabs) {
+		if (state.focus_n != 0) {
+			return '<br><span class="fw-light text-muted">'+escHTML(tabs[state.focus_n] ? tabs[state.focus_n] : '-')+'</span>';
+		}
+		return '';
+	}
+
+	function handleConc(rv) {
+		state.last_rv = rv;
 		let retry = false;
 		let rq = {
-			a: 'load',
-			h: rv.h,
+			a: 'conc',
+			h: state.hash,
 			c: rv.c,
 			s: rv.s,
 			n: rv.n,
@@ -196,9 +249,9 @@
 			}
 		}
 
-		if (parseInt($('#qpages').attr('data-max')) < state.max_n) {
+		if (state.prev_max_n < state.max_n) {
 			repaginate();
-			$('#qpages').attr('data-max', state.max_n);
+			state.prev_max_n = state.max_n;
 		}
 
 		if (rv.hasOwnProperty('rs')) {
@@ -276,6 +329,7 @@
 						};
 					let n = cntx.b;
 					let good = false;
+					let named = Array.from(state.named);
 					for (let j=0 ; j<ts.length ; ++j) {
 						if (/^<s /.test(ts[j])) {
 							if (ts[j].indexOf(' tweet="'+s_article+'"') !== -1) {
@@ -313,16 +367,21 @@
 
 								let title = escHTML(tabs.join("\n"));
 								if (n < p) {
-									parts.p.push('<span title="'+title+'">'+escHTML(tabs[0])+'</span>');
+									parts.p.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
 									parts.pz.push(u_length(tabs[0]));
 									parts.ptz += u_length(tabs[0]) + 1;
 								}
 								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
-									parts.m.push('<span title="'+title+'">'+escHTML(tabs[0])+'</span>');
+									parts.m.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(tabs[0].length).trim();
 								}
+								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
+									parts.m.push('<span title="'+title+'" class="d-inline-block text-center"><span class="fw-light">'+named[0]+':</span>'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
+									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
+									named.shift();
+								}
 								else {
-									parts.s.push('<span title="'+title+'">'+escHTML(tabs[0])+'</span>');
+									parts.s.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
 									parts.sz.push(u_length(tabs[0]));
 									parts.stz += u_length(tabs[0]) + 1;
 								}
@@ -368,32 +427,132 @@
 		}
 
 		if (retry) {
-			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 250);
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 500);
+		}
+	}
+
+	function handleFreq(rv) {
+		let params = (new URL(window.location)).searchParams;
+		let retry = false;
+		let rq = {
+			a: 'freq',
+			t: params.get('s'),
+			h: state.hash,
+			hf: state.hash_freq,
+			s: rv.s,
+			n: rv.n,
+			cs: [],
+			};
+
+		if (rv.hasOwnProperty('cs')) {
+			for (let corp in rv.cs) {
+				if (!rv.cs[corp].d) {
+					rq.cs.push(corp);
+					retry = true;
+				}
+
+				let c = $('#'+corp);
+				state.ts[corp] = rv.cs[corp];
+				c.find('.qtotal').text(rv.cs[corp].n+' (Σ '+rv.cs[corp].t+')');
+				state.max_n = Math.max(rv.cs[corp].n, state.max_n);
+				repaginate();
+
+				if (!rv.cs[corp].d) {
+					c.find('.qtotal').text(rv.cs[corp].n + '…');
+				}
+				else {
+					if (rv.cs[corp].n === 0) {
+						let c = $('#'+corp);
+						c.find('.qrange').text('0');
+						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
+					}
+				}
+
+				if (!rv.cs[corp].f.length) {
+					c.find('.qrange').text('…');
+					if (!rv.cs[corp].d) {
+						c.find('.qbody').text('…still searching…');
+					}
+					else {
+						c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
+					}
+					continue;
+				}
+
+				c.find('.qrange').text(rv.s+' to '+Math.min(rv.s + rv.n, rv.cs[corp].n));
+				let html = '<table class="table table-striped table-hover my-3">';
+				//html += '<thead><tr class="text-center"><th>#</th><th>LHS</th><th class="text-center">Hit</th><th>RHS</th></tr></thead>';
+				html += '<tbody class="font-monospace text-nowrap text-break">';
+				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
+					html += '<tr><td>'+escHTML(rv.cs[corp].f[i][0])+'</td><td class="text-end">'+rv.cs[corp].f[i][1]+'</td><td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td></tr>';
+				}
+				html += '</tbody></table>';
+				c.find('.qbody').html(html);
+			}
+		}
+
+		if (retry) {
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
 		}
 	}
 
 	function contentLoaded() {
 		state.hash = g_hash;
+		state.hash_freq = g_hash_freq;
 
 		let params = (new URL(window.location)).searchParams;
+		state.focus = params.has('focus') ? params.get('focus') : Defs.focus;
+		state.focus_n = fields[state.focus];
 		state.offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
 		state.pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
 
-		let rq = {
-			a: 'load',
-			h: state.hash,
-			c: state.context,
-			s: state.offset,
-			n: state.pagesize,
-			rs: [],
-			ts: [],
-			};
+		let rx = /\b(\d+):\[/g;
+		let q = params.get('q');
+		let n = null;
+		while ((n = rx.exec(q)) !== null) {
+			state.named.push(n[1]);
+		}
 
-		$('.qresults').each(function() {
-			let id = $(this).attr('id');
-			rq.rs.push(id);
-			rq.ts.push(id);
-		});
+		// Concordances
+		if ($('.qresults').length) {
+			let rq = {
+				a: 'conc',
+				h: state.hash,
+				c: state.context,
+				s: state.offset,
+				n: state.pagesize,
+				rs: [],
+				ts: [],
+				};
+
+			$('.qresults').each(function() {
+				let id = $(this).attr('id');
+				rq.rs.push(id);
+				rq.ts.push(id);
+			});
+
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 500);
+		}
+
+		// Frequencies
+		if ($('.qfreqs').length) {
+			let rq = {
+				a: 'freq',
+				t: params.get('s'),
+				h: state.hash,
+				hf: state.hash_freq,
+				s: state.offset,
+				n: state.pagesize,
+				cs: [],
+				};
+
+			$('.qfreqs').each(function() {
+				let id = $(this).attr('id');
+				rq.cs.push(id);
+			});
+
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
+		}
 
 		$('#qpagesize').change(function() {
 			let n = parseInt($(this).val());
@@ -403,13 +562,30 @@
 			loadOffset(state.offset, true);
 		});
 
-		setTimeout(function () {$.getJSON('./callback.php', rq).done(handleLoad);}, 500);
+		$('#qfocus').val(state.focus).change(function() {
+			state.focus = $(this).val();
+			state.focus_n = fields[state.focus];
+			let url = new URL(window.location);
+			url.searchParams.set('focus', state.focus);
+			if (state.focus = Defs.focus) {
+				url.searchParams.delete('focus');
+			}
+			window.history.pushState({}, '', url);
+			handleConc(state.last_rv);
+		});
 
 		window.addEventListener('popstate', function(e) {
-			console.log([e, window.location]);
 			let params = (new URL(window.location)).searchParams;
+			let focus = params.has('focus') ? params.get('focus') : Defs.focus;
 			let offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
 			let pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
+			if (focus != state.focus) {
+				console.log(focus);
+				$('#qfocus').val(focus);
+				state.focus = focus;
+				state.focus_n = fields[state.focus];
+				handleConc(state.last_rv);
+			}
 			if (offset != state.offset || pagesize != state.pagesize) {
 				state.offset = offset;
 				state.pagesize = pagesize;
@@ -428,5 +604,6 @@
 	// Export useful functions
 	return {
 		state: state,
+		repaginate: repaginate,
 		};
 }));

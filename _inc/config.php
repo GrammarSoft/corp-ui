@@ -3,6 +3,22 @@
 putenv('PYTHONPATH=/usr/local/manatee/lib/python3.10/site-packages');
 putenv('PATH='.getenv('PATH').':/usr/local/manatee/bin');
 
+$GLOBALS['-fields'] = [
+	'word' => 'Wordform / surface form',
+	'lex' => 'Baseform / lemma',
+	'extra' => 'Extra',
+	'pos' => 'Part of speech',
+	'morph' => 'Morphology',
+	'func' => 'Syntactic function',
+	'role' => 'Semantic role',
+	'dself' => 'Dependency ID',
+	'dparent' => 'Dependency parent ID',
+	'word_lc' => 'Wordform (lower cased)',
+	'word_nd' => 'Wordform (lower cased & transliterated)',
+	'lex_lc' => 'Baseform (lower cased)',
+	'lex_nd' => 'Baseform (lower cased & transliterated)',
+	];
+
 $GLOBALS['-groups'] = [
 	'dan' => 'Danish',
 	'deu' => 'German',
