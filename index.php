@@ -8,8 +8,9 @@ declare(strict_types=1);
 	<title>VISL Corpora</title>
 
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
 
 	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
@@ -53,7 +54,7 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$field = $_REQUEST['f'];
 	$hash = sha256_lc20("{$query} -d {$field}");
 	$hash_freq = '';
-	$folder = '/home/manatee/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		mkdir($folder, 0755, true);
 	}
@@ -84,7 +85,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery /home/manatee/registry/$corp $s_query -d $s_field -a $s_field -c 0 | '{$GLOBALS['CORP_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$corp' $s_query -d $s_field -a $s_field -c 0 | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
 fi
 
 XSH;
@@ -142,7 +143,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.freq-$hash_freq.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.freq-$hash_freq.time timeout -k 7m 5m freqs /home/manatee/registry/$corp $s_query $s_which | '{$GLOBALS['CORP_ROOT']}/_bin/freq2sqlite' $hash-$corp.freq-$hash_freq.sqlite >$hash-$corp.freq-$hash_freq.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.freq-$hash_freq.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$corp' $s_query $s_which | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $hash-$corp.freq-$hash_freq.sqlite >$hash-$corp.freq-$hash_freq.err 2>&1 &
 fi
 
 XSH;

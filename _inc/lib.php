@@ -6,7 +6,8 @@ require_once __DIR__.'/config.php';
 
 putenv('LC_ALL=C.UTF-8');
 setlocale(LC_ALL, 'C.UTF-8');
-$GLOBALS['CORP_ROOT'] = dirname(__DIR__);
+$GLOBALS['WEB_ROOT'] = dirname(__DIR__);
+$GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']);
 
 function b64_slug($rv) {
 	$rv = base64_encode($rv);

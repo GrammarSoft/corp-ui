@@ -27,7 +27,7 @@ while ($a === 'conc') {
 		break;
 	}
 	$hash = $_REQUEST['h'];
-	$folder = '/home/manatee/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
 		break;
@@ -168,7 +168,7 @@ while ($a === 'conc') {
 					$rngs = escapeshellarg(implode(';', $rngs));
 					//header('X-Context-Doing: '.$rngs);
 					$hash_rn = substr(sha256_lc20($rngs), 0, 8);
-					shell_exec("nice -n10 /usr/bin/time -f '%e' -o $hash-$corp.$context-$hash_rn.time /home/manatee/public_html/_bin/decodevert-ranges /home/manatee/registry/$corp $rngs | /home/manatee/public_html/_bin/context2sqlite $hash-$corp.$context.sqlite >$hash-$corp.$context-$hash_rn.err 2>&1 &");
+					shell_exec("nice -n10 /usr/bin/time -f '%e' -o $hash-$corp.$context-$hash_rn.time '{$GLOBALS['WEB_ROOT']}/_bin/decodevert-ranges' '{$GLOBALS['CORP_ROOT']}/registry/$corp' $rngs | '{$GLOBALS['WEB_ROOT']}/_bin/context2sqlite' $hash-$corp.$context.sqlite >$hash-$corp.$context-$hash_rn.err 2>&1 &");
 				}
 			}
 		}
@@ -193,7 +193,7 @@ while ($a === 'freq') {
 
 	$hash = $_REQUEST['h'];
 	$hash_freq = $_REQUEST['hf'];
-	$folder = '/home/manatee/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
 		break;
@@ -266,6 +266,6 @@ echo json_encode_vb($rv);
 // …
 
 	$rngs = escapeshellarg(implode('; ', $rngs));
-	//echo '<tr><td colspan="4">'.$GLOBALS['CORP_ROOT'].'/_bin/decodevert-ranges /home/manatee/registry/'.$corp.' '.$rngs.'</td></tr>';
+	//echo '<tr><td colspan="4">'.$GLOBALS['WEB_ROOT'].'/_bin/decodevert-ranges '.$GLOBALS['CORP_ROOT'].'/registry/'.$corp.' '.$rngs.'</td></tr>';
 	echo '</tbody></table></div>';
 */

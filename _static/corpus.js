@@ -390,7 +390,7 @@
 						}
 					}
 
-					let html = '<td><a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet">TW</a></td><td class="text-end">';
+					let html = '<td><a href="#"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
