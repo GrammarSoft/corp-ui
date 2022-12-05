@@ -1,0 +1,340 @@
+#!/usr/bin/php -d memory_limit=64G
+<?php
+die("Deprecated in favour of _src/index-corpus.cpp\n");
+
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$hist = [
+	'utc' => [],
+	'local' => [],
+	];
+
+$last_utc = [];
+$last_local = [];
+$last_article = null;
+
+$counts = [
+	'total' => [
+		'total' => 0,
+		'words' => 0,
+		'numbers' => 0,
+		'alnums' => 0,
+		'puncts' => 0,
+		'emojis' => 0,
+		'others' => 0,
+		],
+	'utc' => [],
+	'local' => [],
+	];
+$freqs = [
+	'total' => [
+		'word' => [],
+		'lex' => [],
+		'word_lc' => [],
+		'lex_lc' => [],
+		'word_nd' => [],
+		'lex_nd' => [],
+		],
+	'utc' => [],
+	'local' => [],
+	];
+
+$GLOBALS['-cache'] = [];
+$GLOBALS['-any2nfc'] = Transliterator::create('any-nfc');
+$GLOBALS['-any2name'] = Transliterator::create('any-name');
+$GLOBALS['-name2any'] = Transliterator::create('name-any');
+$GLOBALS['-any2lower'] = Transliterator::create('any-lower');
+$GLOBALS['-any2latin'] = Transliterator::create('any-latin');
+$GLOBALS['-latin2ascii'] = Transliterator::create('latin-ascii');
+$GLOBALS['-remove'] = Transliterator::create('[:Modifier_Symbol:] remove; [\u0100-\u7fff] remove;');
+
+function conv_lc_nd($line) {
+	if (array_key_exists($line, $GLOBALS['-cache'])) {
+		return $GLOBALS['-cache'][$line];
+	}
+	if (count($GLOBALS['-cache']) > 10000000) {
+		$GLOBALS['-cache'] = [];
+	}
+
+	$org = $line;
+	$line = $GLOBALS['-any2nfc']->transliterate($line);
+
+	// Converts all characters to their name, because that's easier to normalize
+	$line = $GLOBALS['-any2name']->transliterate($line);
+	$line = str_replace(' DOTLESS ', ' ', $line); // Dotless i (ı) and any other potential dotless variant
+	$line = preg_replace('~ WITH [^}]+~', '', $line); // Diacritics are all WITH something, so just remove the WITH part
+	$line = $GLOBALS['-name2any']->transliterate($line);
+
+	$line = $GLOBALS['-any2lower']->transliterate($line);
+	$line = $GLOBALS['-any2latin']->transliterate($line);
+	$line = $GLOBALS['-latin2ascii']->transliterate($line);
+	$line = $GLOBALS['-remove']->transliterate($line);
+
+	$GLOBALS['-cache'][$org] = $line;
+	$GLOBALS['-cache'][$line] = $line;
+	return $line;
+}
+
+$cnt = 0;
+for ( ; $line = fgets(STDIN) ; ++$cnt) {
+	$line = trim($line);
+	if ($cnt % 50000 == 0) {
+		fprintf(STDERR, "Line %d\r", $cnt);
+	}
+
+	if (preg_match('~^<s ~u', $line)) {
+		$last_utc = [];
+		$last_local = [];
+
+		if (preg_match('~ stamp="(\d+)-(\d+)-(\d+) (\d+)~u', $line, $m)) {
+			$last_utc['Y'] = $m[1];
+			$last_utc['Y-m'] = "{$m[1]}{$m[2]}";
+			$last_utc['Y-m-d'] = "{$m[1]}{$m[2]}{$m[3]}";
+			$last_utc['Y-m-d H'] = "{$m[1]}{$m[2]}{$m[3]}{$m[4]}";
+			$last_utc['H'] = $m[4];
+			if (!array_key_exists($m[1], $counts['utc'])) {
+				$counts['utc'][$m[1]] = [
+					'total' => 0,
+					'words' => 0,
+					'numbers' => 0,
+					'alnums' => 0,
+					'puncts' => 0,
+					'emojis' => 0,
+					'other' => 0,
+					];
+				$freqs['utc'][$m[1]] = [];
+			}
+		}
+		if (preg_match('~ lstamp="(\d+)-(\d+)-(\d+) (\d+)~u', $line, $m)) {
+			$last_local['Y'] = $m[1];
+			$last_local['Y-m'] = "{$m[1]}{$m[2]}";
+			$last_local['Y-m-d'] = "{$m[1]}{$m[2]}{$m[3]}";
+			$last_local['Y-m-d H'] = "{$m[1]}{$m[2]}{$m[3]}{$m[4]}";
+			$last_local['H'] = $m[4];
+			if (!array_key_exists($m[1], $counts['local'])) {
+				$counts['local'][$m[1]] = [
+					'total' => 0,
+					'words' => 0,
+					'numbers' => 0,
+					'alnums' => 0,
+					'puncts' => 0,
+					'emojis' => 0,
+					'other' => 0,
+					];
+				$freqs['local'][$m[1]] = [];
+			}
+		}
+
+		if (preg_match('~ (?:tweet|article|title)="(\d+)~u', $line, $m)) {
+			if ($last_article !== $m[1]) {
+				foreach ($last_utc as $v) {
+					$hist['utc'][$last_utc['Y']]['U'.$v]['a'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['a'] ?? 0) + 1;
+				}
+				foreach ($last_local as $v) {
+					$hist['local'][$last_local['Y']]['L'.$v]['a'] = ($hist['local'][$last_local['Y']]['L'.$v]['a'] ?? 0) + 1;
+				}
+				$last_article = $m[1];
+			}
+		}
+
+		foreach ($last_utc as $v) {
+			$hist['utc'][$last_utc['Y']]['U'.$v]['s'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['s'] ?? 0) + 1;
+		}
+		foreach ($last_local as $v) {
+			$hist['local'][$last_local['Y']]['L'.$v]['s'] = ($hist['local'][$last_local['Y']]['L'.$v]['s'] ?? 0) + 1;
+		}
+		continue;
+	}
+
+	if (preg_match('~^</s>~u', $line) || preg_match('~^¤+\t~u', $line)) {
+		continue;
+	}
+
+	++$counts['total']['total'];
+	$counts['utc'][$last_utc['Y']]['total'] = ($counts['utc'][$last_utc['Y']]['total'] ?? 0) + 1;
+	$counts['local'][$last_utc['Y']]['total'] = ($counts['local'][$last_utc['Y']]['total'] ?? 0) + 1;
+
+	$m = explode("\t", $line, 3);
+	$m = [trim($m[0]), trim($m[1])];
+
+	$tally = false;
+	if (preg_match('~^[\pL][- \pL\pM]*$~u', $m[0])) {
+		++$counts['total']['words'];
+		$counts['utc'][$last_utc['Y']]['words'] = ($counts['utc'][$last_utc['Y']]['words'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['words'] = ($counts['local'][$last_local['Y']]['words'] ?? 0) + 1;
+		$tally = true;
+	}
+	else if (preg_match('~^[\pN\d][- \pN\d]*$~u', $m[0])) {
+		++$counts['total']['numbers'];
+		$counts['utc'][$last_utc['Y']]['numbers'] = ($counts['utc'][$last_utc['Y']]['numbers'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['numbers'] = ($counts['local'][$last_local['Y']]['numbers'] ?? 0) + 1;
+		$tally = true;
+	}
+	else if (preg_match('~^[\pL\pN\d][- \pL\pM\pN\d]*$~u', $m[0])) {
+		++$counts['total']['alnums'];
+		$counts['utc'][$last_utc['Y']]['alnums'] = ($counts['utc'][$last_utc['Y']]['alnums'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['alnums'] = ($counts['local'][$last_local['Y']]['alnums'] ?? 0) + 1;
+		$tally = true;
+	}
+	else if (preg_match('~^[\pP,.:;!]+$~u', $m[0])) {
+		++$counts['total']['puncts'];
+		$counts['utc'][$last_utc['Y']]['puncts'] = ($counts['utc'][$last_utc['Y']]['puncts'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['puncts'] = ($counts['local'][$last_local['Y']]['puncts'] ?? 0) + 1;
+	}
+	else {
+		++$counts['total']['others'];
+		$counts['utc'][$last_utc['Y']]['others'] = ($counts['utc'][$last_utc['Y']]['others'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['others'] = ($counts['local'][$last_local['Y']]['others'] ?? 0) + 1;
+	}
+
+	if (preg_match('~^emo-~u', $m[1])) {
+		++$counts['total']['emojis'];
+		$counts['utc'][$last_utc['Y']]['emojis'] = ($counts['utc'][$last_utc['Y']]['emojis'] ?? 0) + 1;
+		$counts['local'][$last_local['Y']]['emojis'] = ($counts['local'][$last_local['Y']]['emojis'] ?? 0) + 1;
+	}
+
+	if ($tally && mb_strlen($m[0]) <= 75) {
+		$lc = [$GLOBALS['-any2lower']->transliterate($m[0]), $GLOBALS['-any2lower']->transliterate($m[1])];
+		$nd = [conv_lc_nd($m[0]), conv_lc_nd($m[1])];
+
+		$freqs['total']['word'][$m[0]] = ($freqs['total']['word'][$m[0]] ?? 0) + 1;
+		$freqs['total']['lex'][$m[1]] = ($freqs['total']['lex'][$m[1]] ?? 0) + 1;
+		$freqs['total']['word_lc'][$lc[0]] = ($freqs['total']['word_lc'][$lc[0]] ?? 0) + 1;
+		$freqs['total']['lex_lc'][$lc[1]] = ($freqs['total']['lex_lc'][$lc[1]] ?? 0) + 1;
+		$freqs['total']['word_nd'][$nd[0]] = ($freqs['total']['word_nd'][$nd[0]] ?? 0) + 1;
+		$freqs['total']['lex_nd'][$nd[1]] = ($freqs['total']['lex_nd'][$nd[1]] ?? 0) + 1;
+
+		$freqs['utc'][$last_utc['Y']]['word'][$m[0]] = ($freqs['utc'][$last_utc['Y']]['word'][$m[0]] ?? 0) + 1;
+		$freqs['utc'][$last_utc['Y']]['lex'][$m[1]] = ($freqs['utc'][$last_utc['Y']]['lex'][$m[1]] ?? 0) + 1;
+		$freqs['utc'][$last_utc['Y']]['word_lc'][$lc[0]] = ($freqs['utc'][$last_utc['Y']]['word_lc'][$lc[0]] ?? 0) + 1;
+		$freqs['utc'][$last_utc['Y']]['lex_lc'][$lc[1]] = ($freqs['utc'][$last_utc['Y']]['lex_lc'][$lc[1]] ?? 0) + 1;
+		$freqs['utc'][$last_utc['Y']]['word_nd'][$nd[0]] = ($freqs['utc'][$last_utc['Y']]['word_nd'][$nd[0]] ?? 0) + 1;
+		$freqs['utc'][$last_utc['Y']]['lex_nd'][$nd[1]] = ($freqs['utc'][$last_utc['Y']]['lex_nd'][$nd[1]] ?? 0) + 1;
+
+		$freqs['local'][$last_local['Y']]['word'][$m[0]] = ($freqs['local'][$last_local['Y']]['word'][$m[0]] ?? 0) + 1;
+		$freqs['local'][$last_local['Y']]['lex'][$m[1]] = ($freqs['local'][$last_local['Y']]['lex'][$m[1]] ?? 0) + 1;
+		$freqs['local'][$last_local['Y']]['word_lc'][$lc[0]] = ($freqs['local'][$last_local['Y']]['word_lc'][$lc[0]] ?? 0) + 1;
+		$freqs['local'][$last_local['Y']]['lex_lc'][$lc[1]] = ($freqs['local'][$last_local['Y']]['lex_lc'][$lc[1]] ?? 0) + 1;
+		$freqs['local'][$last_local['Y']]['word_nd'][$nd[0]] = ($freqs['local'][$last_local['Y']]['word_nd'][$nd[0]] ?? 0) + 1;
+		$freqs['local'][$last_local['Y']]['lex_nd'][$nd[1]] = ($freqs['local'][$last_local['Y']]['lex_nd'][$nd[1]] ?? 0) + 1;
+	}
+
+	if (preg_match('~[\pL\pN\pM]~u', $m[0]) || preg_match('~^emo-~u', $m[1])) {
+		foreach ($last_utc as $v) {
+			$hist['utc'][$last_utc['Y']]['U'.$v]['w'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['w'] ?? 0) + 1;
+		}
+		foreach ($last_local as $v) {
+			$hist['local'][$last_local['Y']]['L'.$v]['w'] = ($hist['local'][$last_local['Y']]['L'.$v]['w'] ?? 0) + 1;
+		}
+	}
+
+	foreach ($last_utc as $v) {
+		$hist['utc'][$last_utc['Y']]['U'.$v]['t'] = ($hist['utc'][$last_utc['Y']]['U'.$v]['t'] ?? 0) + 1;
+	}
+	foreach ($last_local as $v) {
+		$hist['local'][$last_local['Y']]['L'.$v]['t'] = ($hist['local'][$last_local['Y']]['L'.$v]['t'] ?? 0) + 1;
+	}
+}
+
+fprintf(STDERR, "Lines: %d\n", $cnt);
+fprintf(STDERR, "Writing SQLite database\n");
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->beginTransaction();
+
+// Keys: total, words, numbers, alnums, puncts, emojis, other
+$db->exec("CREATE TABLE meta (
+	key TEXT NOT NULL,
+	value TEXT NOT NULL,
+	PRIMARY KEY (key)
+)");
+$db->exec("CREATE TABLE counts (
+	key TEXT NOT NULL,
+	value INTEGER NOT NULL,
+	PRIMARY KEY (key)
+)");
+
+$ins = $db->prepare("INSERT INTO counts (key, value) VALUES (?, ?)");
+foreach ($counts['total'] as $k => $v) {
+	$ins->execute(["total_{$k}", $v]);
+}
+foreach ($counts['utc'] as $y => $kv) {
+	foreach ($kv as $k => $v) {
+		$ins->execute(["total_utc_{$y}_{$k}", $v]);
+	}
+}
+foreach ($counts['local'] as $y => $kv) {
+	foreach ($kv as $k => $v) {
+		$ins->execute(["total_local_{$y}_{$k}", $v]);
+	}
+}
+
+foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
+	$db->exec("CREATE TABLE freq_total_{$f} (
+		f_text TEXT NOT NULL,
+		f_abs INTEGER NOT NULL,
+		f_rel REAL NOT NULL,
+		PRIMARY KEY (f_text)
+	) WITHOUT ROWID");
+	$ins = $db->prepare("INSERT INTO freq_total_{$f} (f_text, f_abs, f_rel) VALUES (?, ?, 0)");
+	foreach ($freqs['total'][$f] as $k => $v) {
+		$ins->execute([$k, $v]);
+	}
+}
+foreach (['utc', 'local'] as $c) {
+	foreach ($freqs[$c] as $y => $kv) {
+		foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
+			$db->exec("CREATE TABLE freq_{$c}_{$y}_{$f} (
+				f_text TEXT NOT NULL,
+				f_abs INTEGER NOT NULL,
+				f_rel REAL NOT NULL,
+				PRIMARY KEY (f_text)
+			) WITHOUT ROWID");
+			$ins = $db->prepare("INSERT INTO freq_{$c}_{$y}_{$f} (f_text, f_abs, f_rel) VALUES (?, ?, 0)");
+			foreach ($kv[$f] as $k => $v) {
+				$ins->execute([$k, $v]);
+			}
+		}
+	}
+}
+
+foreach ($hist as $which => $ys) {
+	foreach ($ys as $year => $vs) {
+		$db->exec("CREATE TABLE hist_{$which}_{$year} (
+	h_group INTEGER NOT NULL,
+	h_articles INTEGER NOT NULL,
+	h_sentences INTEGER NOT NULL,
+	h_tokens INTEGER NOT NULL,
+	h_words INTEGER NOT NULL,
+	PRIMARY KEY (h_group)
+) WITHOUT ROWID");
+		$ins = $db->prepare("INSERT INTO hist_{$which}_{$year} (h_group, h_articles, h_sentences, h_tokens, h_words) VALUES (?, ?, ?, ?, ?)");
+		foreach ($vs as $k => $v) {
+			$k = intval(ltrim(substr($k, 1), '0'));
+			$ins->execute([$k, ($v['a'] ?? 0), ($v['s'] ?? 0), ($v['t'] ?? 0), ($v['w'] ?? 0)]);
+		}
+	}
+}
+
+fprintf(STDERR, "Commit\n");
+$db->commit();
+$db->exec("PRAGMA ignore_check_constraints = OFF");
+fprintf(STDERR, "Vacuum\n");
+$db->exec("VACUUM");

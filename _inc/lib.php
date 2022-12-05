@@ -9,6 +9,15 @@ setlocale(LC_ALL, 'C.UTF-8');
 $GLOBALS['WEB_ROOT'] = dirname(__DIR__);
 $GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']);
 
+$GLOBALS['-value-class'] = [
+	'word' => '~^[\pL][- \'`´\pL\pM]*$~u',
+	'number' => '~^[\pN\d][- \pN\d]*$~u',
+	'alnum' => '~^[\pL\pN\d][- \pL\pM\pN\d]*$~u',
+	'punct' => '~^[\pP,.:;!]+$~u',
+	'emoji' => '~^emo-~u',
+	'other' => '',
+	];
+
 function b64_slug($rv) {
 	$rv = base64_encode($rv);
 	$rv = trim($rv, '=');
