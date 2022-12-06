@@ -562,6 +562,14 @@
 			loadOffset(state.offset, true);
 		});
 
+		$('#freq_field').change(function() {
+			let f = $(this).val();
+			$('.btnRel').prop('disabled', true);
+			if (/^(h_)?(word|lex)/.test(f)) {
+				$('.btnRel').prop('disabled', false);
+			}
+		});
+
 		$('#qfocus').val(state.focus).change(function() {
 			state.focus = $(this).val();
 			state.focus_n = fields[state.focus];

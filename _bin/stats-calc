@@ -1,0 +1,23 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$db = new \TDC\PDO\SQLite($argv[1]);
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+
+$tbs = $db->prepexec("SELECT * FROM counts")->fetchAll();
+foreach ($tbs as $tb) {
+	$ws = floatval(intval($tb['c_words']) + intval($tb['c_numbers']) + intval($tb['c_alnums']));
+	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
+		$db->beginTransaction();
+		fprintf(STDERR, "Table %s %s\n", $tb['c_which'], $f);
+		$db->prepexec("UPDATE freq_{$tb['c_which']}_{$f} SET f_rel = sqrt(sqrt(CAST(f_abs AS REAL) / ?))", [$ws]);
+		$db->commit();
+	}
+}
+
+fprintf(STDERR, "Vacuum\n");
+$db->exec("VACUUM");
+$db->exec("PRAGMA locking_mode = NORMAL");

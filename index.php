@@ -12,6 +12,7 @@ declare(strict_types=1);
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
 
+	<script>let g_hash = ''; let g_hash_freq = '';</script>
 	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
@@ -30,6 +31,8 @@ if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'rc');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 
+$h_query = '';
+
 $fields = '';
 foreach ($GLOBALS['-fields'] as $k => $v) {
 	$sel = '';
@@ -42,13 +45,13 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$query = $_REQUEST['q'];
 	if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
-		$_REQUEST['ct'] = 0;
+		$_REQUEST['ub'] = 0;
 	}
 
 	$h_query = htmlspecialchars($query);
-	$h_constrain = '';
-	if (!empty($_REQUEST['ct'])) {
-		$h_constrain = '1';
+	$h_unbound = '1';
+	if (empty($_REQUEST['ub'])) {
+		$h_unbound = '';
 		$query = '('.$query.') within <s/>';
 	}
 	$field = $_REQUEST['f'];
@@ -78,6 +81,13 @@ XSH;
 
 		$exec = false;
 		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+			}
+			else {
+				$subc = '';
+			}
 			if (!file_exists("$hash-$corp.sqlite") || !filesize("$hash-$corp.sqlite")) {
 				$exec = true;
 			}
@@ -85,7 +95,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$corp' $s_query -d $s_field -a $s_field -c 0 | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -d $s_field -a $s_field -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
 fi
 
 XSH;
@@ -108,7 +118,7 @@ XSH;
 		}
 	}
 	// Frequency
-	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relfreq') {
+	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
 		$offset = $_REQUEST['o'];
 		$by = $_REQUEST['b'];
 		if ($by === 'lc') {
@@ -120,12 +130,30 @@ XSH;
 			$by = 're';
 		}
 
-		$which = $field.' '.$offset;
+		$which = $field;
+
+		$nd = $field;
+		$coll = '';
+		if (!empty($_REQUEST['nd'])) {
+			$_REQUEST['lc'] = '1';
+			$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/conv-lc-nd'";
+			$nd .= '_nd';
+			$which .= '/i';
+		}
+		else if (!empty($_REQUEST['lc'])) {
+			$coll = " | uconv -x any-nfc | uconv -x any-lower";
+			$nd .= '_lc';
+			$which .= '/i';
+		}
+		$s_nd = escapeshellarg($nd);
+
+		$which .= ' '.$offset;
 		if ($by === 're') {
 			$which .= '>0';
 		}
 		$s_which = escapeshellarg($which);
-		$hash_freq = substr(sha256_lc20($which), 0, 8);
+
+		$hash_freq = substr(sha256_lc20($which.$coll), 0, 8);
 
 		$sh = <<<XSH
 #!/bin/bash
@@ -136,6 +164,13 @@ XSH;
 
 		$exec = false;
 		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+				$subc = "{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+			}
+			else {
+				$subc = '';
+			}
 			if (!file_exists("$hash-$corp.freq-$hash_freq.sqlite") || !filesize("$hash-$corp.freq-$hash_freq.sqlite")) {
 				$exec = true;
 			}
@@ -143,7 +178,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.freq-$hash_freq.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.freq-$hash_freq.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$corp' $s_query $s_which | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $hash-$corp.freq-$hash_freq.sqlite >$hash-$corp.freq-$hash_freq.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.freq-$hash_freq.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $hash-$corp.freq-$hash_freq.sqlite $corp $s_nd >$hash-$corp.freq-$hash_freq.err 2>&1 &
 fi
 
 XSH;
@@ -195,12 +230,15 @@ XSH;
 	echo <<<XHTML
 <form method="GET">
 <input type="hidden" name="q" value="{$h_query}">
-<input type="hidden" name="ct" value="{$h_constrain}">
+<input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="text-center">
-<button class="btn btn-sm btn-outline-primary" type="submit" name="s" value="abc" title="Sort alphabetically" disabled>Sort</button>
-<button class="btn btn-sm btn-outline-primary" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
-<button class="btn btn-sm btn-outline-primary" type="submit" name="s" value="relfreq" title="Sort by relative frequency" disabled>Rel</button>
+<button class="btn btn-sm btn-outline-primary mb-1" type="submit" name="s" value="abc" title="Sort alphabetically">Sort</button>
+<button class="btn btn-sm btn-outline-primary mb-1" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
+<br>
+<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
+<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
+<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_field">Field</label>
@@ -220,6 +258,14 @@ XSH;
 <select class="form-select" name="o" id="freq_offset">
 	{$off_sel}
 </select>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="lc" id="lc">
+<label class="form-check-label" for="lc">Collapse case</label>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="nd" id="nd">
+<label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
 </form>
 
@@ -249,7 +295,7 @@ XHTML;
 	echo '<div class="row"><div class="col qpages">…</div></div>';
 	echo '</div>';
 	echo '</div></div></div>';
-	echo '<script>let g_hash = "'.$hash.'"; let g_hash_freq = "'.$hash_freq.'";</script>';
+	echo '<script>g_hash = "'.$hash.'"; g_hash_freq = "'.$hash_freq.'";</script>';
 }
 
 ?>
@@ -265,7 +311,15 @@ foreach ($GLOBALS['-corpora'] as $group => $cs) {
 		if (!empty($_REQUEST['c'][$corp])) {
 			$checked = ' checked';
 		}
-		echo '<div class="form-check"><input class="form-check-input" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis).'</label></div>';
+		echo '<div class="form-check"><input class="form-check-input" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).'</label></div>';
+
+		if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
+			$checked = '';
+			if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
+				$checked = ' checked';
+			}
+			echo '<div class="form-check ms-3"><input class="form-check-input" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).'</label></div>';
+		}
 	}
 	echo '</fieldset>';
 }
@@ -286,8 +340,8 @@ foreach ($GLOBALS['-corpora'] as $group => $cs) {
 <div class="row my-3 align-items-start row-cols-auto">
 <div class="col">
 	<div class="form-check">
-		<input class="form-check-input" type="checkbox" name="ct" id="constrain" <?=(empty($_REQUEST['ct']) ? '' : 'checked');?>>
-		<label class="form-check-label" for="constrain">Constrain query inside <code>&lt;s&gt;…&lt;/s&gt;</code> regions</label>
+		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(empty($_REQUEST['ub']) ? '' : 'checked');?>>
+		<label class="form-check-label" for="unbound">Allow query to exceed <code>&lt;s&gt;…&lt;/s&gt;</code> regions</label>
 	</div>
 </div>
 </div>

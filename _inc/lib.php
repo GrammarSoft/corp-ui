@@ -43,7 +43,11 @@ function filter_corpora_k($arr) {
 			continue;
 		}
 		$g = substr($k, 0, $us);
-		if (empty($GLOBALS['-corpora'][$g][$k])) {
+		$sub = explode('-', $k.'-');
+		if (empty($GLOBALS['-corpora'][$g][$sub[0]])) {
+			unset($arr[$k]);
+		}
+		if (!empty($sub[1]) && (empty($GLOBALS['-corpora'][$g][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corpora'][$g][$sub[0]]['subs']))) {
 			unset($arr[$k]);
 		}
 	}
@@ -61,7 +65,11 @@ function filter_corpora_v($arr) {
 			continue;
 		}
 		$g = substr($v, 0, $us);
-		if (empty($GLOBALS['-corpora'][$g][$v])) {
+		$sub = explode('-', $v.'-');
+		if (empty($GLOBALS['-corpora'][$g][$sub[0]])) {
+			unset($arr[$k]);
+		}
+		if (!empty($sub[1]) && (empty($GLOBALS['-corpora'][$g][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corpora'][$g][$sub[0]]['subs']))) {
 			unset($arr[$k]);
 		}
 	}

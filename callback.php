@@ -165,10 +165,11 @@ while ($a === 'conc') {
 				}
 
 				if (!empty($rngs)) {
+					[$s_corp,$subc] = explode('-', $corp.'-');
 					$rngs = escapeshellarg(implode(';', $rngs));
 					//header('X-Context-Doing: '.$rngs);
 					$hash_rn = substr(sha256_lc20($rngs), 0, 8);
-					shell_exec("nice -n10 /usr/bin/time -f '%e' -o $hash-$corp.$context-$hash_rn.time '{$GLOBALS['WEB_ROOT']}/_bin/decodevert-ranges' '{$GLOBALS['CORP_ROOT']}/registry/$corp' $rngs | '{$GLOBALS['WEB_ROOT']}/_bin/context2sqlite' $hash-$corp.$context.sqlite >$hash-$corp.$context-$hash_rn.err 2>&1 &");
+					shell_exec("nice -n10 /usr/bin/time -f '%e' -o $hash-$corp.$context-$hash_rn.time '{$GLOBALS['WEB_ROOT']}/_bin/decodevert-ranges' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $rngs | '{$GLOBALS['WEB_ROOT']}/_bin/context2sqlite' $hash-$corp.$context.sqlite >$hash-$corp.$context-$hash_rn.err 2>&1 &");
 				}
 			}
 		}
@@ -245,11 +246,15 @@ while ($a === 'freq') {
 		$rv['cs'][$corp]['n'] = intval($dbs[$corp]->prepexec("SELECT MAX(rowid) as cnt FROM freqs")->fetchAll()[0]['cnt'] ?? 0);
 		$rv['cs'][$corp]['t'] = intval($dbs[$corp]->prepexec("SELECT value FROM meta WHERE key = 'total'")->fetchAll()[0]['value'] ?? 1);
 
-		if ($type === 'freq') {
-			$res = $dbs[$corp]->prepexec("SELECT freq_text, freq_abs FROM freqs ORDER BY freq_abs DESC, freq_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
-			while ($row = $res->fetch()) {
-				$rv['cs'][$corp]['f'][] = [$row['freq_text'], intval($row['freq_abs'])];
-			}
+		$res = null;
+		if ($type === 'abc') {
+			$res = $dbs[$corp]->prepexec("SELECT f_text, f_abs FROM freqs ORDER BY f_text ASC, f_abs DESC LIMIT {$pagesize} OFFSET {$offset}-1");
+		}
+		else /* if ($type === 'freq') */ {
+			$res = $dbs[$corp]->prepexec("SELECT f_text, f_abs FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+		}
+		while ($row = $res->fetch()) {
+			$rv['cs'][$corp]['f'][] = [$row['f_text'], intval($row['f_abs'])];
 		}
 	}
 

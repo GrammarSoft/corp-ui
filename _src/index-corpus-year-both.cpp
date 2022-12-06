@@ -1,3 +1,4 @@
+#include "shared.hpp"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -13,100 +14,9 @@
 #include <unicode/utext.h>
 #include <unicode/translit.h>
 #include <unicode/regex.h>
-using namespace icu;
-namespace bc = ::boost::container;
-
-template<typename T>
-constexpr inline int64_t SI64(T t) {
-	return static_cast<int64_t>(t);
-}
-
-inline void utext_openUTF8(UText& ut, std::string_view xc) {
-	UErrorCode status = U_ZERO_ERROR;
-	utext_openUTF8(&ut, xc.data(), SI64(xc.size()), &status);
-	if (U_FAILURE(status)) {
-		throw std::runtime_error(u_errorName(status));
-	}
-}
-
-template<typename Char>
-inline bool is_space(Char c) {
-	return (c == ' ' || c == '\t' || c == '\r' || c == '\n');
-}
-
-inline void remove_prefix(std::string& str, size_t n) {
-	str.erase(0, n);
-}
-inline void remove_prefix(std::string_view& str, size_t n) {
-	str.remove_prefix(n);
-}
-inline void remove_suffix(std::string& str, size_t n = 1) {
-	str.erase(str.size() - n);
-}
-inline void remove_suffix(std::string_view& str, size_t n = 1) {
-	str.remove_suffix(n);
-}
-
-template<typename Str>
-inline void trim(Str& str) {
-	while (!str.empty() && is_space(str.back())) {
-		remove_suffix(str);
-	}
-	size_t h = 0;
-	for (; h < str.size() && is_space(str[h]); ++h) {
-	}
-	remove_prefix(str, h);
-}
-
-namespace details {
-	inline void _concat(std::string&) {
-	}
-
-	// ToDo: C++17 renders this function obsolete
-	template<typename... Args>
-	inline void _concat(std::string& msg, std::string_view t, Args... args) {
-		msg += t;
-		_concat(msg, args...);
-	}
-
-	template<typename T, typename... Args>
-	inline void _concat(std::string& msg, const T& t, Args... args) {
-		msg.append(t);
-		_concat(msg, args...);
-	}
-}
-
-template<typename T, typename... Args>
-inline std::string concat(const T& value, Args... args) {
-	std::string msg(value);
-	details::_concat(msg, args...);
-	return msg;
-}
-
-template<typename Str>
-inline void UnicodeString_fromUTF8(UnicodeString& target, Str str) {
-	UErrorCode status = U_ZERO_ERROR;
-	auto cap = target.getCapacity();
-	auto buf = target.getBuffer(str.size()*4);
-	int32_t destlen = 0, subs = 0;
-	u_strFromUTF8WithSub(buf, cap, &destlen, str.data(), str.size(), U'\uFFFD', &subs, &status);
-	if (U_FAILURE(status)) {
-		throw std::runtime_error(u_errorName(status));
-	}
-	target.releaseBuffer(destlen);
-}
-
-// Enable C++20 transparent lookup, cf. https://ibob.bg/blog/2022/09/17/transparent-lookups-for-maps-and-sets/
-struct string_hash {
-	using hash_type = std::hash<std::string_view>;
-	using is_transparent = void;
-	size_t operator()(const char* str) const { return hash_type{}(str); }
-	size_t operator()(std::string_view str) const { return hash_type{}(str); }
-	size_t operator()(std::string const& str) const { return hash_type{}(str); }
-};
 
 int main() {
-	using namespace std::literals::string_literals;
+	#include "preamble.cpp"
 
 	enum {
 		UTC = 0,
@@ -114,105 +24,6 @@ int main() {
 	};
 	std::array<std::string_view,2> Names{"utc", "local"};
 	auto todo = {UTC, Local};
-
-	std::unordered_set<std::string, string_hash, std::equal_to<>> strings;
-	auto memoize = [&](auto rv){
-		auto it = strings.find(rv);
-		if (it != strings.end()) {
-			return std::string_view(*it);
-		}
-		auto ins = strings.insert(std::move(std::string(rv)));
-		return std::string_view(*ins.first);
-	};
-
-	boost::unordered_map<std::string_view, std::string_view> cache_lc;
-	boost::unordered_map<std::string_view, std::string_view> cache_nd;
-
-	UErrorCode status = U_ZERO_ERROR;
-	u_init(&status);
-	if (U_FAILURE(status) && status != U_FILE_ACCESS_ERROR) {
-		throw std::runtime_error(u_errorName(status));
-	}
-
-	auto any2nfc = Transliterator::createInstance(UnicodeString::fromUTF8("any-nfc"), UTRANS_FORWARD, status);
-	auto any2name = Transliterator::createInstance(UnicodeString::fromUTF8("any-name"), UTRANS_FORWARD, status);
-	auto name2any = Transliterator::createInstance(UnicodeString::fromUTF8("name-any"), UTRANS_FORWARD, status);
-	auto any2lower = Transliterator::createInstance(UnicodeString::fromUTF8("any-lower"), UTRANS_FORWARD, status);
-	auto any2latin = Transliterator::createInstance(UnicodeString::fromUTF8("any-latin"), UTRANS_FORWARD, status);
-	auto latin2ascii = Transliterator::createInstance(UnicodeString::fromUTF8("latin-ascii"), UTRANS_FORWARD, status);
-	auto remove = Transliterator::createInstance(UnicodeString::fromUTF8("[:Modifier_Symbol:] remove; [\\u0100-\\u7fff] remove;"), UTRANS_FORWARD, status);
-
-	auto dotless = UnicodeString::fromUTF8(" DOTLESS ");
-	auto space = UnicodeString::fromUTF8(" ");
-	auto nothing = UnicodeString::fromUTF8("");
-	RegexMatcher rx_with(UnicodeString::fromUTF8(R"X( WITH [^}]+)X"), UREGEX_CASE_INSENSITIVE, status);
-
-	std::string _c_tmp_str;
-	UnicodeString _c_tmp_us;
-	UnicodeString _c_line;
-	auto conv_lc = [&](std::string_view org) {
-		if (cache_lc.count(org)) {
-			return cache_lc[org];
-		}
-
-		UnicodeString_fromUTF8(_c_line, org);
-		any2nfc->transliterate(_c_line);
-		any2lower->transliterate(_c_line);
-
-		_c_tmp_str.clear();
-		_c_line.toUTF8String(_c_tmp_str);
-		auto rv = memoize(_c_tmp_str);
-		cache_nd[org] = rv;
-		cache_nd[rv] = rv;
-		return rv;
-	};
-
-	auto conv_nd = [&](std::string_view org) {
-		if (cache_nd.count(org)) {
-			return cache_nd[org];
-		}
-
-		UnicodeString_fromUTF8(_c_line, org);
-		//any2nfc->transliterate(_c_line);
-
-		any2name->transliterate(_c_line);
-		_c_line.findAndReplace(dotless, space);
-		rx_with.reset(_c_line);
-		_c_tmp_us = rx_with.replaceAll(nothing, status);
-		std::swap(_c_tmp_us, _c_line);
-		name2any->transliterate(_c_line);
-
-		//any2lower->transliterate(_c_line);
-		any2latin->transliterate(_c_line);
-		latin2ascii->transliterate(_c_line);
-		remove->transliterate(_c_line);
-
-		_c_tmp_str.clear();
-		_c_line.toUTF8String(_c_tmp_str);
-		auto rv = memoize(_c_tmp_str);
-		cache_nd[org] = rv;
-		cache_nd[rv] = rv;
-		return rv;
-	};
-
-	using hist_t = bc::flat_map<size_t, boost::unordered_map<size_t, bc::flat_map<char, size_t>>>;
-	std::array<hist_t,2> hists;
-
-	UText tmp_ut = UTEXT_INITIALIZER;
-	RegexMatcher rx_stamp(UnicodeString::fromUTF8(R"X( stamp="(\d+)-(\d+)-(\d+) (\d+))X"), UREGEX_CASE_INSENSITIVE, status);
-	RegexMatcher rx_lstamp(UnicodeString::fromUTF8(R"X( lstamp="(\d+)-(\d+)-(\d+) (\d+))X"), UREGEX_CASE_INSENSITIVE, status);
-	RegexMatcher rx_article(UnicodeString::fromUTF8(R"X( (?:tweet|article|title)="([^"]+))X"), UREGEX_CASE_INSENSITIVE, status);
-	RegexMatcher rx_curc(UnicodeString::fromUTF8(R"X(^¤+\t)X"), 0, status);
-
-	RegexMatcher rx_word(UnicodeString::fromUTF8(R"X(^[\p{L}][- '`´\p{L}\p{M}]*$)X"), 0, status);
-	RegexMatcher rx_number(UnicodeString::fromUTF8(R"X(^[\p{N}\d][- \p{N}\d]*$)X"), 0, status);
-	RegexMatcher rx_alnum(UnicodeString::fromUTF8(R"X(^[\p{L}\p{N}\d][- \p{L}\p{M}\p{N}\d]*$)X"), 0, status);
-	RegexMatcher rx_punct(UnicodeString::fromUTF8(R"X(^[\p{P},.:;!]+$)X"), 0, status);
-	RegexMatcher rx_emoji(UnicodeString::fromUTF8(R"X(^emo-)X"), UREGEX_CASE_INSENSITIVE, status);
-
-	if (U_FAILURE(status)) {
-		throw std::runtime_error(u_errorName(status));
-	}
 
 	enum {
 		Y = 0,
@@ -257,6 +68,9 @@ int main() {
 	using freq_t = bc::flat_map<size_t, std::array<Freq,N_Fields>>;
 	std::array<freq_t,2> freqs_t{};
 
+	using hist_t = bc::flat_map<size_t, boost::unordered_map<size_t, bc::flat_map<char, size_t>>>;
+	std::array<hist_t,2> hists;
+
 	std::string line;
 	std::string tmp;
 	size_t cnt = 0;
@@ -279,18 +93,18 @@ int main() {
 					tmp.assign(line, b, e-b);
 					last[Y] = std::stoull(tmp);
 
-					b = rx_stamp.start(2, status);
-					e = rx_stamp.end(2, status);
+					b = rx.start(2, status);
+					e = rx.end(2, status);
 					tmp.assign(line, b, e-b);
 					last[Y_m] = last[Y]*100 + std::stoull(tmp);
 
-					b = rx_stamp.start(3, status);
-					e = rx_stamp.end(3, status);
+					b = rx.start(3, status);
+					e = rx.end(3, status);
 					tmp.assign(line, b, e-b);
 					last[Y_m_d] = last[Y_m]*100 + std::stoull(tmp);
 
-					b = rx_stamp.start(4, status);
-					e = rx_stamp.end(4, status);
+					b = rx.start(4, status);
+					e = rx.end(4, status);
 					tmp.assign(line, b, e-b);
 					last[H] = std::stoull(tmp);
 					last[Y_m_d_H] = last[Y_m_d]*100 + last[H];
@@ -352,7 +166,7 @@ int main() {
 		trim(m[0]);
 		trim(m[1]);
 
-		if (m[0].size() == 0) {
+		if (m[0].size() == 0 || m[1].size() == 0) {
 			continue;
 		}
 
@@ -533,7 +347,7 @@ CREATE TABLE counts (
 
 	// Output token frequencies
 	for (size_t i=0 ; i<N_Fields ; ++i) {
-	sql.append(concat("CREATE TABLE freq_", fNames[i], R"( (
+	sql.append(concat("CREATE TABLE freq_total_", fNames[i], R"( (
 	f_text TEXT NOT NULL,
 	f_abs INTEGER NOT NULL,
 	f_rel REAL NOT NULL,
@@ -541,7 +355,7 @@ CREATE TABLE counts (
 ) WITHOUT ROWID;
 
 )"));
-		auto out = fopen(concat("freq_", fNames[i],".tsv").c_str(), "wb");
+		auto out = fopen(concat("freq_total_", fNames[i],".tsv").c_str(), "wb");
 		for (auto& kv : freqs[i]) {
 			if (kv.second < 2) {
 				continue;
@@ -550,7 +364,7 @@ CREATE TABLE counts (
 		}
 		fclose(out);
 		sql.append("BEGIN;\n");
-		sql.append(concat(".import freq_", fNames[i],".tsv freq_", fNames[i], "\n"));
+		sql.append(concat(".import freq_total_", fNames[i],".tsv freq_total_", fNames[i], "\n"));
 		sql.append("COMMIT;\n\n");
 	}
 
@@ -582,6 +396,12 @@ CREATE TABLE counts (
 			}
 		}
 	}
+
+	sql.append(R"(
+PRAGMA locking_mode = NORMAL;
+PRAGMA ignore_check_constraints = OFF;
+VACUUM;
+)");
 
 	out = fopen("commands.sql", "wb");
 	fprintf(out, "%s", sql.c_str());

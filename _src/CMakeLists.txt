@@ -65,7 +65,13 @@ macro(link_libs target)
 	target_link_libraries(${target} ${ICU_LIBRARIES})
 endmacro()
 
-add_executable(index-corpus index-corpus.cpp)
-link_libs(index-corpus)
+add_executable(index-corpus-year-both index-corpus-year-both.cpp shared.hpp)
+link_libs(index-corpus-year-both)
 
-install(TARGETS index-corpus RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_executable(index-corpus-year-lstamp index-corpus-year-lstamp.cpp shared.hpp)
+link_libs(index-corpus-year-lstamp)
+
+add_executable(index-corpus-total index-corpus-total.cpp shared.hpp)
+link_libs(index-corpus-total)
+
+install(TARGETS index-corpus-year-both index-corpus-year-lstamp index-corpus-total RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

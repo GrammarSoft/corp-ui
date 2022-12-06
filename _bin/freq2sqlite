@@ -26,13 +26,16 @@ $db->exec("CREATE TABLE meta (
 	PRIMARY KEY (key)
 )");
 $db->exec("CREATE TABLE freqs (
-	freq_text TEXT NOT NULL,
-	freq_abs INTEGER NOT NULL,
-	PRIMARY KEY (freq_text)
+	f_text TEXT NOT NULL,
+	f_abs INTEGER NOT NULL,
+	f_rel_g REAL NOT NULL DEFAULT 0.0,
+	f_rel_c REAL NOT NULL DEFAULT 0.0,
+	f_rel_s REAL NOT NULL DEFAULT 0.0,
+	PRIMARY KEY (f_text)
 )");
 
 $db->beginTransaction();
-$ins = $db->prepare("INSERT INTO freqs (freq_text, freq_abs) VALUES (?, ?) ON CONFLICT(freq_text) DO UPDATE SET freq_abs = freq_abs + ?");
+$ins = $db->prepare("INSERT INTO freqs (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
 
 $total = 0;
 for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
@@ -50,7 +53,22 @@ for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
 }
 
 $db->commit();
+
+$corp = $argv[2];
+$field = $argv[3];
+if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
+	[$s_corp,$subc] = explode('-', $corp.'-');
+	if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+		// Nothing
+	}
+	else {
+		$subc = 'total';
+	}
+
+	$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+}
+
 $db->exec("PRAGMA ignore_check_constraints = OFF");
-$db->exec("CREATE INDEX index_freq_abs ON freqs (freq_abs ASC)");
+$db->exec("CREATE INDEX index_freq_abs ON freqs (f_abs ASC)");
 $db->prepexec("INSERT INTO meta (key, value) VALUES (?, ?)", ['total', $total]);
 $db->exec("VACUUM");
