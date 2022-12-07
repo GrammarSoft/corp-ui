@@ -51,6 +51,7 @@
 		offset: Defs.offset,
 		named: [],
 		last_rv: null,
+		depc: 0,
 		};
 
 	let fields = {};
@@ -60,6 +61,11 @@
 		num_fields = i + 1;
 	});
 
+	// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
+	function escapeRegExp(string) {
+		return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+	}
+
 	function u_length(str) {
 		return [...str].length;
 	}
@@ -68,7 +74,15 @@
 		if (typeof(t) !== 'string') {
 			t = t.toString();
 		}
-		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '"').replace(/'/g, '&apos;');
+	}
+
+	function showParent() {
+		let p = $(this).attr('data-parent');
+		$('.depSelf').removeClass('depSelf');
+		$('.depParent').removeClass('depParent');
+		$(this).addClass('depSelf');
+		$('#t'+p).addClass('depParent');
 	}
 
 	function repaginate() {
@@ -306,7 +320,7 @@
 						if (/^<s /.test(ts[j])) {
 							if (n <= p) {
 								s_tag = ts[j];
-								s_article = ts[j].match(/ tweet="([^"]+)"/)[1];
+								s_article = ts[j].match(/ (?:tweet|article|title)="([^"]+)"/)[1];
 								//console.log([n, p, cntx.i]);
 							}
 						}
@@ -330,6 +344,7 @@
 					let n = cntx.b;
 					let good = false;
 					let named = Array.from(state.named);
+					let last_one = 0;
 					for (let j=0 ; j<ts.length ; ++j) {
 						if (/^<s /.test(ts[j])) {
 							if (ts[j].indexOf(' tweet="'+s_article+'"') !== -1) {
@@ -365,23 +380,29 @@
 									tabs[fields['lex_nd']] = tabs[fields['word_nd']];
 								}
 
-								let title = escHTML(tabs.join("\n"));
+								if (parseInt(tabs[fields['dself']]) == 1) {
+									last_one = state.depc;
+								}
+								++state.depc;
+
+								let ins = tabs[0].replace(/[ \s\t]/g, '_');
+								let title = escHTML(tabs.slice(0, -4).join("\n"));
 								if (n < p) {
-									parts.p.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
+									parts.p.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.pz.push(u_length(tabs[0]));
 									parts.ptz += u_length(tabs[0]) + 1;
 								}
 								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
-									parts.m.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(tabs[0].length).trim();
 								}
 								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
-									parts.m.push('<span title="'+title+'" class="d-inline-block text-center"><span class="fw-light">'+named[0]+':</span>'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
 									named.shift();
 								}
 								else {
-									parts.s.push('<span title="'+title+'" class="d-inline-block text-center">'+escHTML(tabs[0])+appendIfNot0(tabs)+'</span>');
+									parts.s.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.sz.push(u_length(tabs[0]));
 									parts.stz += u_length(tabs[0]) + 1;
 								}
@@ -414,6 +435,7 @@
 				$('#'+corp).find('.qpending').each(function() {
 					rq.cs[corp][parseInt($(this).text())] = 1;
 				});
+				$('#'+corp).find('.showParent').off().click(showParent).focus(showParent).mouseover(showParent);
 			}
 		}
 
@@ -432,7 +454,8 @@
 	}
 
 	function handleFreq(rv) {
-		let params = (new URL(window.location)).searchParams;
+		let url = new URL(window.location);
+		let params = url.searchParams;
 		let retry = false;
 		let rq = {
 			a: 'freq',
@@ -444,11 +467,71 @@
 			cs: [],
 			};
 
+		let field = params.get('f');
+
+		let query = params.get('q');
+		let by = params.get('b');
+		let offset = parseInt(params.get('o'));
+		// Turn context conditions into edge conditions
+		if (by === 'lc') {
+			offset -= 1;
+			by = 'le';
+		}
+		else if (by === 'rc') {
+			offset += 1;
+			by = 're';
+		}
+
+		let hfield = field;
+		if (/^(word|lex)$/.test(hfield)) {
+			if (params.has('nd') && params.get('nd')) {
+				hfield += '_nd';
+			}
+			else if (params.has('lc') && params.get('lc')) {
+				hfield += '_lc';
+			}
+		}
+		let bits = query.split(/(?<=\][*+?]?)\s*(?=\[)/);
+		// Turn right edge conditions into left edge conditions
+		if (by === 're') {
+			offset += bits.length - 1;
+		}
+		// Create query template to be filled with the found token
+		let search = '';
+		if (offset < 0) {
+			search = '['+hfield+'="{TOKEN}"]';
+			for (let i=offset ; i<-1 ; ++i) {
+				search += ' []';
+			}
+			search += ' '+query;
+		}
+		else if (offset >= bits.length) {
+			search = query;
+			for (let i=bits.length ; i<offset ; ++i) {
+				search += ' []';
+			}
+			search += ' ['+hfield+'="{TOKEN}"]';
+		}
+		else {
+			bits[offset] = bits[offset].replace(new RegExp('\\b'+field+'=".+?"'), hfield+'="{TOKEN}"');
+			if (!(new RegExp('\\b'+field+'=')).test(bits[offset])) {
+				bits[offset] = bits[offset].substr(0, 1) + hfield + '="{TOKEN}" & ' + bits[offset].substr(1);
+			}
+			search += bits.join(' ');
+		}
+
 		if (rv.hasOwnProperty('cs')) {
 			for (let corp in rv.cs) {
 				if (!rv.cs[corp].d) {
 					rq.cs.push(corp);
 					retry = true;
+				}
+
+				let url = new URL(window.location.origin + window.location.pathname);
+				url.searchParams.set('c['+corp+']', '1');
+				url.searchParams.set('s', 's');
+				if (params.has('ub') && params.get('ub')) {
+					url.searchParams.set('ub', '1');
 				}
 
 				let c = $('#'+corp);
@@ -481,10 +564,39 @@
 
 				c.find('.qrange').text(rv.s+' to '+Math.min(rv.s + rv.n, rv.cs[corp].n));
 				let html = '<table class="table table-striped table-hover my-3">';
-				//html += '<thead><tr class="text-center"><th>#</th><th>LHS</th><th class="text-center">Hit</th><th>RHS</th></tr></thead>';
+				// '∕' is U+2215 Division Slash
+				// '·' is U+00B7 Middle Dot
+				// '²' is U+00B2 Superscript 2
+				// '⁸' is U+2078 Superscript 8
+				html += '<thead><tr><th>Token</th>';
+				if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
+					html += '<th class="color-red text-vertical">G: freq²∕norm</th>';
+					html += '<th class="color-red text-vertical">C: freq²∕norm</th>';
+					if (corp.indexOf('-') !== -1) {
+						html += '<th class="color-red text-vertical">S: freq²∕norm</th>';
+					}
+				}
+				html += '<th class="color-orange text-vertical">C: freq∕corp · 10⁸</th>';
+				if (corp.indexOf('-') !== -1) {
+					html += '<th class="color-orange text-vertical">S: freq∕corp · 10⁸</th>';
+				}
+				html += '<th class="color-green text-vertical">freq∕conc</th><th class="text-vertical">num</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
-					html += '<tr><td>'+escHTML(rv.cs[corp].f[i][0])+'</td><td class="text-end">'+rv.cs[corp].f[i][1]+'</td><td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td></tr>';
+					url.searchParams.set('q', search.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
+					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
+					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
+						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
+						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
+						if (corp.indexOf('-') !== -1) {
+							html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][4].toFixed(2))+'</td>';
+						}
+					}
+					html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].w * 100000000).toFixed(2)+'</td>';
+					if (corp.indexOf('-') !== -1) {
+						html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000).toFixed(2)+'</td>';
+					}
+					html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end">'+rv.cs[corp].f[i][1]+'</td></tr>';
 				}
 				html += '</tbody></table>';
 				c.find('.qbody').html(html);
@@ -513,6 +625,8 @@
 			state.named.push(n[1]);
 		}
 
+		$('#btnRelS').prop('disabled', true).addClass('disabled');
+
 		// Concordances
 		if ($('.qresults').length) {
 			let rq = {
@@ -529,6 +643,9 @@
 				let id = $(this).attr('id');
 				rq.rs.push(id);
 				rq.ts.push(id);
+				if (id.indexOf('-') !== -1) {
+					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+				}
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 500);
@@ -549,6 +666,9 @@
 			$('.qfreqs').each(function() {
 				let id = $(this).attr('id');
 				rq.cs.push(id);
+				if (id.indexOf('-') !== -1) {
+					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+				}
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
@@ -568,7 +688,7 @@
 			if (/^(h_)?(word|lex)/.test(f)) {
 				$('.btnRel').prop('disabled', false);
 			}
-		});
+		}).change();
 
 		$('#qfocus').val(state.focus).change(function() {
 			state.focus = $(this).val();

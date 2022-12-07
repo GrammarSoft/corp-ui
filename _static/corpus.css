@@ -10,3 +10,25 @@ html, body {
 .qpage {
 	min-height: 100%;
 }
+
+.color-red {
+	color: red;
+}
+.color-orange {
+	color: orange;
+}
+.color-green {
+	color: green;
+}
+
+.text-vertical {
+	writing-mode: vertical-rl;
+	writing-mode: sideways-lr;
+}
+
+.depSelf {
+	text-decoration: underline overline blue;
+}
+.depParent {
+	text-decoration: underline overline orange;
+}

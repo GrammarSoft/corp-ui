@@ -41,6 +41,9 @@ auto conv_lc = [&](std::string_view org) {
 	if (cache_lc.count(org)) {
 		return cache_lc[org];
 	}
+	if (cache_lc.size() > 10000000) {
+		cache_lc.clear();
+	}
 
 	UnicodeString_fromUTF8(_c_line, org);
 	any2nfc->transliterate(_c_line);
@@ -57,6 +60,9 @@ auto conv_lc = [&](std::string_view org) {
 auto conv_nd = [&](std::string_view org) {
 	if (cache_nd.count(org)) {
 		return cache_nd[org];
+	}
+	if (cache_nd.size() > 10000000) {
+		cache_nd.clear();
 	}
 
 	UnicodeString_fromUTF8(_c_line, org);

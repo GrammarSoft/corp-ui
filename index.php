@@ -32,6 +32,10 @@ $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'rc');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 
 $h_query = '';
+$checked = [
+	'lc' => '',
+	'nd' => '',
+	];
 
 $fields = '';
 foreach ($GLOBALS['-fields'] as $k => $v) {
@@ -55,7 +59,7 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 		$query = '('.$query.') within <s/>';
 	}
 	$field = $_REQUEST['f'];
-	$hash = sha256_lc20("{$query} -d {$field}");
+	$hash = sha256_lc20($query);
 	$hash_freq = '';
 	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
@@ -64,7 +68,6 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	chdir($folder);
 
 	$s_query = escapeshellarg($query);
-	$s_field = escapeshellarg($field);
 	$h_corps = '';
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		$h_corps .= '<input type="hidden" name="c['.htmlspecialchars($corp).']" value="1">';
@@ -95,7 +98,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -d $s_field -a $s_field -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
 fi
 
 XSH;
@@ -121,6 +124,7 @@ XSH;
 	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
 		$offset = $_REQUEST['o'];
 		$by = $_REQUEST['b'];
+		// Turn context conditions into edge conditions
 		if ($by === 'lc') {
 			$offset -= 1;
 			$by = 'le';
@@ -135,12 +139,15 @@ XSH;
 		$nd = $field;
 		$coll = '';
 		if (!empty($_REQUEST['nd'])) {
+			$checked['nd'] = 'checked';
+			$checked['lc'] = 'checked';
 			$_REQUEST['lc'] = '1';
 			$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/conv-lc-nd'";
 			$nd .= '_nd';
 			$which .= '/i';
 		}
 		else if (!empty($_REQUEST['lc'])) {
+			$checked['lc'] = 'checked';
 			$coll = " | uconv -x any-nfc | uconv -x any-lower";
 			$nd .= '_lc';
 			$which .= '/i';
@@ -238,7 +245,7 @@ XSH;
 <br>
 <button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
 <button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
-<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
+<button class="btn btn-sm btn-outline-primary btnRel" id="btnRelS" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_field">Field</label>
@@ -260,11 +267,11 @@ XSH;
 </select>
 </div>
 <div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="lc" id="lc">
+<input class="form-check-input" type="checkbox" name="lc" id="lc" {$checked['lc']}>
 <label class="form-check-label" for="lc">Collapse case</label>
 </div>
 <div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="nd" id="nd">
+<input class="form-check-input" type="checkbox" name="nd" id="nd" {$checked['nd']}>
 <label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
 </form>
@@ -286,7 +293,7 @@ XHTML;
 			echo '<div class="col qresults" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
 		}
 	}
-	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relfreq') {
+	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
 			echo '<div class="col qfreqs" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
 		}

@@ -30,15 +30,15 @@ $GLOBALS['-corpora'] = [
 	'dan' => [
 		'dan_twitter' => [
 			'name' => 'Twitter (2008-2022 Aug)',
-			'subs' => array_combine(range(2008, 2022), range(2008, 2022)),
+			'subs' => array_combine(range(2017, 2022), range(2017, 2022)),
 			],
 		],
-	/*
 	'deu' => [
 		'deu_twitter_2008_2017' => [
 			'name' => 'Twitter (2008-2017)',
-			'subs' => array_combine(range(2008, 2017), range(2008, 2017)),
+			'subs' => array_combine(range(2016, 2017), range(2016, 2017)),
 			],
+	/*
 		'deu_twitter_2018' => [
 			'name' => 'Twitter (2018)',
 			],
@@ -54,6 +54,6 @@ $GLOBALS['-corpora'] = [
 		'deu_twitter_2022' => [
 			'name' => 'Twitter (2022 Jan-Aug)',
 			],
-		],
 	//*/
+		],
 	];

@@ -74,4 +74,7 @@ link_libs(index-corpus-year-lstamp)
 add_executable(index-corpus-total index-corpus-total.cpp shared.hpp)
 link_libs(index-corpus-total)
 
-install(TARGETS index-corpus-year-both index-corpus-year-lstamp index-corpus-total RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+add_executable(conv-lc-nd conv-lc-nd.cpp shared.hpp)
+link_libs(conv-lc-nd)
+
+install(TARGETS index-corpus-year-both index-corpus-year-lstamp index-corpus-total conv-lc-nd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

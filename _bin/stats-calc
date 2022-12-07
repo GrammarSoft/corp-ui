@@ -13,7 +13,7 @@ foreach ($tbs as $tb) {
 	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
 		$db->beginTransaction();
 		fprintf(STDERR, "Table %s %s\n", $tb['c_which'], $f);
-		$db->prepexec("UPDATE freq_{$tb['c_which']}_{$f} SET f_rel = sqrt(sqrt(CAST(f_abs AS REAL) / ?))", [$ws]);
+		$db->prepexec("UPDATE freq_{$tb['c_which']}_{$f} SET f_rel = sqrt(CAST(f_abs AS REAL) / log2(?))", [$ws]);
 		$db->commit();
 	}
 }

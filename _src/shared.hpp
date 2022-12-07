@@ -8,6 +8,11 @@
 using namespace icu;
 
 template<typename T>
+constexpr inline int32_t SI32(T t) {
+	return static_cast<int32_t>(t);
+}
+
+template<typename T>
 constexpr inline int64_t SI64(T t) {
 	return static_cast<int64_t>(t);
 }
@@ -77,12 +82,12 @@ inline std::string concat(const T& value, Args... args) {
 template<typename Str>
 inline void UnicodeString_fromUTF8(UnicodeString& target, Str str) {
 	UErrorCode status = U_ZERO_ERROR;
-	auto cap = target.getCapacity();
+	auto cap = SI32(str.size()*4);
 	auto buf = target.getBuffer(str.size()*4);
 	int32_t destlen = 0, subs = 0;
 	u_strFromUTF8WithSub(buf, cap, &destlen, str.data(), str.size(), U'\uFFFD', &subs, &status);
 	if (U_FAILURE(status)) {
-		throw std::runtime_error(u_errorName(status));
+		throw std::runtime_error(concat("ERROR in UnicodeString_fromUTF8:\n", u_errorName(status), "\nInput: ", str));
 	}
 	target.releaseBuffer(destlen);
 }

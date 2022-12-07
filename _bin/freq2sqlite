@@ -15,7 +15,7 @@ $db->exec("PRAGMA case_sensitive_like = ON");
 $db->exec("PRAGMA foreign_keys = OFF");
 $db->exec("PRAGMA ignore_check_constraints = ON");
 $db->exec("PRAGMA journal_mode = MEMORY");
-$db->exec("PRAGMA locking_mode = NORMAL");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
 $db->exec("PRAGMA synchronous = OFF");
 $db->exec("PRAGMA threads = 4");
 $db->exec("PRAGMA trusted_schema = OFF");
@@ -62,13 +62,24 @@ if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
 		// Nothing
 	}
 	else {
-		$subc = 'total';
+		$subc = '';
 	}
 
-	$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+	$lang = substr($corp, 0, 3);
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$lang}.sqlite' AS db_lang");
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite' AS db_corp");
+
+	$db->beginTransaction();
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs) / lang.f_rel FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
+	$db->query("UPDATE freqs SET f_rel_c = (f_abs*f_abs) / corp.f_rel FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+	if ($subc) {
+		$db->query("UPDATE freqs SET f_rel_s = (f_abs*f_abs) / corp.f_rel FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+	}
+	$db->commit();
 }
 
 $db->exec("PRAGMA ignore_check_constraints = OFF");
 $db->exec("CREATE INDEX index_freq_abs ON freqs (f_abs ASC)");
 $db->prepexec("INSERT INTO meta (key, value) VALUES (?, ?)", ['total', $total]);
+$db->exec("PRAGMA locking_mode = NORMAL");
 $db->exec("VACUUM");

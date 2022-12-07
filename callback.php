@@ -187,7 +187,7 @@ while ($a === 'freq') {
 		$rv['errors'][] = 'E040: Invalid frequency hash '.$_REQUEST['hf'];
 		break;
 	}
-	if (empty($_REQUEST['t']) || !preg_match('~^(abc|freq|relfreq)$~', $_REQUEST['t'])) {
+	if (empty($_REQUEST['t']) || !preg_match('~^(abc|freq|relg|relc|rels)$~', $_REQUEST['t'])) {
 		$rv['errors'][] = 'E030: Invalid type '.$_REQUEST['t'];
 		break;
 	}
@@ -223,38 +223,59 @@ while ($a === 'freq') {
 			$rv['info'][] = 'Not ready '.$corp;
 			continue;
 		}
-		$dbs[$corp] = new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+		[$s_corp,$subc] = explode('-', $corp.'-');
+		$dbs[$corp] = [
+			'freq' => new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			];
 	}
 
 	foreach ($cs as $corp) {
-		if (!array_key_exists($corp, $dbs)) {
-			$rv['info'][] = 'I010: Not loaded '.$corp;
-			continue;
-		}
-
 		$rv['cs'][$corp] = [
 			'n' => 0,
 			't' => 0,
+			'w' => 0,
+			'ws' => 0,
 			'd' => 1,
 			'f' => [],
 			];
 
+		if (!array_key_exists($corp, $dbs)) {
+			$rv['cs'][$corp]['d'] = 0;
+			$rv['info'][] = 'I010: Not loaded '.$corp;
+			continue;
+		}
+
+		[$s_corp,$subc] = explode('-', $corp.'-');
 		if (!file_exists("$hash-$corp.freq-$hash_freq.time") || !filesize("$hash-$corp.freq-$hash_freq.time")) {
 			$rv['cs'][$corp]['d'] = 0;
 		}
 
-		$rv['cs'][$corp]['n'] = intval($dbs[$corp]->prepexec("SELECT MAX(rowid) as cnt FROM freqs")->fetchAll()[0]['cnt'] ?? 0);
-		$rv['cs'][$corp]['t'] = intval($dbs[$corp]->prepexec("SELECT value FROM meta WHERE key = 'total'")->fetchAll()[0]['value'] ?? 1);
+		$rv['cs'][$corp]['n'] = intval($dbs[$corp]['freq']->prepexec("SELECT MAX(rowid) as cnt FROM freqs")->fetchAll()[0]['cnt'] ?? 0);
+		$rv['cs'][$corp]['t'] = intval($dbs[$corp]['freq']->prepexec("SELECT value FROM meta WHERE key = 'total'")->fetchAll()[0]['value'] ?? 1);
+		$rv['cs'][$corp]['w'] = intval($dbs[$corp]['corp']->prepexec("SELECT c_words+c_numbers+c_alnums as cnt FROM counts WHERE c_which = 'total'")->fetchAll()[0]['cnt'] ?? 1);
+		if (!empty($subc)) {
+			$rv['cs'][$corp]['ws'] = intval($dbs[$corp]['corp']->prepexec("SELECT c_words+c_numbers+c_alnums as cnt FROM counts WHERE c_which = ?", [$subc])->fetchAll()[0]['cnt'] ?? 1);
+		}
 
 		$res = null;
 		if ($type === 'abc') {
-			$res = $dbs[$corp]->prepexec("SELECT f_text, f_abs FROM freqs ORDER BY f_text ASC, f_abs DESC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_text ASC, f_abs DESC LIMIT {$pagesize} OFFSET {$offset}-1");
+		}
+		else if ($type === 'relg') {
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_g DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+		}
+		else if ($type === 'relc') {
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_c DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+		}
+		else if ($type === 'rels') {
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_s DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else /* if ($type === 'freq') */ {
-			$res = $dbs[$corp]->prepexec("SELECT f_text, f_abs FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		while ($row = $res->fetch()) {
-			$rv['cs'][$corp]['f'][] = [$row['f_text'], intval($row['f_abs'])];
+			$rv['cs'][$corp]['f'][] = [$row['f_text'], intval($row['f_abs']), floatval($row['f_rel_g']), floatval($row['f_rel_c']), floatval($row['f_rel_s'])];
 		}
 	}
 
