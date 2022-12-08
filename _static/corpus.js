@@ -671,6 +671,8 @@
 				}
 			});
 
+			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-outline-success');
+
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
 		}
 

@@ -67,7 +67,7 @@ if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
 
 	$lang = substr($corp, 0, 3);
 	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$lang}.sqlite' AS db_lang");
-	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite' AS db_corp");
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite' AS db_corp");
 
 	$db->beginTransaction();
 	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs) / lang.f_rel FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");

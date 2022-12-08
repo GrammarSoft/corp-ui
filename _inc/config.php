@@ -36,15 +36,17 @@ $GLOBALS['-corpora'] = [
 	'deu' => [
 		'deu_twitter_2008_2017' => [
 			'name' => 'Twitter (2008-2017)',
-			'subs' => array_combine(range(2016, 2017), range(2016, 2017)),
+			'subs' => [
+				'2017' => '2017',
+				],
 			],
-	/*
 		'deu_twitter_2018' => [
 			'name' => 'Twitter (2018)',
 			],
 		'deu_twitter_2019' => [
 			'name' => 'Twitter (2019)',
 			],
+	/*
 		'deu_twitter_2020' => [
 			'name' => 'Twitter (2020)',
 			],

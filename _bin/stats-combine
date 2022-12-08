@@ -1,0 +1,81 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+if (empty($argv[1]) || !array_key_exists($argv[1], $GLOBALS['-corpora'])) {
+	die("No such language: {$argv[1]}\n");
+}
+
+@unlink("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite");
+$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite");
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE counts (
+	c_which TEXT NOT NULL,
+	c_total INTEGER NOT NULL DEFAULT 0,
+	c_words INTEGER NOT NULL DEFAULT 0,
+	c_numbers INTEGER NOT NULL DEFAULT 0,
+	c_alnums INTEGER NOT NULL DEFAULT 0,
+	c_puncts INTEGER NOT NULL DEFAULT 0,
+	c_emojis INTEGER NOT NULL DEFAULT 0,
+	c_other INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (c_which)
+) WITHOUT ROWID");
+$db->query("INSERT INTO counts (c_which) VALUES ('total')");
+
+foreach ($GLOBALS['-corpora'][$argv[1]] as $corp => $_) {
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite' AS db_corp");
+	$db->query("UPDATE counts AS ci SET c_total = ci.c_total + co.c_total, c_words = ci.c_words + co.c_words, c_numbers = ci.c_numbers + co.c_numbers, c_alnums = ci.c_alnums + co.c_alnums, c_puncts = ci.c_puncts + co.c_puncts, c_emojis = ci.c_emojis + co.c_emojis, c_other = ci.c_other + co.c_other FROM (SELECT * FROM db_corp.counts WHERE c_which = 'total') AS co");
+
+	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
+		fprintf(STDERR, "Importing %s %s\n", $corp, $f);
+		$db->beginTransaction();
+		$db->exec("CREATE TABLE IF NOT EXISTS freq_total_{$f} (
+			f_text TEXT NOT NULL,
+			f_abs INTEGER NOT NULL,
+			f_rel REAL NOT NULL DEFAULT 0.0,
+			PRIMARY KEY (f_text)
+		) WITHOUT ROWID");
+		//$db->query("INSERT INTO freq_total_{$f} AS fi (f_text, f_abs) SELECT f_text, f_abs FROM db_corp.freq_total_{$f} AS fo WHERE true ON CONFLICT(f_text) DO UPDATE SET f_abs = fi.f_abs + fo.f_abs");
+		$ins = $db->prepare("INSERT INTO freq_total_{$f} (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
+		$res = $db->prepexec("SELECT f_text, f_abs FROM db_corp.freq_total_{$f}");
+		while ($row = $res->fetch()) {
+			$ins->execute([$row['f_text'], $row['f_abs'], $row['f_abs']]);
+		}
+		$db->commit();
+	}
+
+	$db->query("DETACH db_corp");
+}
+
+$tbs = $db->prepexec("SELECT * FROM counts")->fetchAll();
+foreach ($tbs as $tb) {
+	$ws = floatval(intval($tb['c_words']) + intval($tb['c_numbers']) + intval($tb['c_alnums']));
+	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
+		$db->beginTransaction();
+		fprintf(STDERR, "Table %s %s\n", $tb['c_which'], $f);
+		$db->prepexec("UPDATE freq_{$tb['c_which']}_{$f} SET f_rel = sqrt(CAST(f_abs AS REAL) / log2(?))", [$ws]);
+		$db->commit();
+	}
+}
+
+fprintf(STDERR, "Vacuum\n");
+$db->exec("VACUUM");
+$db->exec("PRAGMA locking_mode = NORMAL");
+
+@unlink("{$GLOBALS['CORP_ROOT']}/corpora/{$argv[1]}.sqlite");
+rename("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite", "{$GLOBALS['CORP_ROOT']}/corpora/{$argv[1]}.sqlite");

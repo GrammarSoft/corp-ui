@@ -314,18 +314,21 @@ XHTML;
 foreach ($GLOBALS['-corpora'] as $group => $cs) {
 	echo '<fieldset class="col"><legend>'.htmlspecialchars($GLOBALS['-groups'][$group]).'</legend>';
 	foreach ($cs as $corp => $vis) {
+		$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+		$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which='total'")->fetchAll()[0]['cnt']);
 		$checked = '';
 		if (!empty($_REQUEST['c'][$corp])) {
 			$checked = ' checked';
 		}
-		echo '<div class="form-check"><input class="form-check-input" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).'</label></div>';
+		echo '<div class="form-check"><input class="form-check-input" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ( <span class="text-muted">'.number_format($ws/1000000.0, 1, '.', '').' M</span> )</label></div>';
 
 		if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
+			$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
 			$checked = '';
 			if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
 				$checked = ' checked';
 			}
-			echo '<div class="form-check ms-3"><input class="form-check-input" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).'</label></div>';
+			echo '<div class="form-check ms-3"><input class="form-check-input" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ( <span class="text-muted">'.number_format($ws/1000000.0, 1, '.', '').' M</span> )</label></div>';
 		}
 	}
 	echo '</fieldset>';

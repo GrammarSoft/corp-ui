@@ -226,7 +226,7 @@ while ($a === 'freq') {
 		[$s_corp,$subc] = explode('-', $corp.'-');
 		$dbs[$corp] = [
 			'freq' => new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
-			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/dbs/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 			];
 	}
 
