@@ -282,16 +282,123 @@ while ($a === 'freq') {
 	break;
 }
 
+while ($a === 'hist') {
+	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
+		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	if (empty($_REQUEST['g']) || !preg_match('~^(Y|Y-m|Y-m-d|Y-m-d H|Y H)$~', $_REQUEST['g'])) {
+		$rv['errors'][] = 'E050: Invalid grouping '.$_REQUEST['g'];
+		break;
+	}
+
+	$hash = $_REQUEST['h'];
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	if (!is_dir($folder)) {
+		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	chdir($folder);
+
+	$group = $_REQUEST['g'];
+	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
+	$rv['s'] = $offset;
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$rv['n'] = $pagesize;
+
+	$corps = [];
+	$cs = [];
+	if (!empty($_REQUEST['cs']) && is_array($_REQUEST['cs'])) {
+		$cs = filter_corpora_v($_REQUEST['cs']);
+		$corps = array_merge($corps, $cs);
+	}
+	sort($corps);
+	$corps = array_unique($corps);
+
+	clearstatcache();
+	$dbs = [];
+	foreach ($corps as $corp) {
+		if (!file_exists("$hash-$corp.hist.sqlite") || !filesize("$hash-$corp.hist.sqlite")) {
+			$rv['info'][] = 'Not ready '.$corp;
+			continue;
+		}
+		[$s_corp,$subc] = explode('-', $corp.'-');
+		$dbs[$corp] = [
+			'hist' => new \TDC\PDO\SQLite("$hash-$corp.hist.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			];
+	}
+
+	foreach ($cs as $corp) {
+		$rv['cs'][$corp] = [
+			'ts' => [],
+			'd' => 1,
+			'h' => [],
+			];
+
+		if (!array_key_exists($corp, $dbs)) {
+			$rv['cs'][$corp]['d'] = 0;
+			$rv['info'][] = 'I010: Not loaded '.$corp;
+			continue;
+		}
+
+		$ys = [];
+		$res = $dbs[$corp]['hist']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h from counts WHERE c_which != 'total'");
+		while ($row = $res->fetch()) {
+			foreach ($row as $k => $v) {
+				$row[$k] = intval($v);
+			}
+			$ys[$row['w']] = $row;
+			$rv['cs'][$corp]['ts'][$row['w']] = $row;
+		}
+
+		foreach ($ys as $year => $_) {
+			$res_h = null;
+			$res_c = null;
+			if ($group === 'Y') {
+				$res_h = $dbs[$corp]['hist']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 1000 AND h_group < 100000");
+				$res_c = $dbs[$corp]['corp']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 1000 AND h_group < 10000");
+			}
+			else if ($group === 'Y-m') {
+				$res_h = $dbs[$corp]['hist']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 100000 AND h_group < 1000000");
+				$res_c = $dbs[$corp]['corp']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 100000 AND h_group < 1000000");
+			}
+			else if ($group === 'Y-m-d') {
+				$res_h = $dbs[$corp]['hist']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 10000000 AND h_group < 100000000");
+				$res_c = $dbs[$corp]['corp']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 10000000 AND h_group < 100000000");
+			}
+			else if ($group === 'Y-m-d H') {
+				$res_h = $dbs[$corp]['hist']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 1000000000 AND h_group < 10000000000");
+				$res_c = $dbs[$corp]['corp']->prepexec("SELECT * FROM hist_{$year} WHERE h_group >= 1000000000 AND h_group < 10000000000");
+			}
+			else if ($group === 'Y H') {
+				$res_h = $dbs[$corp]['hist']->prepexec("SELECT h_group + {$year}*100 as h_group, h_articles, h_sentences, h_hits FROM hist_{$year} WHERE h_group < 24");
+				$res_c = $dbs[$corp]['corp']->prepexec("SELECT h_group + {$year}*100 as h_group, h_articles, h_sentences, h_tokens, h_words FROM hist_{$year} WHERE h_group < 24");
+			}
+			while ($row = $res_c->fetch()) {
+				foreach ($row as $k => $v) {
+					$row[$k] = intval($v);
+				}
+				$g = array_shift($row);
+				$rv['cs'][$corp]['h'][$g] = array_merge([$g, 0, 0, 0], array_values($row));
+			}
+			while ($row = $res_h->fetch()) {
+				foreach ($row as $k => $v) {
+					$row[$k] = intval($v);
+				}
+				$rv['cs'][$corp]['h'][$row['h_group']][1] = $row['h_articles'];
+				$rv['cs'][$corp]['h'][$row['h_group']][2] = $row['h_sentences'];
+				$rv['cs'][$corp]['h'][$row['h_group']][3] = $row['h_hits'];
+			}
+		}
+		$rv['cs'][$corp]['h'] = array_values($rv['cs'][$corp]['h']);
+	}
+
+	break;
+}
+
 if (!empty($rv['errors'])) {
 	header('HTTP/1.1 400 Bad Request');
 }
 
 echo json_encode_vb($rv);
-
-/*
-// …
-
-	$rngs = escapeshellarg(implode('; ', $rngs));
-	//echo '<tr><td colspan="4">'.$GLOBALS['WEB_ROOT'].'/_bin/decodevert-ranges '.$GLOBALS['CORP_ROOT'].'/registry/'.$corp.' '.$rngs.'</td></tr>';
-	echo '</tbody></table></div>';
-*/

@@ -24,7 +24,7 @@ $db->exec("CREATE TABLE meta (
 	key TEXT NOT NULL,
 	value TEXT NOT NULL,
 	PRIMARY KEY (key)
-)");
+) WITHOUT ROWID");
 $db->exec("CREATE TABLE freqs (
 	f_text TEXT NOT NULL,
 	f_abs INTEGER NOT NULL,
@@ -54,6 +54,8 @@ for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
 
 $db->commit();
 
+$total2 = $total * $total;
+
 $corp = $argv[2];
 $field = $argv[3];
 if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
@@ -70,10 +72,10 @@ if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
 	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite' AS db_corp");
 
 	$db->beginTransaction();
-	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs) / lang.f_rel FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
-	$db->query("UPDATE freqs SET f_rel_c = (f_abs*f_abs) / corp.f_rel FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
+	$db->query("UPDATE freqs SET f_rel_c = (f_abs*f_abs) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
 	if ($subc) {
-		$db->query("UPDATE freqs SET f_rel_s = (f_abs*f_abs) / corp.f_rel FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+		$db->query("UPDATE freqs SET f_rel_s = (f_abs*f_abs) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
 	}
 	$db->commit();
 }

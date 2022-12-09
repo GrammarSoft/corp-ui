@@ -19,3 +19,15 @@ rm -rf ~/corpora/dan_twitter/tmp
 ```
 * Edit `_inc/config.php` to add it and all subcorpora to the `$GLOBALS['-corpora']` array.
 * Update global stats for the language with `time ~/public_html/_bin/stats-combine dan`
+
+## TODO
+* Scale corpora relfreqs to 10 million words so cross-corpus comparisons are possible
+* Histogram:
+  * Warn about missing data and inject those groups as grey
+  * Warn about sparse data and color those yellow
+  * Show combined timeline if subcorpora
+  * Show multiple corpora under top
+  * Click on bar to jump to that place in the table
+  * Click on table line to show all hits from that period
+  * Menu to pick which field to graph
+* Maybe split off more dynamic fields

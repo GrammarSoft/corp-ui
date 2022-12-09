@@ -608,6 +608,122 @@
 		}
 	}
 
+	function handleHist(rv) {
+		let url = new URL(window.location);
+		let params = url.searchParams;
+		let retry = false;
+		let rq = {
+			a: 'hist',
+			g: params.get('g'),
+			h: state.hash,
+			s: rv.s,
+			n: rv.n,
+			cs: [],
+			};
+
+		$('.qpages').hide();
+
+		if (rv.hasOwnProperty('cs')) {
+			for (let corp in rv.cs) {
+				if (!rv.cs[corp].d) {
+					rq.cs.push(corp);
+					retry = true;
+				}
+
+				let c = $('#'+corp);
+				state.ts[corp] = rv.cs[corp];
+				c.find('.qtotal').text(rv.cs[corp].h.length);
+
+				if (!rv.cs[corp].d) {
+					c.find('.qtotal').text(rv.cs[corp].h.length + '…');
+				}
+				else {
+					if (rv.cs[corp].h.length === 0) {
+						let c = $('#'+corp);
+						c.find('.qrange').text('0');
+						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
+					}
+				}
+
+				if (!rv.cs[corp].h.length) {
+					c.find('.qrange').text('…');
+					if (!rv.cs[corp].d) {
+						c.find('.qbody').text('…still searching…');
+					}
+					else {
+						c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
+					}
+					continue;
+				}
+
+				let labels = [];
+				let bars = [];
+				let c_bars = [];
+				let c_borders = [];
+
+				let max = 0;
+				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
+					max = Math.max(max, rv.cs[corp].h[i][5]);
+				}
+				max = max/4.0;
+
+				c.find('.qrange').text('');
+				let html = '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><canvas id="'+corp+'-chart" style="width: '+(rv.cs[corp].h.length*5)+'px;"></canvas></div>';
+				html += '<div><table class="d-inline-block table table-striped table-hover my-3">';
+				html += '<thead><tr><th>Group</th><th class="text-vertical">Articles</th><th class="text-vertical">Sentences</th><th class="text-vertical">Hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
+				html += '<tbody class="font-monospace text-nowrap text-break">';
+				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
+					labels.push(rv.cs[corp].h[i][0]);
+					bars.push((rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2));
+					if (rv.cs[corp].h[i][5] < max) {
+						c_bars.push('rgba(255, 159, 64, 0.2)');
+						c_borders.push('rgb(255, 159, 64)');
+					}
+					else {
+						c_bars.push('rgba(54, 162, 235, 0.2)');
+						c_borders.push('rgb(54, 162, 235)');
+					}
+
+					html += '<tr><td>'+escHTML(rv.cs[corp].h[i][0])+'</td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
+				}
+				html += '</tbody></table></div>';
+				c.find('.qbody').html(html);
+
+				let chart = new Chart(document.getElementById(corp+'-chart'),
+					{
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									type: 'bar',
+									label: '% Hits/CSentences',
+									data: bars,
+									backgroundColor: c_bars,
+									borderColor: c_borders,
+									minBarLength: 5,
+									barPercentage: 1,
+									categoryPercentage: 1,
+            					},
+							],
+						},
+						options: {
+							responsive: false,
+							maintainAspectRatio: false,
+							interaction: {
+								mode: 'index',
+								intersect: false,
+							},
+						},
+					});
+				chart.resize(rv.cs[corp].h.length*10, 400);
+			}
+		}
+
+		if (retry) {
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
+		}
+	}
+
 	function contentLoaded() {
 		state.hash = g_hash;
 		state.hash_freq = g_hash_freq;
@@ -617,6 +733,10 @@
 		state.focus_n = fields[state.focus];
 		state.offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
 		state.pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
+
+		if (params.has('g')) {
+			$('#qhistgroup').val(params.get('g'));
+		}
 
 		let rx = /\b(\d+):\[/g;
 		let q = params.get('q');
@@ -674,6 +794,28 @@
 			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-outline-success');
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
+		}
+
+		// Concordances
+		if ($('.qhist').length) {
+			let rq = {
+				a: 'hist',
+				h: state.hash,
+				g: params.get('g'),
+				s: state.offset,
+				n: state.pagesize,
+				cs: [],
+				};
+
+			$('.qhist').each(function() {
+				let id = $(this).attr('id');
+				rq.cs.push(id);
+				if (id.indexOf('-') !== -1) {
+					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+				}
+			});
+
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 500);
 		}
 
 		$('#qpagesize').change(function() {

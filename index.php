@@ -11,6 +11,7 @@ declare(strict_types=1);
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0/dist/chart.umd.js"></script>
 
 	<script>let g_hash = ''; let g_hash_freq = '';</script>
 	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
@@ -207,6 +208,53 @@ XSH;
 			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
 		}
 	}
+	// Histogram
+	else if ($_REQUEST['s'] === 'hist') {
+		$sh = <<<XSH
+#!/bin/bash
+set -e
+cd '$folder'
+
+XSH;
+
+		$exec = false;
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+			}
+			else {
+				$subc = '';
+			}
+			if (!file_exists("$hash-$corp.hist.sqlite") || !filesize("$hash-$corp.hist.sqlite")) {
+				$exec = true;
+			}
+
+			$sh .= <<<XSH
+
+if [ ! -s '$hash-$corp.hist.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $hash-$corp.hist.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/histogram' $hash-$corp.hist.sqlite >$hash-$corp.hist.err 2>&1 &
+fi
+
+XSH;
+	}
+
+	$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+
+		$hash_sh = substr(sha256_lc20($sh), 0, 8);
+		if ($exec) {
+			file_put_contents("$hash-$hash_sh.hist.sh", $sh);
+			chmod("$hash-$hash_sh.hist.sh", 0700);
+			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.hist.time ./$hash-$hash_sh.hist.sh >$hash-$hash_sh.hist.err 2>&1 &");
+		}
+	}
 
 	$bys = [
 		'lc' => 'Left context',
@@ -232,6 +280,8 @@ XSH;
 		$off_sel .= '<option value="'.$i.'"'.$sel.'>'.$i.'</option>'."\n";
 	}
 
+	// Sidebar
+	// Frequency
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
 	echo '<div class="card text-bg-light mb-3"><div class="card-body">';
 	echo <<<XHTML
@@ -278,13 +328,30 @@ XSH;
 
 XHTML;
 	echo '</div></div>';
+	// Histogram
+	echo '<div class="card text-bg-light mb-3">';
+	echo <<<XHTML
+<form method="GET">
+<input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="ub" value="{$h_unbound}">
+{$h_corps}
+
+XHTML;
+	echo '<div class="card-body"><div class="mb-3"><label for="qhistgroup" class="form-label fw-bold">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5"><option value="Y">Year</option><option value="Y-m">Year-Month</option><option value="Y-m-d" selected>Year-Month-Day</option><option value="Y-m-d H">Year-Month-Day Hour</option><option value="Y H">Year Hour-of-day</option></select></div>';
+	echo '<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram</button></div>';
+	echo '</form>';
+	echo '</div></div>';
+	// Page size & Focus field
 	echo '<div class="card text-bg-light mb-3">';
 	echo '<div class="card-body"><div class="mb-3"><label for="qpagesize" class="form-label fw-bold">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>';
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
 	echo '</div></div>';
-	echo '</div><div class="col">';
+	echo '</div>';
+
+	// Body of results
+	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
 	echo '<div class="row"><div class="col qpages">…</div></div>';
 	echo '<div class="row align-items-start row-cols-auto">';
@@ -296,6 +363,11 @@ XHTML;
 	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
 			echo '<div class="col qfreqs" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
+		}
+	}
+	else if ($_REQUEST['s'] === 'hist') {
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			echo '<div class="col qhist" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div>';
 		}
 	}
 	echo '</div>';

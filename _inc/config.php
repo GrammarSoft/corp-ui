@@ -46,10 +46,10 @@ $GLOBALS['-corpora'] = [
 		'deu_twitter_2019' => [
 			'name' => 'Twitter (2019)',
 			],
-	/*
 		'deu_twitter_2020' => [
 			'name' => 'Twitter (2020)',
 			],
+	/*
 		'deu_twitter_2021' => [
 			'name' => 'Twitter (2021)',
 			],

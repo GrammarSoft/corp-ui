@@ -3,42 +3,136 @@
 declare(strict_types=1);
 require_once __DIR__.'/../_inc/lib.php';
 
-// corpquery ~/registry/dan_twitter '(<s>[] within (<s/> containing [word="[uU]krain.*"])) within <s/>' -c 0 -s s.tweet,s.lstamp | ~/public_html/_bin/histogram
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
 
-$group = '(\d+-\d+-\d+)';
-if (!empty($argv[1])) {
-	if ($argv[1] === 'y') {
-		$group = '(\d+)';
-	}
-	else if ($argv[1] === 'm') {
-		$group = '(\d+-\d+)';
-	}
-	else if ($argv[1] === 'd') {
-		// Default
-	}
-	else if ($argv[1] === 'h') {
-		$group = '(\d+-\d+-\d+ \d+)';
-	}
-	else if ($argv[1] === 'i') {
-		$group = '(\d+-\d+-\d+ \d+:\d+)';
-	}
-	else if ($argv[1] === 'H') {
-		$group = '\d+-\d+-\d+ (\d+)';
-	}
-	else if ($argv[1] === 'I') {
-		$group = '\d+-\d+-\d+ (\d+:\d+)';
-	}
-}
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE counts (
+	c_which TEXT NOT NULL,
+	c_articles INTEGER NOT NULL,
+	c_sentences INTEGER NOT NULL,
+	c_hits INTEGER NOT NULL,
+	PRIMARY KEY (c_which)
+) WITHOUT ROWID");
+/*
+$db->exec("CREATE TABLE hist_total (
+	h_group INTEGER NOT NULL,
+	h_articles INTEGER NOT NULL,
+	h_sentences INTEGER NOT NULL,
+	h_hits INTEGER NOT NULL,
+	PRIMARY KEY (h_group)
+) WITHOUT ROWID");
+//*/
 
 $hist = [];
 
+$last = [
+/* On the off-chance there is a sentence without an lstamp first, don't record it
+	'Y' => 0,
+	'Y-m' => 0,
+	'Y-m-d' => 0,
+	'Y-m-d H' => 0,
+	'H' => 0,
+//*/
+	];
+$total = [
+	'w' => 'total',
+	'a' => 0,
+	's' => 0,
+	'h' => 0,
+	];
+$id = '';
+$art = '';
 while ($line = fgets(STDIN)) {
-	if (preg_match('~ lstamp='.$group.'~', $line, $m)) {
-		if (!array_key_exists($m[1], $hist)) {
-			$hist[$m[1]] = 0;
+	if (preg_match('~ lstamp="(\d+)-(\d+)-(\d+) (\d+)~', $line, $m)) {
+		$last['Y'] = intval($m[1]);
+		$last['Y-m'] = $last['Y']*100 + intval($m[2]);
+		$last['Y-m-d'] = $last['Y-m']*100 + intval($m[3]);
+		$last['H'] = intval($m[4]);
+		$last['Y-m-d H'] = $last['Y-m-d']*100 + $last['H'];
+	}
+
+	foreach ($last as $v) {
+		if (empty($hist[$last['Y']][$v])) {
+			$hist[$last['Y']][$v] = [
+				's' => 0,
+				'a' => 0,
+				'h' => 0,
+				];
 		}
-		++$hist[$m[1]];
+		++$hist[$last['Y']][$v]['h'];
+	}
+	++$total['h'];
+
+	if (preg_match('~ id="([^"]+)"~', $line, $m)) {
+		if ($id !== $m[1]) {
+			foreach ($last as $v) {
+				if (empty($hist[$last['Y']][$v])) {
+					$hist[$last['Y']][$v] = [
+						's' => 0,
+						'a' => 0,
+						'h' => 0,
+						];
+				}
+				++$hist[$last['Y']][$v]['s'];
+			}
+			++$total['s'];
+			$id = $m[1];
+		}
+	}
+	if (preg_match('~ (?:tweet|article|title)="([^"]+)"~', $line, $m)) {
+		if ($art !== $m[1]) {
+			foreach ($last as $v) {
+				if (empty($hist[$last['Y']][$v])) {
+					$hist[$last['Y']][$v] = [
+						's' => 0,
+						'a' => 0,
+						'h' => 0,
+						];
+				}
+				++$hist[$last['Y']][$v]['a'];
+			}
+			++$total['a'];
+			$art = $m[1];
+		}
 	}
 }
 
-echo json_encode_vb($hist, JSON_PRETTY_PRINT);
+$db->beginTransaction();
+$cnt = $db->prepare("INSERT INTO counts (c_which, c_articles, c_sentences, c_hits) VALUES (?, ?, ?, ?)");
+//$ins_t = $db->prepare("INSERT INTO hist_total (h_group, h_articles, h_sentences, h_hits) VALUES (?, ?, ?, ?) ON CONFLICT(h_group) DO UPDATE SET h_articles = h_articles + ?, h_sentences = h_sentences + ?, h_hits = h_hits + ?");
+$cnt->execute(array_values($total));
+
+foreach ($hist as $y => $vs) {
+	$db->exec("CREATE TABLE hist_{$y} (
+		h_group INTEGER NOT NULL,
+		h_articles INTEGER NOT NULL,
+		h_sentences INTEGER NOT NULL,
+		h_hits INTEGER NOT NULL,
+		PRIMARY KEY (h_group)
+	) WITHOUT ROWID");
+	$ins_y = $db->prepare("INSERT INTO hist_{$y} (h_group, h_articles, h_sentences, h_hits) VALUES (?, ?, ?, ?)");
+	foreach ($vs as $k => $v) {
+		//$ins_t->execute([$k, $v['a'], $v['s'], $v['h'], $v['a'], $v['s'], $v['h']]);
+		$ins_y->execute([$k, $v['a'], $v['s'], $v['h']]);
+	}
+	$cnt->execute([$y, $vs[$y]['a'], $vs[$y]['s'], $vs[$y]['h']]);
+}
+
+$db->commit();
+
+$db->exec("PRAGMA locking_mode = NORMAL");
+$db->exec("VACUUM");

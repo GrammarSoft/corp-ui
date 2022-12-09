@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 #  Copyright (c) 2014  Pavel Rychly
+#  Original GPLv2+ as per https://nlp.fi.muni.cz/trac/noske
+#  Copyright (c) 2022  Tino Didriksen
+
 from __future__ import print_function
 from __future__ import unicode_literals
 
