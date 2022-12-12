@@ -72,10 +72,10 @@ if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
 	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite' AS db_corp");
 
 	$db->beginTransaction();
-	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
-	$db->query("UPDATE freqs SET f_rel_c = (f_abs*f_abs) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs*f_abs*100000.0) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
+	$db->query("UPDATE freqs SET f_rel_c = (f_abs*f_abs*100000.0) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
 	if ($subc) {
-		$db->query("UPDATE freqs SET f_rel_s = (f_abs*f_abs) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+		$db->query("UPDATE freqs SET f_rel_s = (f_abs*f_abs*100000.0) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
 	}
 	$db->commit();
 }

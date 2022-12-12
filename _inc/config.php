@@ -21,6 +21,8 @@ $GLOBALS['-fields'] = [
 	//*/
 	];
 
+$GLOBALS['-scale'] = floatval(100000.0);
+
 $GLOBALS['-groups'] = [
 	'dan' => 'Danish',
 	'deu' => 'German',
@@ -49,13 +51,11 @@ $GLOBALS['-corpora'] = [
 		'deu_twitter_2020' => [
 			'name' => 'Twitter (2020)',
 			],
-	/*
 		'deu_twitter_2021' => [
 			'name' => 'Twitter (2021)',
 			],
 		'deu_twitter_2022' => [
 			'name' => 'Twitter (2022 Jan-Aug)',
 			],
-	//*/
 		],
 	];
