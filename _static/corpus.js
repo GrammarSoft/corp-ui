@@ -316,12 +316,14 @@
 					let txt = row.find('.text-center').text();
 					let s_tag = '';
 					let s_article = '';
+					let s_id = '';
 
 					for (let j=0,n = cntx.b ; j<ts.length ; ++j) {
 						if (/^<s /.test(ts[j])) {
 							if (n <= p) {
 								s_tag = ts[j];
 								s_article = ts[j].match(/ (?:tweet|article|title)="([^"]+)"/)[1];
+								s_id = ts[j].match(/ id="([^"]+)"/)[1];
 								//console.log([n, p, cntx.i]);
 							}
 						}
@@ -412,7 +414,7 @@
 						}
 					}
 
-					let html = '<td><a href="#"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
+					let html = '<td><a href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();

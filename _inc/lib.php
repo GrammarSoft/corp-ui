@@ -7,7 +7,7 @@ require_once __DIR__.'/config.php';
 putenv('LC_ALL=C.UTF-8');
 setlocale(LC_ALL, 'C.UTF-8');
 $GLOBALS['WEB_ROOT'] = dirname(__DIR__);
-$GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']);
+$GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']).'/storage';
 
 $GLOBALS['-value-class'] = [
 	'word' => '~^[\pL][- \'`´\pL\pM]*$~u',

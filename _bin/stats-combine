@@ -7,8 +7,8 @@ if (empty($argv[1]) || !array_key_exists($argv[1], $GLOBALS['-corpora'])) {
 	die("No such language: {$argv[1]}\n");
 }
 
-@unlink("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite");
-$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite");
+@unlink("{$GLOBALS['CORP_ROOT']}/stats/tmp-{$argv[1]}.sqlite");
+$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/stats/tmp-{$argv[1]}.sqlite");
 
 $db->exec("PRAGMA journal_mode = delete");
 $db->exec("PRAGMA page_size = 65536");
@@ -78,5 +78,5 @@ fprintf(STDERR, "Vacuum\n");
 $db->exec("VACUUM");
 $db->exec("PRAGMA locking_mode = NORMAL");
 
-@unlink("{$GLOBALS['CORP_ROOT']}/corpora/{$argv[1]}.sqlite");
-rename("{$GLOBALS['CORP_ROOT']}/corpora/tmp-{$argv[1]}.sqlite", "{$GLOBALS['CORP_ROOT']}/corpora/{$argv[1]}.sqlite");
+@unlink("{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}.sqlite");
+rename("{$GLOBALS['CORP_ROOT']}/stats/tmp-{$argv[1]}.sqlite", "{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}.sqlite");

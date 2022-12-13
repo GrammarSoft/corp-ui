@@ -13,6 +13,17 @@ $GLOBALS['-fields'] = [
 	'role' => 'Semantic role',
 	'dself' => 'Dependency ID',
 	'dparent' => 'Dependency parent ID',
+
+	'h_word' => 'Head Wordform / surface form',
+	'h_lex' => 'Head Baseform / lemma',
+	'h_extra' => 'Head Extra',
+	'h_pos' => 'Head Part of speech',
+	'h_morph' => 'Head Morphology',
+	'h_func' => 'Head Syntactic function',
+	'h_role' => 'Head Semantic role',
+	'h_dself' => 'Head Dependency ID',
+	'h_dparent' => 'Head Dependency parent ID',
+
 	/*
 	'word_lc' => 'Wordform (lower cased)',
 	'word_nd' => 'Wordform (lower cased & transliterated)',

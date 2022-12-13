@@ -41,12 +41,16 @@ $checked = [
 	];
 
 $fields = '';
+$freq_fields = '';
 foreach ($GLOBALS['-fields'] as $k => $v) {
 	$sel = '';
 	if ($k === $_REQUEST['f']) {
 		$sel = ' selected';
 	}
-	$fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
+	if (substr($k, 0, 2) !== 'h_') {
+		$fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
+	}
+	$freq_fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
 }
 
 if (!empty($_REQUEST['xe'])) {
@@ -309,8 +313,7 @@ XSH;
 <div class="my-3">
 <label class="form-label" for="freq_field">Field</label>
 <select class="form-select" name="f" id="freq_field">
-	{$fields}
-	<option>TODO: Head fields</option>
+	{$freq_fields}
 </select>
 </div>
 <div class="my-3">
@@ -368,6 +371,21 @@ XHTML;
 		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
 	echo '</div></div>';
+
+	if ($_REQUEST['s'] !== 's') {
+		echo <<<XHTML
+<div class="card text-bg-light mb-3">
+<form method="GET">
+<input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="ub" value="{$h_unbound}">
+{$h_corps}
+<div class="card-body">
+<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="s" title="Back to search">Back to search</button></div>
+</form>
+</div></div>
+
+XHTML;
+	}
 	echo '</div>';
 
 	// Body of results
