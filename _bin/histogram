@@ -22,9 +22,9 @@ $db->exec("PRAGMA trusted_schema = OFF");
 
 $db->exec("CREATE TABLE counts (
 	c_which TEXT NOT NULL,
-	c_articles INTEGER NOT NULL,
-	c_sentences INTEGER NOT NULL,
-	c_hits INTEGER NOT NULL,
+	c_articles INTEGER NOT NULL DEFAULT 0,
+	c_sentences INTEGER NOT NULL DEFAULT 0,
+	c_hits INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY (c_which)
 ) WITHOUT ROWID");
 /*
@@ -54,6 +54,8 @@ $total = [
 	's' => 0,
 	'h' => 0,
 	];
+$mindate = 99999999;
+$maxdate = 0;
 $id = '';
 $art = '';
 while ($line = fgets(STDIN)) {
@@ -61,6 +63,8 @@ while ($line = fgets(STDIN)) {
 		$last['Y'] = intval($m[1]);
 		$last['Y-m'] = $last['Y']*100 + intval($m[2]);
 		$last['Y-m-d'] = $last['Y-m']*100 + intval($m[3]);
+		$mindate = min($mindate, $last['Y-m-d']);
+		$maxdate = max($maxdate, $last['Y-m-d']);
 		$last['H'] = intval($m[4]);
 		$last['Y-m-d H'] = $last['Y-m-d']*100 + $last['H'];
 	}
@@ -119,9 +123,9 @@ $cnt->execute(array_values($total));
 foreach ($hist as $y => $vs) {
 	$db->exec("CREATE TABLE hist_{$y} (
 		h_group INTEGER NOT NULL,
-		h_articles INTEGER NOT NULL,
-		h_sentences INTEGER NOT NULL,
-		h_hits INTEGER NOT NULL,
+		h_articles INTEGER NOT NULL DEFAULT 0,
+		h_sentences INTEGER NOT NULL DEFAULT 0,
+		h_hits INTEGER NOT NULL DEFAULT 0,
 		PRIMARY KEY (h_group)
 	) WITHOUT ROWID");
 	$ins_y = $db->prepare("INSERT INTO hist_{$y} (h_group, h_articles, h_sentences, h_hits) VALUES (?, ?, ?, ?)");
@@ -130,6 +134,38 @@ foreach ($hist as $y => $vs) {
 		$ins_y->execute([$k, $v['a'], $v['s'], $v['h']]);
 	}
 	$cnt->execute([$y, $vs[$y]['a'], $vs[$y]['s'], $vs[$y]['h']]);
+}
+
+$Y = 0;
+$day = new \DateInterval('P1D');
+$mindate = \DateTime::createFromFormat('Ymd', strval($mindate));
+$maxdate = \DateTime::createFromFormat('Ymd', strval($maxdate));
+for (; $mindate <= $maxdate ; $mindate->add($day)) {
+	$y = intval($mindate->format('Y'));
+	if ($Y != $y) {
+		$db->exec("CREATE TABLE IF NOT EXISTS hist_{$y} (
+			h_group INTEGER NOT NULL,
+			h_articles INTEGER NOT NULL DEFAULT 0,
+			h_sentences INTEGER NOT NULL DEFAULT 0,
+			h_hits INTEGER NOT NULL DEFAULT 0,
+			PRIMARY KEY (h_group)
+		) WITHOUT ROWID");
+		$cnt = $db->prepare("INSERT OR IGNORE INTO counts (c_which) VALUES (?)");
+		$ins_y = $db->prepare("INSERT OR IGNORE INTO hist_{$y} (h_group) VALUES (?)");
+		$Y = $y;
+	}
+
+	$cnt->execute([$Y]);
+	foreach (['Y', 'Ym', 'Ymd'] as $fmt) {
+		$val = intval($mindate->format($fmt));
+		$ins_y->execute([$val]);
+		if ($fmt === 'Ymd') {
+			for ($i=0 ; $i<24 ; ++$i) {
+				$ins_y->execute([$val*100 + $i]);
+				$ins_y->execute([$i]);
+			}
+		}
+	}
 }
 
 $db->commit();

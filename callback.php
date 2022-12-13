@@ -375,20 +375,25 @@ while ($a === 'hist') {
 				$res_h = $dbs[$corp]['hist']->prepexec("SELECT h_group + {$year}*100 as h_group, h_articles, h_sentences, h_hits FROM hist_{$year} WHERE h_group < 24");
 				$res_c = $dbs[$corp]['corp']->prepexec("SELECT h_group + {$year}*100 as h_group, h_articles, h_sentences, h_tokens, h_words FROM hist_{$year} WHERE h_group < 24");
 			}
+			while ($row = $res_h->fetch()) {
+				foreach ($row as $k => $v) {
+					$row[$k] = intval($v);
+				}
+				$rv['cs'][$corp]['h'][$row['h_group']] = array_values($row);
+			}
 			while ($row = $res_c->fetch()) {
 				foreach ($row as $k => $v) {
 					$row[$k] = intval($v);
 				}
 				$g = array_shift($row);
-				$rv['cs'][$corp]['h'][$g] = array_merge([$g, 0, 0, 0], array_values($row));
-			}
-			while ($row = $res_h->fetch()) {
-				foreach ($row as $k => $v) {
-					$row[$k] = intval($v);
+				if (array_key_exists($g, $rv['cs'][$corp]['h'])) {
+					$rv['cs'][$corp]['h'][$g] = array_merge($rv['cs'][$corp]['h'][$g], array_values($row));
 				}
-				$rv['cs'][$corp]['h'][$row['h_group']][1] = $row['h_articles'];
-				$rv['cs'][$corp]['h'][$row['h_group']][2] = $row['h_sentences'];
-				$rv['cs'][$corp]['h'][$row['h_group']][3] = $row['h_hits'];
+			}
+			foreach ($rv['cs'][$corp]['h'] as $g => $v) {
+				for ($i=1 ; $i<7 ; ++$i) {
+					$rv['cs'][$corp]['h'][$g][$i] = $rv['cs'][$corp]['h'][$g][$i] ?? -1;
+				}
 			}
 		}
 		$rv['cs'][$corp]['h'] = array_values($rv['cs'][$corp]['h']);

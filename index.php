@@ -36,6 +36,8 @@ $h_query = '';
 $checked = [
 	'lc' => '',
 	'nd' => '',
+	'xe' => '',
+	'xs' => '',
 	];
 
 $fields = '';
@@ -45,6 +47,13 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 		$sel = ' selected';
 	}
 	$fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
+}
+
+if (!empty($_REQUEST['xe'])) {
+	$checked['xe'] = 'checked';
+}
+if (!empty($_REQUEST['xs'])) {
+	$checked['xs'] = 'checked';
 }
 
 if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
@@ -281,10 +290,10 @@ XSH;
 	}
 
 	// Sidebar
-	// Frequency
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
-	echo '<div class="card text-bg-light mb-3"><div class="card-body">';
+	// Frequency
 	echo <<<XHTML
+<div class="card text-bg-light mb-3"><div class="card-body">
 <form method="GET">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
@@ -325,22 +334,33 @@ XSH;
 <label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
 </form>
+</div></div>
 
 XHTML;
-	echo '</div></div>';
+
 	// Histogram
-	echo '<div class="card text-bg-light mb-3">';
 	echo <<<XHTML
+<div class="card text-bg-light mb-3">
 <form method="GET">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
+<div class="card-body">
+<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram</button></div>
+<div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5"><option value="Y">Year</option><option value="Y-m">Year-Month</option><option value="Y-m-d" selected>Year-Month-Day</option><option value="Y-m-d H">Year-Month-Day Hour</option><option value="Y H">Year Hour-of-day</option></select></div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="xe" id="xe" {$checked['xe']}>
+<label class="form-check-label" for="xe">Expand empty ranges</label>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="xs" id="xs" {$checked['xs']}>
+<label class="form-check-label" for="xs">Expand sparse ranges</label>
+</div>
+</form>
+</div></div>
 
 XHTML;
-	echo '<div class="card-body"><div class="mb-3"><label for="qhistgroup" class="form-label fw-bold">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5"><option value="Y">Year</option><option value="Y-m">Year-Month</option><option value="Y-m-d" selected>Year-Month-Day</option><option value="Y-m-d H">Year-Month-Day Hour</option><option value="Y H">Year Hour-of-day</option></select></div>';
-	echo '<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram</button></div>';
-	echo '</form>';
-	echo '</div></div>';
+
 	// Page size & Focus field
 	echo '<div class="card text-bg-light mb-3">';
 	echo '<div class="card-body"><div class="mb-3"><label for="qpagesize" class="form-label fw-bold">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>';
@@ -367,7 +387,14 @@ XHTML;
 	}
 	else if ($_REQUEST['s'] === 'hist') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
-			echo '<div class="col qhist" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div>';
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			echo '<div class="col qhistgraph" id="graph-'.htmlspecialchars($s_corp).'-subc"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4"></span><div class="qbody"></div></div></div>';
+			echo '<div class="col qhistgraph" id="graph-'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4"></span><div class="qbody"></div></div></div>';
+		}
+		echo '</div>';
+		echo '<div class="row">';
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			echo '<div class="col qhist" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
 		}
 	}
 	echo '</div>';
