@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__.'/../_vendor/autoload.php';
 require_once __DIR__.'/config.php';
+require_once __DIR__.'/session.php';
 
 putenv('LC_ALL=C.UTF-8');
 setlocale(LC_ALL, 'C.UTF-8');

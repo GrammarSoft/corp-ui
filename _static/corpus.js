@@ -53,6 +53,7 @@
 		last_rv: null,
 		depc: 0,
 		histgs: {},
+		popup: null,
 		};
 
 	let fields = {};
@@ -84,6 +85,20 @@
 		$('.depParent').removeClass('depParent');
 		$(this).addClass('depSelf');
 		$('#t'+p).addClass('depParent');
+	}
+
+	function popupExport(e) {
+		e.preventDefault();
+		let href = $(this).attr('href');
+
+		if (state.popup && !state.popup.closed) {
+			state.popup.location = href;
+			state.popup.focus();
+			return;
+		}
+
+		state.popup = window.open(href, 'corp_export', 'left=100,top=100,width=400,height=600,popup');
+		console.log(state.popup);
 	}
 
 	function repaginate() {
@@ -414,7 +429,7 @@
 						}
 					}
 
-					let html = '<td><a href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
+					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
@@ -432,6 +447,8 @@
 					html += parts.s.join(' ');
 					html += '</td>';
 					row.html(html);
+
+					$(row).find('.popup-export').off().click(popupExport);
 				}
 
 				rq.cs[corp] = {};
