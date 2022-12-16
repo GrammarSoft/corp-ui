@@ -1,0 +1,91 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+/*
+ls -1 --color=no ~/storage/registry/ | grep -vF . | xargs -r -IX bash -c 'if [[ -s ~/storage/corpora/X ]]; then exit; fi; zstdcat X.cqp.zstd | uconv -f iso-8859-1 -t utf-8 | /usr/bin/time -o ~/work/X.time encodevert -c ~/storage/registry/X >~/work/X.log 2>&1'
+*/
+
+$names = explode("\n", trim(shell_exec('ls -1 --color=no registry/')));
+
+$order = [
+	'word',
+	'lex',
+	'extra',
+	'pos',
+	'morph',
+	'func',
+	'src',
+	'role',
+	'dself',
+	'dparent',
+	'endmark',
+	'h_word',
+	'h_lex',
+	'h_extra',
+	'h_pos',
+	'h_morph',
+	'h_func',
+	'h_role',
+	'h_dself',
+	'h_dparent',
+	'h_endmark',
+	];
+
+foreach ($names as $name) {
+	echo "Registry {$name}\n";
+	$oreg = file_get_contents("registry/$name");
+
+	$reg = '';
+	$reg .= "NAME \"{$name}\"\n";
+	$reg .= "ENCODING \"UTF-8\"\n";
+	$reg .= "PATH {$GLOBALS['CORP_ROOT']}/corpora/{$name}\n";
+	$reg .= "\n";
+
+	$had = [];
+	foreach ($order as $f) {
+		if (strpos($oreg, "\nATTRIBUTE {$f}\n") !== false) {
+			$had[$f] = true;
+			$reg .= "ATTRIBUTE {$f} {\n\tTYPE \"MD_MGD\"\n}\n";
+		}
+	}
+
+	if (strpos($oreg, "\nSTRUCTURE s") !== false) {
+		$reg .= "\nSTRUCTURE s {\n\tTYPE \"map64\"\n";
+		if (preg_match_all('~STRUCTURE s_(\S+)~', $oreg, $ms, PREG_PATTERN_ORDER)) {
+			foreach ($ms[1] as $m) {
+				$reg .= "\tATTRIBUTE {$m}\n";
+			}
+		}
+		$reg .= "}\n";
+	}
+
+	foreach (['word', 'lex'] as $f) {
+		if (array_key_exists($f, $had)) {
+			$reg .= <<<XAPP
+
+ATTRIBUTE {$f}_lc {
+	DYNAMIC utf8lowercase
+	DYNLIB internal
+	ARG1 "C"
+	FUNTYPE s
+	FROMATTR {$f}
+	DYNTYPE index
+	TRANSQUERY yes
+}
+ATTRIBUTE {$f}_nd {
+	DYNAMIC "/home/manatee/public_html/_bin/conv-lc-nd"
+	DYNLIB "pipe"
+	DYNTYPE index
+	FROMATTR {$f}
+	TRANSQUERY yes
+}
+
+XAPP;
+		}
+	}
+
+	file_put_contents("{$GLOBALS['CORP_ROOT']}/registry/{$name}", $reg);
+	shell_exec("rm -rf '{$GLOBALS['CORP_ROOT']}/corpora/{$name}'");
+}

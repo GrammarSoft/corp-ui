@@ -3,6 +3,30 @@ declare(strict_types=1);
 require_once __DIR__.'/_inc/lib.php';
 
 session();
+
+$_REQUEST['a'] = trim($_REQUEST['a'] ?? '');
+
+if ($_REQUEST['a'] === 'tsv') {
+	header('Content-Type: text/tab-separated-values; charset=UTF-8');
+	header('Content-disposition: attachment; filename=export.tsv');
+
+	echo "# Corpus\n";
+	echo "# Info\tText\n";
+	foreach ($_SESSION['exported'] as $corp => $txts) {
+		echo '# '.$corp."\n";
+		foreach ($txts as $id => $txt) {
+			echo $txt[0]."\t".$txt[1]."\n";
+		}
+		echo "\n";
+	}
+
+	die();
+}
+
+if ($_REQUEST['a'] === 'clear') {
+	unset($_SESSION['exported']);
+}
+
 ?>
 <!DOCTYPE html>
 <html>
@@ -17,6 +41,20 @@ session();
 </head>
 <body>
 <div class="container-fluid">
+<div class="row my-3">
+<div class="col">
+<form action="./export.php" method="post" target="_blank">
+<button class="btn btn-outline-success" name="a" value="tsv">Download TSV</button>
+</form>
+</div>
+<div class="col text-end">
+<form action="./export.php" method="post">
+<button class="btn btn-outline-danger" name="a" value="clear">Clear</button>
+</form>
+</div>
+</div>
+<div class="row my-3">
+<div class="col">
 <?php
 
 $_REQUEST['c'] = filter_corpora_k($_REQUEST['c'] ?? []);
@@ -54,6 +92,8 @@ if (!empty($_SESSION['exported'])) {
 	}
 }
 ?>
+</div>
+</div>
 </div>
 <script>
 let popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
