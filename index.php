@@ -1,28 +1,28 @@
 <?php
 declare(strict_types=1);
-?>
-<!DOCTYPE html>
-<html>
-<head>
-	<meta charset="UTF-8">
-	<title>VISL Corpora</title>
-
-	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
-	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0/dist/chart.umd.js"></script>
-
-	<script>let g_hash = ''; let g_hash_freq = '';</script>
-	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
-	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
-</head>
-<body>
-<?php
 require_once __DIR__.'/_inc/lib.php';
 
 $_REQUEST['c'] = filter_corpora_k($_REQUEST['c'] ?? []);
 $_REQUEST['q'] = trim(preg_replace('~[\r\n\t\s\pZ]+~su', ' ', $_REQUEST['q'] ?? ''));
+$_REQUEST['q2'] = trim(preg_replace('~[\r\n\t\s\pZ]+~su', ' ', $_REQUEST['q2'] ?? ''));
+
+$locked = [];
+foreach ($_REQUEST['c'] as $corp => $_) {
+	$sub = explode('-', $corp.'-');
+	$_SESSION['corpora'][$sub[0]] = true;
+	if ($GLOBALS['-corplist'][$sub[0]]['locked']) {
+		$locked[$sub[0]] = $sub[0];
+		$_SESSION['corpora'][$sub[0]] = false;
+	}
+}
+if ($locked) {
+	$GLOBALS['-auth']->init();
+	foreach ($locked as $corp) {
+		if ($GLOBALS['-auth']->check($corp)) {
+			unset($locked[$corp]);
+		}
+	}
+}
 
 $_REQUEST['f'] = trim($_REQUEST['f'] ?? 'word');
 if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
@@ -60,18 +60,91 @@ if (!empty($_REQUEST['xs'])) {
 	$checked['xs'] = 'checked';
 }
 
-if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
-	$query = $_REQUEST['q'];
-	if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
-		$_REQUEST['ub'] = 0;
+$query = $_REQUEST['q'];
+$query2 = $_REQUEST['q2'];
+if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
+	if (!empty($_REQUEST['nd'])) {
+		$query = '[word_nd="'.$query.'"]';
+	}
+	else if (!empty($_REQUEST['lc'])) {
+		$query = '[word_lc="'.$query.'"]';
+	}
+	else {
+		$query = '[word="'.$query.'"]';
+	}
+}
+if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
+	$_REQUEST['ub'] = 0;
+}
+
+$h_query = htmlspecialchars($query);
+$h_query2 = htmlspecialchars($query2);
+$h_unbound = '1';
+if (empty($_REQUEST['ub'])) {
+	$h_unbound = '';
+	$query = '('.$query.') within <s/>';
+}
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>VISL Corpora</title>
+
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0/dist/chart.umd.js"></script>
+
+	<script>let g_hash = ''; let g_hash_freq = '';</script>
+	<link href="_static/refine.css?<?=filemtime(__DIR__.'/_static/refine.css');?>" rel="stylesheet">
+	<script src="_static/refine.js?<?=filemtime(__DIR__.'/_static/refine.js');?>"></script>
+	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
+	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
+</head>
+<body>
+<?php
+
+if (!empty($locked)) {
+	echo '<div class="container-fluid my-3"><form method="POST"><div class="row flex-nowrap align-items-start"><div class="col">';
+	echo 'Please provide password(s) to access the following corpora:';
+	echo '<ul>';
+	foreach ($locked as $corp) {
+		echo '<li><tt>'.$corp.'</tt> '.htmlspecialchars($GLOBALS['-corplist'][$corp]['name']).'</li>';
+	}
+	echo '</ul>';
+	echo 'Multiple corpora may have the same password, in which case you only need to give it once. All passwords will be checked against all corpora.';
+	echo '<ul>';
+	for ($i=1 ; $i<=count($locked) ; ++$i) {
+		echo '<li>Password '.$i.': <input name="p['.$i.']" type="password"></li>';
+	}
+	echo '</ul>';
+
+	foreach ($_REQUEST as $k => $v) {
+		if ($k === 'p') {
+			continue;
+		}
+		if (is_array($v)) {
+			foreach ($v as $sk => $sv) {
+				echo '<input type="hidden" name="'.htmlspecialchars($k).'['.htmlspecialchars(strval($sk)).']" value="'.htmlspecialchars(strval($sv)).'">';
+			}
+		}
+		else {
+			echo '<input type="hidden" name="'.htmlspecialchars($k).'" value="'.htmlspecialchars(strval($v)).'">';
+		}
 	}
 
-	$h_query = htmlspecialchars($query);
-	$h_unbound = '1';
-	if (empty($_REQUEST['ub'])) {
-		$h_unbound = '';
-		$query = '('.$query.') within <s/>';
-	}
+	echo '<button type="submit" class="btn btn-warning">Unlock</button>';
+	echo '</div></div></form></div>';
+}
+else if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_REQUEST['p'])) {
+	unset($_REQUEST['p']);
+	header('Location: ./?'.http_build_query($_REQUEST));
+	die();
+}
+else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$field = $_REQUEST['f'];
 	$hash = sha256_lc20($query);
 	$hash_freq = '';
@@ -370,6 +443,7 @@ XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
+	echo '<button type="button" class="btn btn-outline-primary btnRefine">Refine</button>';
 	echo '</div></div>';
 
 	if ($_REQUEST['s'] !== 's') {
@@ -426,18 +500,65 @@ XHTML;
 
 <div class="container my-5">
 <form method="GET">
+<div class="row align-items-start row-cols-auto" id="refine">
+<div class="col">
+<div id="rs" class="rs">
+
+<table id="r" class="etable">
+<tr>
+<td rowspan="4" class="middle"><button type="button" onclick="refine.insert_before(this);">+</button></td>
+<td class="center colored">
+	<table class="inbox">
+	<tr>
+	<td><abbr class="where" title="Sub-query: Further narrowing within the sentences matched by the above query"></abbr></td>
+	<td class="topbox"><label><input type="radio" name="n" value="" checked> 1</label></td>
+	<td class="topbox"><label><input type="radio" name="n" value="+"> +</label></td>
+	<td class="topbox"><label><input type="radio" name="n" value="?"> ?</label></td>
+	<td class="topbox"><label><input type="radio" name="n" value="*"> *</label></td>
+	</tr>
+	</table>
+</td>
+<td rowspan="4" class="middle"><button type="button" onclick="refine.insert_after(this);">+</button></td>
+</tr>
+<tr>
+<td class="colored"><table><tr><td class="midbox colored"></td><td class="sibbox colored hidden"></td></tr></table></td>
+</tr>
+<tr class="depbox colored hidden">
+<td></td>
+</tr>
+<tr>
+<td class="center"><button type="button" onclick="refine.toggle_dependency(this);">Dep Head</button> &nbsp; <span class="btnSibling hidden"><button type="button" onclick="refine.toggle_sibling(this);">Sibling</button> &nbsp; </span><button type="button" onclick="refine.delete_table(this);">Delete</button></td>
+</tr>
+</table>
+
+</div>
+
+<div id="rs2" class="rs">
+</div>
+
+<div class="text-center">
+<button type="button" id="toggle_sq">Toggle Sub-Query</button>
+</div>
+</div>
+</div>
 <div class="row align-items-start row-cols-auto">
 <?php
-foreach ($GLOBALS['-corpora'] as $group => $cs) {
-	echo '<fieldset class="col"><legend>'.htmlspecialchars($GLOBALS['-groups'][$group]).'</legend>';
-	foreach ($cs as $corp => $vis) {
+foreach ($GLOBALS['-groups'] as $group => $gname) {
+	$total_ws = 0;
+	echo '<fieldset class="col"><legend>'.htmlspecialchars($gname).'</legend>';
+	foreach ($GLOBALS['-corpora'][$group] as $corp => $vis) {
 		$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
 		$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which='total'")->fetchAll()[0]['cnt']);
 		$checked = '';
 		if (!empty($_REQUEST['c'][$corp])) {
 			$checked = ' checked';
 		}
-		echo '<div class="form-check"><input class="form-check-input" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ( <span class="text-muted">'.number_format($ws/1000000.0, 1, '.', '').' M</span> )</label></div>';
+		$locked = '';
+		if ($vis['locked']) {
+			$locked = ' <span class="text-danger"><i class="bi bi-lock"></i></span>';
+		}
+		echo '<div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+		$total_ws += $ws;
 
 		if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
 			$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
@@ -445,9 +566,10 @@ foreach ($GLOBALS['-corpora'] as $group => $cs) {
 			if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
 				$checked = ' checked';
 			}
-			echo '<div class="form-check ms-3"><input class="form-check-input" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ( <span class="text-muted">'.number_format($ws/1000000.0, 1, '.', '').' M</span> )</label></div>';
+			echo '<div class="form-check ms-3"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
 		}
 	}
+	echo '<div class="my-3"><span class="text-muted">Total words: '.format_corpsize($total_ws).' M</span></div>';
 	echo '</fieldset>';
 }
 ?>
@@ -458,13 +580,31 @@ foreach ($GLOBALS['-corpora'] as $group => $cs) {
 		<span class="input-group-text" id="lbl_query">Query</span>
 		<input type="text" name="q" class="form-control" id="query" aria-describedby="lbl_query" value="<?=$h_query;?>">
 	</div>
+	<div class="input-group">
+		<span class="input-group-text" id="lbl_query2">SQ</span>
+		<input type="text" name="q2" class="form-control" id="query2" aria-describedby="lbl_query2" value="<?=$h_query2;?>">
+	</div>
 </div>
 <div class="col">
 	<button type="submit" class="btn btn-primary" name="s" value="s">Search</button>
-	<!-- <button type="submit" class="btn btn-outline-primary" name="s" value="r">Refine</button> -->
+	<button type="button" class="btn btn-outline-primary btnRefine">Refine</button>
 </div>
 </div>
 <div class="row my-3 align-items-start row-cols-auto">
+<div class="col">
+	<div class="form-check">
+		<input class="form-check-input" type="checkbox" name="vt" id="verbatim" <?=(empty($_REQUEST['vt']) ? '' : 'checked');?>>
+		<label class="form-check-label" for="verbatim">Don't detect CQL vs. plain text</label>
+	</div>
+	<div class="form-check ms-3">
+		<input class="form-check-input" type="checkbox" name="lc" id="icase" <?=(empty($_REQUEST['lc']) ? '' : 'checked');?>>
+		<label class="form-check-label" for="icase">Case-insensitive</label>
+	</div>
+	<div class="form-check ms-3">
+		<input class="form-check-input" type="checkbox" name="nd" id="idiac" <?=(empty($_REQUEST['nd']) ? '' : 'checked');?>>
+		<label class="form-check-label" for="idiac">Collapse diacritics</label>
+	</div>
+</div>
 <div class="col">
 	<div class="form-check">
 		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(empty($_REQUEST['ub']) ? '' : 'checked');?>>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 require_once __DIR__.'/../_inc/lib.php';
 
 /*
-ls -1 --color=no ~/storage/registry/ | grep -vF . | xargs -r -IX bash -c 'if [[ -s ~/storage/corpora/X ]]; then exit; fi; zstdcat X.cqp.zstd | uconv -f iso-8859-1 -t utf-8 | /usr/bin/time -o ~/work/X.time encodevert -c ~/storage/registry/X >~/work/X.log 2>&1'
+ls -1 --color=no ~/storage/registry/ | grep -vF . | xargs -P3 -r -IX bash -c 'if [[ -s ~/storage/corpora/X ]]; then exit; fi; zstdcat X.cqp.zstd | uconv -f iso-8859-1 -t utf-8 | /usr/bin/time -o ~/work/X.time encodevert -c ~/storage/registry/X >~/work/X.log 2>&1'
 */
 
 $names = explode("\n", trim(shell_exec('ls -1 --color=no registry/')));

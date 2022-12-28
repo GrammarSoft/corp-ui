@@ -1,0 +1,60 @@
+table, tr, td, th, tbody, thead, tfoot {
+	vertical-align: top;
+	text-align: left;
+}
+
+.inbox {
+	display: inline-block;
+}
+
+.colored {
+	background-color: lightblue;
+}
+.depbox {
+	background-color: aliceblue;
+}
+.sibbox {
+	background-color: aliceblue;
+}
+
+.rs {
+	text-align: center;
+	margin-top: 2ex;
+	margin-bottom: 2ex;
+	overflow-x: auto;
+	white-space: nowrap;
+}
+
+.rs > table {
+	display: inline-block;
+}
+
+.rs table table {
+	float: none;
+	clear: both;
+	margin: 0 auto;
+}
+
+.sstring {
+	width: 90%;
+}
+
+.topbox {
+	border: 1px solid black;
+}
+
+.smaller {
+	font-size: smaller;
+}
+
+.middle {
+	vertical-align: middle;
+}
+
+.center {
+	text-align: center;
+}
+
+.hidden {
+	display: none;
+}

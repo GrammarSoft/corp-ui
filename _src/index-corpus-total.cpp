@@ -69,7 +69,7 @@ int main() {
 		}
 		utext_openUTF8(tmp_ut, line);
 
-		if (line[0] == '<' && line[1] == 's' && line[2] == ' ') {
+		if (line[0] == '<' && line[1] == 's' && (line[2] == ' ' || line[2] == '>')) {
 			rx_lstamp.reset(&tmp_ut);
 			if (rx_lstamp.find()) {
 				auto b = rx_lstamp.start(1, status);
@@ -119,8 +119,10 @@ int main() {
 			continue;
 		}
 
-		for (auto& w : last) {
-			++hist[last[Y]][w]['t'];
+		if (last[Y]) {
+			for (auto& w : last) {
+				++hist[last[Y]][w]['t'];
+			}
 		}
 
 		++total[Total];
@@ -169,8 +171,10 @@ int main() {
 		}
 
 		if (tally) {
-			for (auto& w : last) {
-				++hist[last[Y]][w]['w'];
+			if (last[Y]) {
+				for (auto& w : last) {
+					++hist[last[Y]][w]['w'];
+				}
 			}
 
 			if (m[0].size() > 75) {
@@ -237,9 +241,10 @@ CREATE TABLE counts (
 
 	// Output histogram counts
 	auto keys = {'a', 's', 't', 'w'};
-	for (auto& ys : hist) {
-		auto tname = concat("hist_", std::to_string(ys.first));
-		sql.append(concat("CREATE TABLE ", tname, R"( (
+	if (last[Y]) {
+		for (auto& ys : hist) {
+			auto tname = concat("hist_", std::to_string(ys.first));
+			sql.append(concat("CREATE TABLE ", tname, R"( (
 	h_group INTEGER NOT NULL,
 	h_articles INTEGER NOT NULL,
 	h_sentences INTEGER NOT NULL,
@@ -249,19 +254,20 @@ CREATE TABLE counts (
 ) WITHOUT ROWID;
 
 )"));
-		auto fname = concat(tname, ".tsv");
-		auto out = fopen(fname.c_str(), "wb");
-		for (auto& sk : ys.second) {
-			fprintf(out, "%zu", sk.first);
-			for (auto& key : keys) {
-				fprintf(out, "\t%zu", sk.second[key]);
+			auto fname = concat(tname, ".tsv");
+			auto out = fopen(fname.c_str(), "wb");
+			for (auto& sk : ys.second) {
+				fprintf(out, "%zu", sk.first);
+				for (auto& key : keys) {
+					fprintf(out, "\t%zu", sk.second[key]);
+				}
+				fprintf(out, "\n");
 			}
-			fprintf(out, "\n");
+			fclose(out);
+			sql.append("BEGIN;\n");
+			sql.append(concat(".import ", fname, " ", tname, "\n"));
+			sql.append("COMMIT;\n\n");
 		}
-		fclose(out);
-		sql.append("BEGIN;\n");
-		sql.append(concat(".import ", fname, " ", tname, "\n"));
-		sql.append("COMMIT;\n\n");
 	}
 
 	// Output token frequencies

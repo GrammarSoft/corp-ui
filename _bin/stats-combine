@@ -74,6 +74,22 @@ foreach ($tbs as $tb) {
 	}
 }
 
+/*
+if (file_exists("{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}")) {
+	fprintf(STDERR, "Override frequencies\n");
+	$db->beginTransaction();
+	$ins = $db->prepare("INSERT INTO freq_total_word (f_text, f_abs, f_rel) VALUES (?, 0, ?) ON CONFLICT(f_text) DO UPDATE SET f_rel = ?");
+	$ov = explode("\n", trim(file_get_contents("{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}")));
+	foreach ($ov as $o) {
+		$o = explode(' ', $o);
+		$o[0] = str_replace('=', ' ', $o[0]);
+		$o[1] = floatval($o[1]);
+		$ins->execute([$o[0], $o[1], $o[1]]);
+	}
+	$db->commit();
+}
+//*/
+
 fprintf(STDERR, "Vacuum\n");
 $db->exec("VACUUM");
 $db->exec("PRAGMA locking_mode = NORMAL");

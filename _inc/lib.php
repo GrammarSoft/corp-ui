@@ -5,10 +5,18 @@ require_once __DIR__.'/../_vendor/autoload.php';
 require_once __DIR__.'/config.php';
 require_once __DIR__.'/session.php';
 
+$GLOBALS['-corplist'] = [];
+foreach ($GLOBALS['-corpora'] as $g => $cs) {
+	foreach ($cs as $corp => $data) {
+		$GLOBALS['-corplist'][$corp] =& $GLOBALS['-corpora'][$g][$corp];
+	}
+}
+
 putenv('LC_ALL=C.UTF-8');
 setlocale(LC_ALL, 'C.UTF-8');
 $GLOBALS['WEB_ROOT'] = dirname(__DIR__);
 $GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']).'/storage';
+$_REQUEST = array_merge($_GET, $_POST);
 
 $GLOBALS['-value-class'] = [
 	'word' => '~^[\pL][- \'`´\pL\pM]*$~u',
@@ -18,6 +26,20 @@ $GLOBALS['-value-class'] = [
 	'emoji' => '~^emo-~u',
 	'other' => '',
 	];
+
+if (PHP_SAPI !== 'cli') {
+	session();
+}
+
+require_once __DIR__.'/auth-base.php';
+if (file_exists(__DIR__.'/auth-impl.php')) {
+	require_once __DIR__.'/auth-impl.php';
+	$GLOBALS['-auth'] = new \AuthImpl;
+}
+else {
+	$GLOBALS['-auth'] = new \AuthBase;
+}
+$GLOBALS['-auth']->lock();
 
 function b64_slug($rv) {
 	$rv = base64_encode($rv);
@@ -38,17 +60,11 @@ function json_encode_vb($v, $o=0) {
 
 function filter_corpora_k($arr) {
 	foreach ($arr as $k => $v) {
-		$us = strpos($k, '_');
-		if ($us === false) {
-			unset($arr[$k]);
-			continue;
-		}
-		$g = substr($k, 0, $us);
 		$sub = explode('-', $k.'-');
-		if (empty($GLOBALS['-corpora'][$g][$sub[0]])) {
+		if (empty($GLOBALS['-corplist'][$sub[0]])) {
 			unset($arr[$k]);
 		}
-		if (!empty($sub[1]) && (empty($GLOBALS['-corpora'][$g][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corpora'][$g][$sub[0]]['subs']))) {
+		if (!empty($sub[1]) && (empty($GLOBALS['-corplist'][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corplist'][$sub[0]]['subs']))) {
 			unset($arr[$k]);
 		}
 	}
@@ -60,19 +76,20 @@ function filter_corpora_v($arr) {
 	sort($arr);
 	$arr = array_unique($arr);
 	foreach ($arr as $k => $v) {
-		$us = strpos($v, '_');
-		if ($us === false) {
-			unset($arr[$k]);
-			continue;
-		}
-		$g = substr($v, 0, $us);
 		$sub = explode('-', $v.'-');
-		if (empty($GLOBALS['-corpora'][$g][$sub[0]])) {
+		if (empty($GLOBALS['-corplist'][$sub[0]])) {
 			unset($arr[$k]);
 		}
-		if (!empty($sub[1]) && (empty($GLOBALS['-corpora'][$g][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corpora'][$g][$sub[0]]['subs']))) {
+		if (!empty($sub[1]) && (empty($GLOBALS['-corplist'][$sub[0]]['subs']) || !array_key_exists($sub[1], $GLOBALS['-corplist'][$sub[0]]['subs']))) {
 			unset($arr[$k]);
 		}
 	}
 	return array_values($arr);
+}
+
+function format_corpsize($ws) {
+	if ($ws < 10000000) {
+		return number_format($ws/1000000.0, 2, '.', '');
+	}
+	return number_format($ws/1000000.0, 1, '.', '');
 }

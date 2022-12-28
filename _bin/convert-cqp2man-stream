@@ -1,0 +1,95 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+/*
+ls -1 --color=no | xargs -P3 -r -IX bash -c 'echo "Start X"; zstdcat ../X.cqp.zstd | uconv -f iso-8859-1 -t utf-8 | ~/public_html/_bin/convert-cqp2man-stream X | zstd -T0 -8 -c >../X.manatee.zstd; echo "Stop X"'
+
+ls -1 --color=no | xargs -P3 -r -IX bash -c 'echo "Start X"; zstdcat ../X.manatee.zstd | grep "^<s " | head -n 100000 | egrep -o " [a-z0-9]+=" | sort | uniq | perl -wpne "s/ (\w+)=/\tATTRIBUTE \$1/g;" > ~/work/X.attr; echo "Stop X"'
+
+ls -1 --color=no | xargs -P3 -r -IX php -r '$x = file_get_contents("/home/manatee/storage/registry/X"); $a = file_get_contents("/home/manatee/work/X.attr"); $x = str_replace("STRUCTURE s {\n", "STRUCTURE s {\n$a", $x); file_put_contents("/home/manatee/storage/registry/X", $x);'
+
+ls -1 --color=no | xargs -P3 -r -IX bash -c 'echo "Start X"; rm -rf /home/manatee/storage/corpora/X; zstdcat ../X.manatee.zstd | /usr/bin/time -o ~/work/X.time encodevert -c ~/storage/registry/X >~/work/X.log 2>&1; echo "Stop X"'
+*/
+
+$reg = file_get_contents($argv[1]);
+$head = shell_exec("zstdcat ../{$argv[1]}.cqp.zstd 2>/dev/null | uconv -f iso-8859-1 -t utf-8 2>/dev/null | head -n 1000");
+
+$has_src = (strpos($reg, "ATTRIBUTE src\n") !== false);
+$has_s = preg_match('~(^|\n)<s[ >]~', $head);
+$has_cur = (strpos($head, "\n¤\t") !== false);
+
+fprintf(STDERR, "%s\tR%s\tS%s\tC%s\n", $argv[1], $has_src, $has_s, $has_cur);
+
+$sent = '';
+$s = '<s ';
+$i = 0;
+
+function flusher() {
+	global $sent;
+	global $s;
+	global $i;
+
+	if (empty($sent)) {
+		return;
+	}
+
+	++$i;
+	if (strpos($s, " id=\"{$i}\"") === false) {
+		$s = str_replace(' id="', ' oid="', $s);
+		$s .= "id=\"{$i}\" ";
+	}
+	echo trim($s).">\n";
+	echo "¤\t¤\t\tPU\t\tSTART\t\t_End!_\n";
+	echo $sent;
+	echo "</s>\n";
+	$sent = '';
+	$s = '<s ';
+}
+
+while ($line = fgets(STDIN)) {
+	$line = str_replace('__UNDEF__', '', $line);
+
+	if ($line === "</s>\n") {
+		flusher();
+		continue;
+	}
+	// Handle <s_id 4> ... </s_id> regions
+	if (preg_match('~^<s_(\w+) ([^>]+)>~', $line, $m)) {
+		$s .= "{$m[1]}=\"{$m[2]}\" ";
+		continue;
+	}
+	if (preg_match('~^<s[ >]~', $line)) {
+		continue;
+	}
+	if (preg_match('~^</s_~', $line)) {
+		continue;
+	}
+	if (preg_match('~^¤\t~u', $line)) {
+		if (preg_match('~^¤\t([^¤\t]+)~u', $line, $m)) {
+			$src = $m[1];
+			$src = str_replace('-', ' ', $src);
+			$src = preg_replace('~(\w+)=([^="]+)~', '$1="$2"', $src);
+			$src = preg_replace('~"(\w+)="~', '" $1="', $src);
+			$src = preg_replace('~stamp="(\d+) (\d+) (\d+) ~', 'stamp="$1-$2-$3 ', $src);
+			$s .= trim($src).' ';
+		}
+		flusher();
+		continue;
+	}
+
+	if ($has_src) {
+		$fs = explode("\t", $line);
+		if (!empty(trim($fs[6]))) {
+			$src = trim($fs[6]);
+			$src = preg_replace('~(\w+)=([^="]+)~', '$1="$2"', $src);
+			$src = preg_replace('~"(\w+)="~', '" $1="', $src);
+			$s .= trim($src).' ';
+			$fs[6] = '';
+			$line = implode("\t", $fs);
+		}
+	}
+	$sent .= $line;
+}
+flusher();

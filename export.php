@@ -2,8 +2,6 @@
 declare(strict_types=1);
 require_once __DIR__.'/_inc/lib.php';
 
-session();
-
 $_REQUEST['a'] = trim($_REQUEST['a'] ?? '');
 
 if ($_REQUEST['a'] === 'tsv') {
@@ -64,6 +62,9 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
 
+		if (!$_SESSION['corpora'][$s_corp]) {
+			break;
+		}
 		if (!empty($_SESSION['exported'][$s_corp][$_REQUEST['id']])) {
 			break;
 		}

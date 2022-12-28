@@ -116,6 +116,8 @@ while ($a === 'conc') {
 		if (file_exists("$hash-$corp.$context.sqlite") && filesize("$hash-$corp.$context.sqlite")) {
 			$ids = array_keys($c['rs']);
 			$db = new \TDC\PDO\SQLite("$hash-$corp.$context.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+			$fields = explode("\t", $db->prepexec("SELECT value FROM meta WHERE key = 'cols'")->fetchAll()[0]['value'] ?? '');
+			$rv['fs'][$corp] = $fields;
 			$exist = $db->prepexec("SELECT hit_id as i, c_begin as b, c_end as e, c_text as t FROM contexts WHERE hit_id IN (?".str_repeat(', ?', count($ids)-1).")", $ids)->fetchAll();
 			foreach ($exist as $e) {
 				unset($c['rs'][$e['i']]);
@@ -166,6 +168,10 @@ while ($a === 'conc') {
 
 				if (!empty($rngs)) {
 					[$s_corp,$subc] = explode('-', $corp.'-');
+					if (!$_SESSION['corpora'][$s_corp]) {
+						$rv['errors'][] = 'E060: No access to '.$_corp;
+						break;
+					}
 					$rngs = escapeshellarg(implode(';', $rngs));
 					//header('X-Context-Doing: '.$rngs);
 					$hash_rn = substr(sha256_lc20($rngs), 0, 8);
@@ -224,6 +230,10 @@ while ($a === 'freq') {
 			continue;
 		}
 		[$s_corp,$subc] = explode('-', $corp.'-');
+		if (!$_SESSION['corpora'][$s_corp]) {
+			$rv['errors'][] = 'E060: No access to '.$_corp;
+			break;
+		}
 		$dbs[$corp] = [
 			'freq' => new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
@@ -323,6 +333,10 @@ while ($a === 'hist') {
 			continue;
 		}
 		[$s_corp,$subc] = explode('-', $corp.'-');
+		if (!$_SESSION['corpora'][$s_corp]) {
+			$rv['errors'][] = 'E060: No access to '.$_corp;
+			break;
+		}
 		$dbs[$corp] = [
 			'hist' => new \TDC\PDO\SQLite("$hash-$corp.hist.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),

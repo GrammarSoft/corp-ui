@@ -42,6 +42,7 @@
 		rs: {},
 		ts: {},
 		cs: {},
+		fs: {},
 		focus: Defs.focus,
 		focus_n: Defs.focus_n,
 		context: Defs.context,
@@ -57,10 +58,8 @@
 		};
 
 	let fields = {};
-	let num_fields = 0;
 	'word	lex	extra	pos	morph	func	role	dself	dparent	word_lc	word_nd	lex_lc	lex_nd'.split(/\t/).forEach(function(e, i) {
 		fields[e] = i;
-		num_fields = i + 1;
 	});
 
 	// From https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions
@@ -279,6 +278,19 @@
 			}
 		}
 
+		if (rv.hasOwnProperty('fs')) {
+			for (let corp in rv.fs) {
+				state.fs[corp] = {
+					fields: [],
+					num_fields: rv.fs[corp].length,
+					};
+				for (let i=0 ; i<rv.fs[corp].length ; ++i) {
+					state.fs[corp].fields[rv.fs[corp][i]] = i;
+				}
+				//console.log(state.fs);
+			}
+		}
+
 		if (state.prev_max_n < state.max_n) {
 			repaginate();
 			state.prev_max_n = state.max_n;
@@ -319,6 +331,9 @@
 
 		if (rv.hasOwnProperty('cs')) {
 			for (let corp in rv.cs) {
+				let fields = state.fs[corp].fields;
+				let num_fields = state.fs[corp].num_fields;
+
 				for (let i=0 ; i<rv.cs[corp].length ; ++i) {
 					let cntx = rv.cs[corp][i];
 					if (rq.cs.hasOwnProperty(corp)) {
@@ -334,11 +349,17 @@
 					let s_id = '';
 
 					for (let j=0,n = cntx.b ; j<ts.length ; ++j) {
-						if (/^<s /.test(ts[j])) {
+						if (/^<s[ >]/.test(ts[j])) {
 							if (n <= p) {
 								s_tag = ts[j];
-								s_article = ts[j].match(/ (?:tweet|article|title)="([^"]+)"/)[1];
-								s_id = ts[j].match(/ id="([^"]+)"/)[1];
+								let m = ts[j].match(/ (?:tweet|article|title)="([^"]+)"/);
+								if (m) {
+									s_article = m[1];
+								}
+								m = ts[j].match(/ id="([^"]+)"/);
+								if (m) {
+									s_id = m[1];
+								}
 								//console.log([n, p, cntx.i]);
 							}
 						}
@@ -360,17 +381,21 @@
 						stz: 0,
 						};
 					let n = cntx.b;
-					let good = false;
+					let good = (s_id === '');
 					let named = Array.from(state.named);
 					let last_one = 0;
 					for (let j=0 ; j<ts.length ; ++j) {
-						if (/^<s /.test(ts[j])) {
+						if (/^<s[ >]/.test(ts[j])) {
 							if (ts[j].indexOf(' tweet="'+s_article+'"') !== -1) {
 								//console.log([cntx.i, j, n, s_tag]);
 								good = true;
 							}
+							else if (ts[j].indexOf(' id="'+s_id+'"') !== -1) {
+								//console.log([cntx.i, j, n, s_tag]);
+								good = true;
+							}
 							else {
-								good = false;
+								good = (s_id === '');
 							}
 						}
 						else if (/^<\/s>/.test(ts[j])) {
@@ -880,6 +905,14 @@
 		}
 
 		$('#btnRelS').prop('disabled', true).addClass('disabled');
+
+		$('#refine').hide();
+		state.refine = $('#refine').html();
+		$('.btnRefine').click(function() {
+			$('#refine').html(state.refine);
+			window.refine.init();
+			$('#refine').show();
+		});
 
 		// Concordances
 		if ($('.qresults').length) {
