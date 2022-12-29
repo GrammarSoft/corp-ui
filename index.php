@@ -566,7 +566,8 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 			if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
 				$checked = ' checked';
 			}
-			echo '<div class="form-check ms-3"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+			// '└' is U+2514 Box Drawings Light Up and Right
+			echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
 		}
 	}
 	echo '<div class="my-3"><span class="text-muted">Total words: '.format_corpsize($total_ws).' M</span></div>';

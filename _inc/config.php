@@ -55,17 +55,20 @@ $GLOBALS['-corpora'] = [
 		'dan_barelgazel' => [
 			'name' => 'dfk-barelgazel',
 			],
-		'dan_c2000' => [
-			'name' => 'Korpus2000',
-			],
 		'dan_c90' => [
 			'name' => 'Korpus90',
 			],
-		'dan_catma' => [
-			'name' => 'Stereotype Interviews',
+		'dan_c2000' => [
+			'name' => 'Korpus2000',
+			],
+		'dan_kdk2010_dep' => [
+			'name' => 'Korpus2010',
 			],
 		'dan_correct' => [
 			'name' => 'Corrected K90/2000',
+			],
+		'dan_catma' => [
+			'name' => 'Stereotype Interviews',
 			],
 		'dan_dfk_pol' => [
 			'name' => 'dfk-folketing',
@@ -109,9 +112,6 @@ $GLOBALS['-corpora'] = [
 		'dan_information_all' => [
 			'name' => 'Information 1996-2008',
 			],
-		'dan_kdk2010_dep' => [
-			'name' => 'Korpus2010',
-			],
 		'dan_leipzig' => [
 			'name' => 'Leipzig internet corpus',
 			],
@@ -130,6 +130,9 @@ $GLOBALS['-corpora'] = [
 		'dan_studiestart' => [
 			'name' => 'SpUni',
 			],
+		'dan_vimu2' => [
+			'name' => 'VIMU',
+			],
 		'dan_wiki_2018' => [
 			'name' => 'Wikipedia',
 			],
@@ -141,7 +144,6 @@ $GLOBALS['-corpora'] = [
 			'subs' => array_combine(range(2017, 2022), range(2017, 2022)),
 			],
 		/*
-		// ToDo: VIMU (VIMU2)
 		'dan_c2000a' => [
 			'name' => '',
 			],
