@@ -62,6 +62,7 @@ if (!empty($_REQUEST['xs'])) {
 
 $query = $_REQUEST['q'];
 $query2 = $_REQUEST['q2'];
+
 if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
 	if (!empty($_REQUEST['nd'])) {
 		$query = '[word_nd="'.$query.'"]';
@@ -73,7 +74,22 @@ if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query))
 		$query = '[word="'.$query.'"]';
 	}
 }
+if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[.*\]~', $query2)) {
+	if (!empty($_REQUEST['nd'])) {
+		$query2 = '[word_nd="'.$query2.'"]';
+	}
+	else if (!empty($_REQUEST['lc'])) {
+		$query2 = '[word_lc="'.$query2.'"]';
+	}
+	else {
+		$query2 = '[word="'.$query2.'"]';
+	}
+}
+
 if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
+	$_REQUEST['ub'] = 0;
+}
+if (preg_match('~\b(\d+):\[.*?\1\.~', $query2)) {
 	$_REQUEST['ub'] = 0;
 }
 
@@ -82,7 +98,15 @@ $h_query2 = htmlspecialchars($query2);
 $h_unbound = '1';
 if (empty($_REQUEST['ub'])) {
 	$h_unbound = '';
-	$query = '('.$query.') within <s/>';
+	if (!empty($query2)) {
+		$query = '('.$query2.') within (<s/> containing '.$query.')';
+	}
+	else {
+		$query = '('.$query.') within <s/>';
+	}
+}
+else if (!empty($query2)) {
+	$query = '('.$query2.') within ('.$query.')';
 }
 
 ?>
@@ -158,6 +182,21 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$h_corps = '';
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		$h_corps .= '<input type="hidden" name="c['.htmlspecialchars($corp).']" value="1">';
+	}
+
+	$has_hist = false;
+	$corps = [];
+	foreach ($_REQUEST['c'] as $corp => $_) {
+		[$s_corp,$subc] = explode('-', $corp.'-');
+		$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+		$corps[$s_corp] = [
+			'db' => $db,
+			'hist' => false,
+			];
+		if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
+			$corps[$s_corp]['hist'] = true;
+			$has_hist = true;
+		}
 	}
 
 	// Search
@@ -415,14 +454,15 @@ XSH;
 XHTML;
 
 	// Histogram
-	echo <<<XHTML
+	if ($has_hist) {
+		echo <<<XHTML
 <div class="card text-bg-light mb-3">
 <form method="GET">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="card-body">
-<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram</button></div>
+<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram <i class="bi bi-hourglass"></i></button></div>
 <div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5"><option value="Y">Year</option><option value="Y-m">Year-Month</option><option value="Y-m-d" selected>Year-Month-Day</option><option value="Y-m-d H">Year-Month-Day Hour</option><option value="Y H">Year Hour-of-day</option></select></div>
 <div class="my-3 form-check">
 <input class="form-check-input" type="checkbox" name="xe" id="xe" {$checked['xe']}>
@@ -436,6 +476,7 @@ XHTML;
 </div></div>
 
 XHTML;
+	}
 
 	// Page size & Focus field
 	echo '<div class="card text-bg-light mb-3">';
@@ -443,7 +484,7 @@ XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
-	echo '<button type="button" class="btn btn-outline-primary btnRefine">Refine</button>';
+	echo '<button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button>';
 	echo '</div></div>';
 
 	if ($_REQUEST['s'] !== 's') {
@@ -553,11 +594,14 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 		if (!empty($_REQUEST['c'][$corp])) {
 			$checked = ' checked';
 		}
-		$locked = '';
+		$icons = '';
 		if ($vis['locked']) {
-			$locked = ' <span class="text-danger"><i class="bi bi-lock"></i></span>';
+			$icons .= ' <span class="text-danger"><i class="bi bi-lock"></i></span>';
 		}
-		echo '<div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+		if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
+			$icons .= ' <span class="text-success"><i class="bi bi-hourglass"></i></span>';
+		}
+		echo '<div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
 		$total_ws += $ws;
 
 		if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
@@ -567,7 +611,7 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 				$checked = ' checked';
 			}
 			// '└' is U+2514 Box Drawings Light Up and Right
-			echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$locked.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
+			echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
 		}
 	}
 	echo '<div class="my-3"><span class="text-muted">Total words: '.format_corpsize($total_ws).' M</span></div>';
@@ -587,8 +631,8 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 	</div>
 </div>
 <div class="col">
-	<button type="submit" class="btn btn-primary" name="s" value="s">Search</button>
-	<button type="button" class="btn btn-outline-primary btnRefine">Refine</button>
+	<button type="submit" class="btn btn-primary" name="s" value="s">Search <i class="bi bi-search"></i></button>
+	<button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button>
 </div>
 </div>
 <div class="row my-3 align-items-start row-cols-auto">
@@ -609,7 +653,7 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 <div class="col">
 	<div class="form-check">
 		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(empty($_REQUEST['ub']) ? '' : 'checked');?>>
-		<label class="form-check-label" for="unbound">Allow query to exceed <code>&lt;s&gt;…&lt;/s&gt;</code> regions</label>
+		<label class="form-check-label" for="unbound">Don't wrap <code>(…) within &lt;s/&gt;</code></label>
 	</div>
 </div>
 </div>
