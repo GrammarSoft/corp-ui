@@ -26,27 +26,58 @@ $db->exec("PRAGMA trusted_schema = OFF");
 
 $db->exec("CREATE TABLE counts (
 	c_which TEXT NOT NULL,
-	c_total INTEGER NOT NULL DEFAULT 0,
-	c_words INTEGER NOT NULL DEFAULT 0,
-	c_numbers INTEGER NOT NULL DEFAULT 0,
-	c_alnums INTEGER NOT NULL DEFAULT 0,
-	c_puncts INTEGER NOT NULL DEFAULT 0,
-	c_emojis INTEGER NOT NULL DEFAULT 0,
-	c_other INTEGER NOT NULL DEFAULT 0,
+	c_total REAL NOT NULL DEFAULT 0.0,
+	c_words REAL NOT NULL DEFAULT 0.0,
+	c_numbers REAL NOT NULL DEFAULT 0.0,
+	c_alnums REAL NOT NULL DEFAULT 0.0,
+	c_puncts REAL NOT NULL DEFAULT 0.0,
+	c_emojis REAL NOT NULL DEFAULT 0.0,
+	c_other REAL NOT NULL DEFAULT 0.0,
 	PRIMARY KEY (c_which)
 ) WITHOUT ROWID");
 $db->query("INSERT INTO counts (c_which) VALUES ('total')");
 
-foreach ($GLOBALS['-corpora'][$argv[1]] as $corp => $_) {
+$total = 0;
+$totals = [];
+foreach ($GLOBALS['-corpora'][$argv[1]] as $corp => $c) {
+	if ($c['percent_combo'] <= 0.0001) {
+		continue;
+	}
 	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite' AS db_corp");
-	$db->query("UPDATE counts AS ci SET c_total = ci.c_total + co.c_total, c_words = ci.c_words + co.c_words, c_numbers = ci.c_numbers + co.c_numbers, c_alnums = ci.c_alnums + co.c_alnums, c_puncts = ci.c_puncts + co.c_puncts, c_emojis = ci.c_emojis + co.c_emojis, c_other = ci.c_other + co.c_other FROM (SELECT * FROM db_corp.counts WHERE c_which = 'total') AS co");
+	$totals[$corp] = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM db_corp.counts WHERE c_which = 'total'")->fetchAll()[0]['cnt']);
+	$total += $totals[$corp];
+
+	$db->query("DETACH db_corp");
+}
+
+$fact_total = 0;
+foreach ($GLOBALS['-corpora'][$argv[1]] as $corp => $c) {
+	if ($c['percent_combo'] <= 0.0001) {
+		continue;
+	}
+	if ($totals[$corp] == 0) {
+		continue;
+	}
+	$factor = ($c['percent_combo'] / 100.0) / ($totals[$corp] / floatval($total));
+	fprintf(STDERR, "{$corp}: ({$c['percent_combo']} / 100) / ({$totals[$corp]} / {$total}) = {$factor}\n");
+
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite' AS db_corp");
+	$db->query("UPDATE counts AS ci SET
+		c_total = ci.c_total + (co.c_total * {$factor}),
+		c_words = ci.c_words + (co.c_words * {$factor}),
+		c_numbers = ci.c_numbers + (co.c_numbers * {$factor}),
+		c_alnums = ci.c_alnums + (co.c_alnums * {$factor}),
+		c_puncts = ci.c_puncts + (co.c_puncts * {$factor}),
+		c_emojis = ci.c_emojis + (co.c_emojis * {$factor}),
+		c_other = ci.c_other + (co.c_other * {$factor})
+		FROM (SELECT * FROM db_corp.counts WHERE c_which = 'total') AS co");
 
 	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
 		fprintf(STDERR, "Importing %s %s\n", $corp, $f);
 		$db->beginTransaction();
 		$db->exec("CREATE TABLE IF NOT EXISTS freq_total_{$f} (
 			f_text TEXT NOT NULL,
-			f_abs INTEGER NOT NULL,
+			f_abs REAL NOT NULL,
 			f_rel REAL NOT NULL DEFAULT 0.0,
 			PRIMARY KEY (f_text)
 		) WITHOUT ROWID");
@@ -54,7 +85,7 @@ foreach ($GLOBALS['-corpora'][$argv[1]] as $corp => $_) {
 		$ins = $db->prepare("INSERT INTO freq_total_{$f} (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
 		$res = $db->prepexec("SELECT f_text, f_abs FROM db_corp.freq_total_{$f}");
 		while ($row = $res->fetch()) {
-			$ins->execute([$row['f_text'], $row['f_abs'], $row['f_abs']]);
+			$ins->execute([$row['f_text'], $row['f_abs'] * $factor, $row['f_abs'] * $factor]);
 		}
 		$db->commit();
 	}
@@ -69,26 +100,12 @@ foreach ($tbs as $tb) {
 	foreach (['word', 'lex', 'word_lc', 'lex_lc', 'word_nd', 'lex_nd'] as $f) {
 		$db->beginTransaction();
 		fprintf(STDERR, "Table %s %s\n", $tb['c_which'], $f);
+		// Delete values below 1 so they get the default frequency instead of being further punished
+		$db->prepexec("DELETE FROM freq_{$tb['c_which']}_{$f} WHERE f_abs < 1.0");
 		$db->prepexec("UPDATE freq_{$tb['c_which']}_{$f} SET f_rel = CAST(f_abs AS REAL) * ?", [$scaled]);
 		$db->commit();
 	}
 }
-
-/*
-if (file_exists("{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}")) {
-	fprintf(STDERR, "Override frequencies\n");
-	$db->beginTransaction();
-	$ins = $db->prepare("INSERT INTO freq_total_word (f_text, f_abs, f_rel) VALUES (?, 0, ?) ON CONFLICT(f_text) DO UPDATE SET f_rel = ?");
-	$ov = explode("\n", trim(file_get_contents("{$GLOBALS['CORP_ROOT']}/stats/{$argv[1]}")));
-	foreach ($ov as $o) {
-		$o = explode(' ', $o);
-		$o[0] = str_replace('=', ' ', $o[0]);
-		$o[1] = floatval($o[1]);
-		$ins->execute([$o[0], $o[1], $o[1]]);
-	}
-	$db->commit();
-}
-//*/
 
 fprintf(STDERR, "Vacuum\n");
 $db->exec("VACUUM");
