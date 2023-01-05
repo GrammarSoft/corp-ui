@@ -91,7 +91,7 @@ auto conv_nd = [&](std::string_view org) {
 UText tmp_ut = UTEXT_INITIALIZER;
 RegexMatcher rx_stamp(UnicodeString::fromUTF8(R"X( stamp="(\d+)-(\d+)-(\d+) (\d+))X"), UREGEX_CASE_INSENSITIVE, status);
 RegexMatcher rx_lstamp(UnicodeString::fromUTF8(R"X( lstamp="(\d+)-(\d+)-(\d+) (\d+))X"), UREGEX_CASE_INSENSITIVE, status);
-RegexMatcher rx_article(UnicodeString::fromUTF8(R"X( (?:tweet|article|title)="([^"]+))X"), UREGEX_CASE_INSENSITIVE, status);
+RegexMatcher rx_article(UnicodeString::fromUTF8(R"X( (?:tweet|article|title|oid)="([^"]+))X"), UREGEX_CASE_INSENSITIVE, status);
 RegexMatcher rx_curc(UnicodeString::fromUTF8(R"X(^¤+\t)X"), 0, status);
 
 RegexMatcher rx_word(UnicodeString::fromUTF8(R"X(^[\p{L}][- '`´\p{L}\p{M}]*$)X"), 0, status);

@@ -362,8 +362,7 @@
 		return vals;
 	}
 
-	function parse_search(where, which) {
-		let q = $.trim($(which).val());
+	function parse_search(where, q) {
 		if (!q) {
 			if (where !== '#rs2') {
 				$(where).append(create_table());
@@ -487,6 +486,9 @@
 	}
 
 	function init() {
+		let url = new URL(window.location);
+		let params = url.searchParams;
+
 		rs = $('#rs');
 		rs2 = $('#rs2');
 
@@ -508,6 +510,9 @@
 		let cs = $('.chkCorpus:checked');
 		if (cs.length) {
 			config = '_static/refine/' + cs.first().attr('name').substr(2, 3) + '.xml';
+		}
+		if (params.has('l') && params.get('l') !== 'mul' && /^[a-z]{3}$/.test(params.get('l'))) {
+			config = '_static/refine/' + params.get('l') + '.xml';
 		}
 		$.get(config, null, function(xml) {
 			xml = xml.replace(/="([^"]+)"/g, xml_fixer);
@@ -625,8 +630,9 @@
 			});
 			//console.log(values);
 
-			parse_search('#rs', '#query');
-			parse_search('#rs2', '#query2');
+			let qs = [$.trim($('#query').val()), $.trim($('#query2').val())];
+			parse_search('#rs', qs[0]);
+			parse_search('#rs2', qs[1]);
 			update_search();
 			$('#rs').find('input[type="text"]').first().focus();
 		}, 'html');

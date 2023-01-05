@@ -35,19 +35,19 @@ $GLOBALS['-fields'] = [
 $GLOBALS['-scale'] = floatval(100000.0);
 
 $GLOBALS['-groups'] = [
-	'dan' => 'Danish',
-	'eng' => 'English',
-	'epo' => 'Esperanto',
-	'fao' => 'Faroese',
-	'fra' => 'French',
-	'deu' => 'German',
-	'ice' => 'Icelandic',
-	'ita' => 'Italian',
-	'nor' => 'Norwegian',
-	'por' => 'Portuguese',
-	'ron' => 'Romanian',
-	'spa' => 'Spanish',
-	'swe' => 'Swedish',
+	'dan' => ['name' => 'Danish', 'flag' => 'dk'],
+	'eng' => ['name' => 'English', 'flag' => 'gb'],
+	'epo' => ['name' => 'Esperanto', 'flag' => '_static/imgs/epo.svg'],
+	'fao' => ['name' => 'Faroese', 'flag' => 'fo'],
+	'fra' => ['name' => 'French', 'flag' => 'fr'],
+	'deu' => ['name' => 'German', 'flag' => 'de'],
+	'ice' => ['name' => 'Icelandic', 'flag' => 'is'],
+	'ita' => ['name' => 'Italian', 'flag' => 'it'],
+	'nor' => ['name' => 'Norwegian', 'flag' => 'no'],
+	'por' => ['name' => 'Portuguese', 'flag' => 'pt'],
+	'ron' => ['name' => 'Romanian', 'flag' => 'ro'],
+	'spa' => ['name' => 'Spanish', 'flag' => 'es'],
+	'swe' => ['name' => 'Swedish', 'flag' => 'se'],
 	];
 
 $GLOBALS['-corpora'] = [
@@ -121,9 +121,10 @@ $GLOBALS['-corpora'] = [
 		'dan_firma_3' => [
 			'name' => 'Firma_3',
 			],
-		'dan_information_all' => [
+		'dan_information' => [
 			'name' => 'Information 1996-2008',
 			'percent_combo' => 15,
+			'subs' => array_combine(range(1996, 2008), range(1996, 2008)),
 			],
 		'dan_leipzig' => [
 			'name' => 'Leipzig internet corpus',
@@ -158,26 +159,6 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 25,
 			'subs' => array_combine(range(2017, 2022), range(2017, 2022)),
 			],
-		/*
-		'dan_c2000a' => [
-			'name' => '',
-			],
-		'dan_information_a' => [
-			'name' => 'Information 1996-2000',
-			],
-		'dan_information_b' => [
-			'name' => 'Information 2000-2004',
-			],
-		'dan_information_c' => [
-			'name' => 'Information 2004-2008',
-			],
-		'dan_kdk2010' => [
-			'name' => 'Korpus2010',
-			],
-		'dan_wiki' => [
-			'name' => 'Wikipedia',
-			],
-		//*/
 		],
 	'deu' => [
 		'deu_europarl' => [
@@ -258,11 +239,11 @@ $GLOBALS['-corpora'] = [
 			],
 		'eng_bnc_written' => [
 			'name' => 'BNC-written',
-			'percent_combo' => 15,
+			'percent_combo' => 22,
 			],
 		'eng_bnc_spoken' => [
 			'name' => 'BNC-spoken',
-			'percent_combo' => 15,
+			'percent_combo' => 8,
 			],
 		'eng_chat' => [
 			'name' => 'Chat corpus',

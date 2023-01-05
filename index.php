@@ -24,6 +24,8 @@ if ($locked) {
 	}
 }
 
+$h_language = htmlspecialchars(trim($_REQUEST['l'] ?? ''));
+
 $_REQUEST['f'] = trim($_REQUEST['f'] ?? 'word');
 if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 	$_REQUEST['f'] = 'word';
@@ -121,6 +123,8 @@ else if (!empty($query2)) {
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0/dist/chart.umd.js"></script>
+
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
 
 	<script>let g_hash = ''; let g_hash_freq = '';</script>
 	<link href="_static/refine.css?<?=filemtime(__DIR__.'/_static/refine.css');?>" rel="stylesheet">
@@ -411,6 +415,7 @@ XSH;
 	echo <<<XHTML
 <div class="card text-bg-light mb-3"><div class="card-body">
 <form method="GET">
+<input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
@@ -458,6 +463,7 @@ XHTML;
 		echo <<<XHTML
 <div class="card text-bg-light mb-3">
 <form method="GET">
+<input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
@@ -491,6 +497,7 @@ XHTML;
 		echo <<<XHTML
 <div class="card text-bg-light mb-3">
 <form method="GET">
+<input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
@@ -540,7 +547,25 @@ XHTML;
 ?>
 
 <div class="container my-5">
+<?php
+if (empty($h_language)) {
+	echo '<div class="row align-items-start row-cols-auto">';
+	foreach ($GLOBALS['-groups'] as $group => $g) {
+		$total_ws = 0;
+		$flag = '<span class="fi fi-'.$g['flag'].'"></span>';
+		if (strlen($g['flag']) > 2) {
+			$flag = '<span class="fi" style="background-image: url('.$g['flag'].')"></span>';
+		}
+
+		echo '<div class="col-3 my-3"><a class="text-decoration-none fs-3" href="./?l='.$group.'">'.$flag.' '.htmlspecialchars($g['name']).'</a></div>';
+	}
+	echo '<div class="col-12 my-3"><a class="text-decoration-none fs-3" href="./?l=mul">All languages</a></div>';
+	echo '</div>';
+}
+else {
+?>
 <form method="GET">
+<input type="hidden" name="l" value="<?=$h_language;?>">
 <div class="row align-items-start row-cols-auto" id="refine">
 <div class="col">
 <div id="rs" class="rs">
@@ -582,43 +607,7 @@ XHTML;
 </div>
 </div>
 </div>
-<div class="row align-items-start row-cols-auto">
-<?php
-foreach ($GLOBALS['-groups'] as $group => $gname) {
-	$total_ws = 0;
-	echo '<fieldset class="col"><legend>'.htmlspecialchars($gname).'</legend>';
-	foreach ($GLOBALS['-corpora'][$group] as $corp => $vis) {
-		$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
-		$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which='total'")->fetchAll()[0]['cnt']);
-		$checked = '';
-		if (!empty($_REQUEST['c'][$corp])) {
-			$checked = ' checked';
-		}
-		$icons = '';
-		if ($vis['locked']) {
-			$icons .= ' <span class="text-danger"><i class="bi bi-lock"></i></span>';
-		}
-		if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
-			$icons .= ' <span class="text-success"><i class="bi bi-hourglass"></i></span>';
-		}
-		echo '<div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
-		$total_ws += $ws;
 
-		if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
-			$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
-			$checked = '';
-			if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
-				$checked = ' checked';
-			}
-			// '└' is U+2514 Box Drawings Light Up and Right
-			echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
-		}
-	}
-	echo '<div class="my-3"><span class="text-muted">Total words: '.format_corpsize($total_ws).' M</span></div>';
-	echo '</fieldset>';
-}
-?>
-</div>
 <div class="row my-3 align-items-start row-cols-auto">
 <div class="col-6">
 	<div class="input-group">
@@ -635,6 +624,7 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 	<button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button>
 </div>
 </div>
+
 <div class="row my-3 align-items-start row-cols-auto">
 <div class="col">
 	<div class="form-check">
@@ -657,7 +647,63 @@ foreach ($GLOBALS['-groups'] as $group => $gname) {
 	</div>
 </div>
 </div>
+
+<div class="row align-items-start row-cols-auto">
+<?php
+	foreach ($GLOBALS['-groups'] as $group => $g) {
+		if ($h_language != $group && $h_language != 'mul') {
+			continue;
+		}
+		$total_ws = 0;
+		$flag = '<span class="fi fi-'.$g['flag'].'"></span>';
+		if (strlen($g['flag']) > 2) {
+			$flag = '<span class="fi" style="background-image: url('.$g['flag'].')"></span>';
+		}
+
+		echo '<fieldset class="col"><legend>'.$flag.' '.htmlspecialchars($g['name']).'</legend><div class="columns">';
+		foreach ($GLOBALS['-corpora'][$group] as $corp => $vis) {
+			$db = new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+			$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which='total'")->fetchAll()[0]['cnt']);
+			$checked = '';
+			if (!empty($_REQUEST['c'][$corp])) {
+				$checked = ' checked';
+			}
+			$icons = '';
+			if ($vis['locked']) {
+				$icons .= ' <span class="text-danger" title="Requires password"><i class="bi bi-lock"></i></span>';
+			}
+			if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
+				$icons .= ' <span class="text-success" title="Histogram available"><i class="bi bi-hourglass"></i></span>';
+			}
+			echo '<div><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+			$total_ws += $ws;
+
+			if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
+				$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
+				$checked = '';
+				if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
+					$checked = ' checked';
+				}
+				// '└' is U+2514 Box Drawings Light Up and Right
+				echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
+			}
+			echo '</div>';
+		}
+		echo '</div><div class="my-3"><span class="text-muted">Total words: '.format_corpsize($total_ws).' M</span></div>';
+		echo '</fieldset>';
+		echo '<div class="w-100"></div>';
+	}
+?>
+<div class="my-3">
+	<span class="text-danger"><i class="bi bi-lock"></i></span> Requires password,
+	<span class="text-success"><i class="bi bi-hourglass"></i></span> Histogram available
+</div>
+</div>
+
 </form>
+<?php
+}
+?>
 </div>
 
 </body>

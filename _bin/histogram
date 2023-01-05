@@ -68,6 +68,15 @@ while ($line = fgets(STDIN)) {
 		$last['H'] = intval($m[4]);
 		$last['Y-m-d H'] = $last['Y-m-d']*100 + $last['H'];
 	}
+	else if (preg_match('~ lstamp="(\d+)-(\d+)-(\d+)"~', $line, $m)) {
+		$last['Y'] = intval($m[1]);
+		$last['Y-m'] = $last['Y']*100 + intval($m[2]);
+		$last['Y-m-d'] = $last['Y-m']*100 + intval($m[3]);
+		$mindate = min($mindate, $last['Y-m-d']);
+		$maxdate = max($maxdate, $last['Y-m-d']);
+		$last['H'] = 0;
+		$last['Y-m-d H'] = $last['Y-m-d']*100;
+	}
 
 	foreach ($last as $v) {
 		if (empty($hist[$last['Y']][$v])) {
@@ -97,7 +106,7 @@ while ($line = fgets(STDIN)) {
 			$id = $m[1];
 		}
 	}
-	if (preg_match('~ (?:tweet|article|title)="([^"]+)"~', $line, $m)) {
+	if (preg_match('~ (?:tweet|article|title|oid)="([^"]+)"~', $line, $m)) {
 		if ($art !== $m[1]) {
 			foreach ($last as $v) {
 				if (empty($hist[$last['Y']][$v])) {
