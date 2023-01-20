@@ -86,7 +86,7 @@ if (!empty($_SESSION['exported'])) {
 		echo '<h4>'.htmlspecialchars($corp).'</h4>'."\n";
 		echo '<table class="table table-striped table-hover my-3"><thead><tr><th><i class="bi bi-info-square"></i></th><th>Sentence</th></tr></thead><tbody>'."\n";
 		foreach ($txts as $id => $txt) {
-			echo '<tr><td><a data-bs-toggle="popover" title="'.htmlspecialchars($txt[0]).'"><i class="bi bi-info-square"></i></a></td><td>'.htmlspecialchars($txt[1]).'</td></tr>'."\n";
+			echo '<tr><td><a data-bs-toggle="popover" data-bs-placement="bottom" title="'.htmlspecialchars($txt[0]).'"><i class="bi bi-info-square"></i></a></td><td>'.htmlspecialchars($txt[1]).'</td></tr>'."\n";
 		}
 		echo '</tbody></table>'."\n";
 		echo "\n";

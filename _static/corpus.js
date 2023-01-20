@@ -75,7 +75,7 @@
 		if (typeof(t) !== 'string') {
 			t = t.toString();
 		}
-		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '"').replace(/'/g, '&apos;');
+		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 	}
 
 	function showParent() {
@@ -429,23 +429,54 @@
 								++state.depc;
 
 								let ins = tabs[0].replace(/[ \s\t]/g, '_');
-								let title = escHTML(tabs.slice(0, -4).join("\n"));
+								let title = '<div class="text-center">';
+								for (let f in fields) {
+									if (/_(lc|nd)$/.test(f) || f === 'dself' || f === 'dparent') {
+										continue;
+									}
+									if (!tabs[fields[f]]) {
+										continue;
+									}
+									if (f === 'word') {
+										title += '<span class="text-danger">';
+									}
+									else if (f === 'pos') {
+										title += '<span class="text-primary">';
+									}
+									else if (f === 'func') {
+										title += '<span class="text-success fw-bold">';
+									}
+									else if (f === 'role') {
+										title += '<span class="fw-bold">';
+									}
+									else {
+										title += '<span>';
+									}
+									title += escHTML(tabs[fields[f]]);
+									title += '</span><br>';
+								}
+								if (fields.hasOwnProperty('dself') && fields.hasOwnProperty('dparent') && tabs[fields['dself']] && tabs[fields['dparent']]) {
+									title += '<span>'+tabs[fields['dself']]+' → '+tabs[fields['dparent']]+'</span>';
+								}
+								title += '</div>';
+								title = escHTML(title);
+
 								if (n < p) {
-									parts.p.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.p.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.pz.push(u_length(tabs[0]));
 									parts.ptz += u_length(tabs[0]) + 1;
 								}
 								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
-									parts.m.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(tabs[0].length).trim();
 								}
 								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
-									parts.m.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
 									named.shift();
 								}
 								else {
-									parts.s.push('<span title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.s.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.sz.push(u_length(tabs[0]));
 									parts.stz += u_length(tabs[0]) + 1;
 								}
@@ -454,7 +485,11 @@
 						}
 					}
 
-					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a></td><td class="text-end">';
+					let info = '<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="bottom" title="'+escHTML(s_tag)+'"><i class="bi bi-info-square"></i></a>';
+					if (s_article) {
+						info = '<a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
+					}
+					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
@@ -473,6 +508,8 @@
 					html += '</td>';
 					row.html(html);
 
+					let popoverTriggerList = row.get(0).querySelectorAll('[data-bs-toggle="popover"]');
+					let popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 					$(row).find('.popup-export').off().click(popupExport);
 				}
 

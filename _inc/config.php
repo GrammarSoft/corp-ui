@@ -77,6 +77,10 @@ $GLOBALS['-corpora'] = [
 		'dan_dfk_pol' => [
 			'name' => 'dfk-folketing',
 			],
+		'dan_epicle' => [
+			'name' => 'Epicle',
+			'percent_combo' => 0,
+			],
 		'dan_europarl' => [
 			'name' => 'Europarl',
 			'percent_combo' => 10,
