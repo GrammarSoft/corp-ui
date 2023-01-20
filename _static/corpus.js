@@ -703,6 +703,8 @@
 			cs: [],
 			};
 
+		let by_art = (params.has('ha') && params.get('ha'));
+
 		$('.qpages').hide();
 		let to_render = {};
 
@@ -750,6 +752,9 @@
 				html += '<thead><tr><th>Group</th><th class="text-vertical">Articles</th><th class="text-vertical">Sentences</th><th class="text-vertical">Hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
+					if (rv.cs[corp].h[i][1] <= 0) {
+						continue;
+					}
 					html += '<tr><td>'+escHTML(rv.cs[corp].h[i][0])+'</td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
 				}
 				html += '</tbody></table>';
@@ -775,6 +780,15 @@
 			}
 		}
 
+		let f_hits = 3;
+		let f_aggr = 5;
+		let f_label = '% Hits/CSentences';
+		if (by_art) {
+			f_hits = 1;
+			f_aggr = 4;
+			f_label = '% Articles/CArticles';
+		}
+
 		for (let corp in to_render) {
 			let c = $('#graph-'+corp);
 
@@ -784,11 +798,11 @@
 			let max = 0;
 			for (let k=0 ; k<to_render[corp].length ; ++k) {
 				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
-					max = Math.max(max, to_render[corp][k][i][5]);
+					max = Math.max(max, to_render[corp][k][i][f_aggr]);
 				}
 			}
 			max = max/10.0;
-			console.log(max);
+			//console.log(max);
 
 			for (let k=0 ; k<to_render[corp].length ; ++k) {
 				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
@@ -814,7 +828,7 @@
 					if (!params.has('xe') && to_render[corp][k][i][1] === 0) {
 						to_p = '- skip -';
 					}
-					if (!params.has('xs') && to_render[corp][k][i][5] < max) {
+					if (!params.has('xs') && to_render[corp][k][i][f_aggr] < max) {
 						to_p = '- sparse -';
 					}
 
@@ -831,7 +845,7 @@
 			}
 			g.pop();
 			gs.push(g);
-			console.log(gs);
+			//console.log(gs);
 
 			let html = '';
 			for (let k=0 ; k<gs.length ; ++k) {
@@ -862,14 +876,14 @@
 					}
 
 					labels.push(gs[k][i][0]);
-					if (gs[k][i][5] < 1) {
+					if (gs[k][i][f_aggr] < 1) {
 						bars.push(0);
 						c_bars.push('rgba(64, 64, 64, 0.2)');
 						c_borders.push('rgb(64, 64, 64)');
 					}
 					else {
-						bars.push(gs[k][i][3]*100.0 / gs[k][i][5]);
-						if (gs[k][i][5] < max) {
+						bars.push(gs[k][i][f_hits]*100.0 / gs[k][i][f_aggr]);
+						if (gs[k][i][f_aggr] < max) {
 							c_bars.push('rgba(255, 159, 64, 0.2)');
 							c_borders.push('rgb(255, 159, 64)');
 						}
@@ -887,7 +901,7 @@
 							datasets: [
 								{
 									type: 'bar',
-									label: '% Hits/CSentences',
+									label: f_label,
 									data: bars,
 									backgroundColor: c_bars,
 									borderColor: c_borders,

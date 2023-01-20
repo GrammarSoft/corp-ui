@@ -469,7 +469,17 @@ XHTML;
 {$h_corps}
 <div class="card-body">
 <div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram <i class="bi bi-hourglass"></i></button></div>
-<div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5"><option value="Y">Year</option><option value="Y-m">Year-Month</option><option value="Y-m-d" selected>Year-Month-Day</option><option value="Y-m-d H">Year-Month-Day Hour</option><option value="Y H">Year Hour-of-day</option></select></div>
+<div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5">
+<option value="Y">Year</option>
+<option value="Y-m">Year-Month</option>
+<option value="Y-m-d" selected>Year-Month-Day</option>
+<option value="Y-m-d H">Year-Month-Day Hour</option>
+<option value="Y H">Year Hour-of-day</option>
+</select></div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="ha" id="ha" {$checked['ha']}>
+<label class="form-check-label" for="ha">Aggregate articles instead of sentences</label>
+</div>
 <div class="my-3 form-check">
 <input class="form-check-input" type="checkbox" name="xe" id="xe" {$checked['xe']}>
 <label class="form-check-label" for="xe">Expand empty ranges</label>
