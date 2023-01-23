@@ -38,6 +38,7 @@ $h_query = '';
 $checked = [
 	'lc' => '',
 	'nd' => '',
+	'ha' => '',
 	'xe' => '',
 	'xs' => '',
 	];
@@ -55,6 +56,9 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 	$freq_fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
 }
 
+if (!empty($_REQUEST['ha'])) {
+	$checked['ha'] = 'checked';
+}
 if (!empty($_REQUEST['xe'])) {
 	$checked['xe'] = 'checked';
 }

@@ -67,6 +67,17 @@
 		return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 	}
 
+	// From https://github.com/eligrey/FileSaver.js/issues/774
+	function saveAs(blob, name) {
+		const a = document.createElementNS('http://www.w3.org/1999/xhtml', 'a');
+		a.download = name;
+		a.rel = 'noopener';
+		a.href = URL.createObjectURL(blob);
+
+		setTimeout(() => URL.revokeObjectURL(a.href), 40000);
+		setTimeout(() => a.click(), 100);
+	}
+
 	function u_length(str) {
 		return [...str].length;
 	}
@@ -610,6 +621,7 @@
 				}
 
 				let url = new URL(window.location.origin + window.location.pathname);
+				url.searchParams.set('l', params.get('l'));
 				url.searchParams.set('c['+corp+']', '1');
 				url.searchParams.set('s', 's');
 				if (params.has('ub') && params.get('ub')) {
@@ -705,6 +717,27 @@
 
 		let by_art = (params.has('ha') && params.get('ha'));
 
+		let link = {
+			rx: /^(\d{4})(\d{2})(\d{2})/,
+			rpl: '$1-$2-$3.*',
+			};
+		if (rq.g == 'Y') {
+			link.rx = /^(\d{4})/;
+			link.rpl = '$1.*';
+		}
+		else if (rq.g == 'Y-m') {
+			link.rx = /^(\d{4})(\d{2})/;
+			link.rpl = '$1-$2.*';
+		}
+		else if (rq.g == 'Y-m-d H') {
+			link.rx = /^(\d{4})(\d{2})(\d{2})(\d{2})/;
+			link.rpl = '$1-$2-$3\\ $4.*';
+		}
+		else if (rq.g == 'Y H') {
+			link.rx = /^(\d{4})(\d{2})/;
+			link.rpl = '$1.*\\ $2.*';
+		}
+
 		$('.qpages').hide();
 		let to_render = {};
 
@@ -741,24 +774,42 @@
 					continue;
 				}
 
+				let url = new URL(window.location.origin + window.location.pathname);
+				url.searchParams.set('l', params.get('l'));
+				url.searchParams.set('c['+corp+']', '1');
+				url.searchParams.set('s', 's');
+				if (params.has('ub') && params.get('ub')) {
+					url.searchParams.set('ub', '1');
+				}
+
 				state.histgs[corp] = rv.cs[corp].h;
 				to_render[corp] = [];
 				if (corp.indexOf('-') !== -1) {
 					to_render[corp.substr(0, corp.indexOf('-'))+'-subc'] = [];
 				}
 
+				let tsv = 'Group\tArticles\tSentences\tHits\tCArticles\tCSentences\tCTokens\tCWords\n';
+
 				c.find('.qrange').text('');
-				let html = '<table class="d-inline-block table table-striped table-hover my-3">';
+				let html = '<button class="btn btn-outline-success my-3 btnGetTSV"><i class="bi bi-download"></i> Download TSV</button><table class="d-inline-block table table-striped table-hover my-3">';
 				html += '<thead><tr><th>Group</th><th class="text-vertical">Articles</th><th class="text-vertical">Sentences</th><th class="text-vertical">Hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
 					if (rv.cs[corp].h[i][1] <= 0) {
 						continue;
 					}
-					html += '<tr><td>'+escHTML(rv.cs[corp].h[i][0])+'</td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
+					let lstamp = rv.cs[corp].h[i][0].toString().replace(link.rx, link.rpl);
+					url.searchParams.set('q', '('+params.get('q')+') within <s lstamp="'+lstamp+'"/>');
+					html += '<tr id="h'+escHTML(rv.cs[corp].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
+					tsv += rv.cs[corp].h[i].join('\t')+'\n';
 				}
-				html += '</tbody></table>';
+				state.tsv = tsv;
+				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV"><i class="bi bi-download"></i> Download TSV</button>';
 				c.find('.qbody').html(html);
+
+				c.find('.btnGetTSV').click(function() {
+					saveAs(new Blob([state.tsv], {type: 'text/tab-separated-values'}), 'histogram.tsv');
+				});
 			}
 		}
 
@@ -856,7 +907,21 @@
 					}
 					ys[gs[k][i][0].toString().substr(0, 4)] = true;
 				}
-				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+' ('+Object.keys(ys).join('-')+')</div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div>';
+				// Collapse year ranges
+				let years = Object.keys(ys).map(function(v, x) {return parseInt(v); });
+				for (let i=1 ; i<years.length-1 ; ) {
+					let j = i;
+					while (j<years.length-1 && years[j-1] + 1 == years[j] && years[j] + 1 == years[j+1]) {
+						++j;
+					}
+					if (j != i) {
+						years.splice(i, j-i);
+					}
+					else {
+						++i;
+					}
+				}
+				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+' ('+years.join('-')+')</div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div>';
 			}
 			c.find('.qbody').html(html);
 
@@ -922,6 +987,15 @@
 								legend: {
 									display: false,
 								},
+							},
+							onClick: function(e) {
+								let pos = Chart.helpers.getRelativePosition(e, chart);
+								let x = chart.scales.x.getValueForPixel(pos.x);
+								let l = chart.scales.x.getLabelForValue(x);
+								if (!/^\d/.test(l)) {
+									return;
+								}
+								window.location.hash = '#h'+l;
 							},
 						},
 					});
