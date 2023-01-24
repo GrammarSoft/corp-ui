@@ -434,6 +434,9 @@
 									tabs[fields['lex_nd']] = tabs[fields['word_nd']];
 								}
 
+								if (!last_one) {
+									last_one = state.depc - parseInt(tabs[fields['dself']]) + 1;
+								}
 								if (parseInt(tabs[fields['dself']]) == 1) {
 									last_one = state.depc;
 								}
@@ -498,7 +501,7 @@
 
 					let info = '<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="bottom" title="'+escHTML(s_tag)+'"><i class="bi bi-info-square"></i></a>';
 					if (s_article) {
-						info = '<a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
+						info += ' <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
 					}
 					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
