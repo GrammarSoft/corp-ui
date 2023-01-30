@@ -1,0 +1,72 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE meta (
+	key TEXT NOT NULL,
+	value TEXT NOT NULL,
+	PRIMARY KEY (key)
+) WITHOUT ROWID");
+$db->exec("CREATE TABLE freqs (
+	f_text TEXT NOT NULL,
+	f_abs INTEGER NOT NULL,
+	f_rel_g REAL NOT NULL DEFAULT 0.0,
+	f_rel_c REAL NOT NULL DEFAULT 0.0,
+	f_rel_s REAL NOT NULL DEFAULT 0.0,
+	PRIMARY KEY (f_text)
+)");
+
+$ins = $db->prepare("INSERT INTO freqs (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
+
+$total = 0;
+for ($i=4 ; $i<$argc ; ++$i) {
+	$db->query("ATTACH '{$argv[$i]}' AS db_corp");
+	$db->beginTransaction();
+	$stm = $db->prepexec("SELECT f_text, f_abs FROM db_corp.freqs");
+	while ($row = $stm->fetch()) {
+		$total += $row['f_abs'];
+		$ins->execute([$row['f_text'], $row['f_abs'], $row['f_abs']]);
+	}
+	$db->commit();
+	$db->query("DETACH db_corp");
+}
+
+$total2 = $total * $total;
+
+$lang = $argv[2];
+$field = $argv[3];
+if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
+	$db->query("ATTACH '{$GLOBALS['CORP_ROOT']}/stats/{$lang}.sqlite' AS db_lang");
+
+	$db->beginTransaction();
+
+	// Global relfreq
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs * f_abs * {$GLOBALS['-scale']}) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs * f_abs) / $total2 WHERE f_rel_g = 0");
+
+	$db->commit();
+}
+
+$db->exec("PRAGMA ignore_check_constraints = OFF");
+$db->exec("CREATE INDEX index_freq_abs ON freqs (f_abs ASC)");
+$db->prepexec("INSERT INTO meta (key, value) VALUES (?, ?)", ['total', $total]);
+$db->exec("PRAGMA locking_mode = NORMAL");
+$db->exec("VACUUM");

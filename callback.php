@@ -193,6 +193,10 @@ while ($a === 'freq') {
 		$rv['errors'][] = 'E040: Invalid frequency hash '.$_REQUEST['hf'];
 		break;
 	}
+	if (!empty($_REQUEST['hc']) && !preg_match('~^[a-z0-9]{8}$~', $_REQUEST['hc'])) {
+		$rv['errors'][] = 'E070: Invalid frequency combined hash '.$_REQUEST['hc'];
+		break;
+	}
 	if (empty($_REQUEST['t']) || !preg_match('~^(abc|freq|relg|relc|rels)$~', $_REQUEST['t'])) {
 		$rv['errors'][] = 'E030: Invalid type '.$_REQUEST['t'];
 		break;
@@ -200,6 +204,7 @@ while ($a === 'freq') {
 
 	$hash = $_REQUEST['h'];
 	$hash_freq = $_REQUEST['hf'];
+	$hash_combo = trim($_REQUEST['hc'] ?? '');
 	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
@@ -224,8 +229,10 @@ while ($a === 'freq') {
 
 	clearstatcache();
 	$dbs = [];
+	$langs = [];
 	foreach ($corps as $corp) {
-		if (!file_exists("$hash-$corp.freq-$hash_freq.sqlite") || !filesize("$hash-$corp.freq-$hash_freq.sqlite")) {
+		$dbname = "$hash-$corp.freq-$hash_freq";
+		if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
 			$rv['info'][] = 'Not ready '.$corp;
 			continue;
 		}
@@ -235,12 +242,32 @@ while ($a === 'freq') {
 			break;
 		}
 		$dbs[$corp] = [
-			'freq' => new \TDC\PDO\SQLite("$hash-$corp.freq-$hash_freq.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			'freq' => new \TDC\PDO\SQLite("$dbname.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/stats.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 			];
+
+		$lang = substr($corp, 0, 3);
+		$langs[$lang] = $lang;
+	}
+
+	rsort($langs);
+	foreach ($langs as $lang) {
+		$corp = $lang.'_0combo_'.$hash_combo;
+		$dbname = "$hash-$corp.freq-$hash_freq";
+		if (file_exists("$dbname.sqlite") && filesize("$dbname.sqlite")) {
+			$cs[] = $corp;
+			$dbs[$corp] = [
+				'freq' => new \TDC\PDO\SQLite("$dbname.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+				'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/stats/{$lang}.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+				];
+		}
 	}
 
 	foreach ($cs as $corp) {
+		if (!empty($_REQUEST['tsv']) && $corp !== $_REQUEST['tsv']) {
+			continue;
+		}
+
 		$rv['cs'][$corp] = [
 			'n' => 0,
 			't' => 0,
@@ -287,6 +314,27 @@ while ($a === 'freq') {
 		while ($row = $res->fetch()) {
 			$rv['cs'][$corp]['f'][] = [$row['f_text'], intval($row['f_abs']), floatval($row['f_rel_g']), floatval($row['f_rel_c']), floatval($row['f_rel_s'])];
 		}
+	}
+
+	if (!empty($_REQUEST['tsv'])) {
+		header('Content-Type: text/tab-separated-values; charset=UTF-8');
+		header('Content-disposition: attachment; filename=freq.tsv');
+		foreach ($rv['cs'] as $corp => $data) {
+			if ($corp !== $_REQUEST['tsv']) {
+				continue;
+			}
+			echo "# $corp\n";
+			echo "# total-hits:{$data['t']}, words-in-corp:{$data['w']}";
+			if (!empty($data['ws'])) {
+				echo ", words-in-sub:{$data['ws']}";
+			}
+			echo "\n";
+			echo "Token\tHits\tRelG\tRelC\tRelS\n";
+			foreach ($data['f'] as $r) {
+				echo implode("\t", $r)."\n";
+			}
+		}
+		exit();
 	}
 
 	break;
@@ -419,5 +467,7 @@ while ($a === 'hist') {
 if (!empty($rv['errors'])) {
 	header('HTTP/1.1 400 Bad Request');
 }
+
+header('Content-Type: application/json');
 
 echo json_encode_vb($rv);

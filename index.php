@@ -34,6 +34,8 @@ if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'rc');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 
+$toasts = [];
+
 $h_query = '';
 $checked = [
 	'lc' => '',
@@ -180,6 +182,7 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$field = $_REQUEST['f'];
 	$hash = sha256_lc20($query);
 	$hash_freq = '';
+	$hash_combo = '';
 	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
 		mkdir($folder, 0755, true);
@@ -304,6 +307,7 @@ cd '$folder'
 XSH;
 
 		$exec = false;
+		$combo = [];
 		foreach ($_REQUEST['c'] as $corp => $_) {
 			[$s_corp,$subc] = explode('-', $corp.'-');
 			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
@@ -312,20 +316,23 @@ XSH;
 			else {
 				$subc = '';
 			}
-			if (!file_exists("$hash-$corp.freq-$hash_freq.sqlite") || !filesize("$hash-$corp.freq-$hash_freq.sqlite")) {
+			$dbname = "$hash-$corp.freq-$hash_freq";
+			if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
 				$exec = true;
 			}
+			$lang = substr($corp, 0, 3);
+			$combo[$lang][] = "$hash-$corp.freq-$hash_freq.sqlite";
 
 			$sh .= <<<XSH
 
-if [ ! -s '$hash-$corp.freq-$hash_freq.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.freq-$hash_freq.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $hash-$corp.freq-$hash_freq.sqlite $corp $s_nd >$hash-$corp.freq-$hash_freq.err 2>&1 &
+if [ ! -s '$dbname.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $dbname.sqlite $corp $s_nd >$dbname.err 2>&1 &
 fi
 
 XSH;
-	}
+		}
 
-	$sh .= <<<XSH
+		$sh .= <<<XSH
 
 for job in `jobs -p`
 do
@@ -333,6 +340,45 @@ do
 done
 
 XSH;
+
+		// If there are multiple corpora, also calculate the combined frequencies and global relative freq
+		$has_combo = false;
+		if (($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg') && count($_REQUEST['c']) > 1) {
+			$hash_combo = substr(sha256_lc20(implode(';', array_keys($_REQUEST['c']))), 0, 8);
+
+			foreach ($combo as $lang => $corps) {
+				if (count($corps) <= 1) {
+					continue;
+				}
+				$has_combo = true;
+				$corps = implode(' ', $corps);
+				$corp = $lang.'_0combo_'.$hash_combo;
+				$_REQUEST['c'][$corp] = 1;
+				$dbname = "$hash-$corp.freq-$hash_freq";
+				if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
+					$exec = true;
+				}
+				$sh .= <<<XSH
+
+if [ ! -s '$dbname.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/combinefreqs' $dbname.sqlite $lang $s_nd $corps >$dbname.err 2>&1 &
+fi
+
+XSH;
+			}
+		}
+
+		if ($has_combo) {
+			ksort($_REQUEST['c']);
+			$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+		}
 
 		$hash_sh = substr(sha256_lc20($sh), 0, 8);
 		if ($exec) {
@@ -550,8 +596,20 @@ XHTML;
 		}
 	}
 	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
+		if (count($_REQUEST['c']) > 1 && ($_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels')) {
+			$toasts[] = '<div class="toast align-items-center text-bg-warning bg-opacity-50" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000"><div class="d-flex"><div class="toast-body">Combined results will not show for <i>Rel C</i> or <i>Rel S</i>.</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>';
+		}
 		foreach ($_REQUEST['c'] as $corp => $_) {
-			echo '<div class="col qfreqs" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
+			$cname = $corp;
+			if (strpos($corp, '_0combo_') !== false) {
+				$cname = 'Combined ('.substr($corp, 0, 3).')';
+			}
+			else if ($_REQUEST['s'] === 'rels' && strpos($corp, '-') === false) {
+				$toasts[] = '<div class="toast align-items-center text-bg-warning bg-opacity-50" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000"><div class="d-flex"><div class="toast-body">Corpus '.$corp.' has no sub-corpus for <i>Rel S</i>.</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>';
+				continue;
+			}
+			echo '<div class="col qfreqs" id="'.$corp.'"><div class="d-flex">
+			<div class="col qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($cname).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="col text-end qtsv">…</div></div><div class="qbody">…searching…</div></div>';
 		}
 	}
 	else if ($_REQUEST['s'] === 'hist') {
@@ -570,7 +628,7 @@ XHTML;
 	echo '<div class="row"><div class="col qpages">…</div></div>';
 	echo '</div>';
 	echo '</div></div></div>';
-	echo '<script>g_hash = "'.$hash.'"; g_hash_freq = "'.$hash_freq.'";</script>';
+	echo '<script>g_corps = '.json_encode_vb($_REQUEST['c']).'; g_hash = "'.$hash.'"; g_hash_freq = "'.$hash_freq.'"; g_hash_combo = "'.$hash_combo.'";</script>';
 }
 
 ?>
@@ -733,6 +791,10 @@ else {
 <?php
 }
 ?>
+
+<div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">
+<?=implode("\n", $toasts);?>
+</div>
 </div>
 
 </body>

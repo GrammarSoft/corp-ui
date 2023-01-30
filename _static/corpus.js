@@ -228,6 +228,7 @@
 				t: url.searchParams.get('s'),
 				h: state.hash,
 				hf: state.hash_freq,
+				hc: state.hash_combo,
 				s: state.offset,
 				n: state.pagesize,
 				cs: [],
@@ -558,6 +559,7 @@
 			t: params.get('s'),
 			h: state.hash,
 			hf: state.hash_freq,
+			hc: state.hash_combo,
 			s: rv.s,
 			n: rv.n,
 			cs: [],
@@ -659,6 +661,21 @@
 					continue;
 				}
 
+				let button = '<a href="./callback.php?a=freq&amp;cs[]='+Object.keys(state.corps).join('&amp;cs[]=')+'&amp;h='+rq.h+'&amp;hf='+rq.hf+'&amp;hc='+rq.hc+'&amp;t='+rq.t+'&amp;tsv='+corp+'" class="btn btn-outline-success my-3">Download TSV <i class="bi bi-download"></i></a>';
+				c.find('.qtsv').html(button);
+
+				let combo = false;
+				if (corp.indexOf('_0combo_') !== -1) {
+					combo = true;
+					let lang = corp.substr(0, 3);
+					for (let c2 in rv.cs) {
+						if (c2.indexOf(lang) === 0) {
+							url.searchParams.set('c['+c2+']', '1');
+						}
+					}
+					url.searchParams.delete('c['+corp+']');
+				}
+
 				c.find('.qrange').text(rv.s+' to '+Math.min(rv.s + rv.n, rv.cs[corp].n));
 				let html = '<table class="table table-striped table-hover my-3">';
 				// '∕' is U+2215 Division Slash
@@ -667,24 +684,33 @@
 				// '⁸' is U+2078 Superscript 8
 				html += '<thead><tr><th>Token</th>';
 				if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
-					html += '<th class="color-red text-vertical">G: freq²∕norm</th>';
-					html += '<th class="color-red text-vertical">C: freq²∕norm</th>';
+					html += '<th class="color-red text-vertical" title="Global relative frequency">G: freq²∕norm</th>';
+					if (!combo) {
+						html += '<th class="color-red text-vertical" title="Corpus relative frequency">C: freq²∕norm</th>';
+					}
 					if (corp.indexOf('-') !== -1) {
-						html += '<th class="color-red text-vertical">S: freq²∕norm</th>';
+						html += '<th class="color-red text-vertical" title="Sub-corpus relative frequency">S: freq²∕norm</th>';
 					}
 				}
-				html += '<th class="color-orange text-vertical">C: freq∕corp · 10⁸</th>';
-				if (corp.indexOf('-') !== -1) {
-					html += '<th class="color-orange text-vertical">S: freq∕corp · 10⁸</th>';
+				if (!combo) {
+					html += '<th class="color-orange text-vertical" title="Corpus normalized frequency">C: freq∕corp · 10⁸</th>';
 				}
-				html += '<th class="color-green text-vertical">freq∕conc</th><th class="text-vertical">num</th></tr></thead>';
+				else {
+					html += '<th class="color-orange text-vertical" title="Global normalized frequency">G: freq∕corp · 10⁸</th>';
+				}
+				if (corp.indexOf('-') !== -1) {
+					html += '<th class="color-orange text-vertical" title="Sub-corpus normalized frequency">S: freq∕corp · 10⁸</th>';
+				}
+				html += '<th class="color-green text-vertical" title="Percentage of total hits">freq∕conc</th><th class="text-vertical" title="Number of hits">num</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
 					url.searchParams.set('q', search.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
 					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
 					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
-						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
+						if (!combo) {
+							html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
+						}
 						if (corp.indexOf('-') !== -1) {
 							html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][4].toFixed(2))+'</td>';
 						}
@@ -794,7 +820,7 @@
 				let tsv = 'Group\tArticles\tSentences\tHits\tCArticles\tCSentences\tCTokens\tCWords\n';
 
 				c.find('.qrange').text('');
-				let html = '<button class="btn btn-outline-success my-3 btnGetTSV"><i class="bi bi-download"></i> Download TSV</button><table class="d-inline-block table table-striped table-hover my-3">';
+				let html = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="d-inline-block table table-striped table-hover my-3">';
 				html += '<thead><tr><th>Group</th><th class="text-vertical">Articles</th><th class="text-vertical">Sentences</th><th class="text-vertical">Hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
@@ -807,7 +833,7 @@
 					tsv += rv.cs[corp].h[i].join('\t')+'\n';
 				}
 				state.tsv = tsv;
-				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV"><i class="bi bi-download"></i> Download TSV</button>';
+				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
 				c.find('.qbody').html(html);
 
 				c.find('.btnGetTSV').click(function() {
@@ -1012,8 +1038,10 @@
 	}
 
 	function contentLoaded() {
+		state.corps = g_corps;
 		state.hash = g_hash;
 		state.hash_freq = g_hash_freq;
+		state.hash_combo = g_hash_combo;
 
 		let params = (new URL(window.location)).searchParams;
 		state.focus = params.has('focus') ? params.get('focus') : Defs.focus;
@@ -1073,6 +1101,7 @@
 				t: params.get('s'),
 				h: state.hash,
 				hf: state.hash_freq,
+				hc: state.hash_combo,
 				s: state.offset,
 				n: state.pagesize,
 				cs: [],
@@ -1159,6 +1188,9 @@
 				loadOffset(state.offset, false);
 			}
 		});
+
+		let toastElList = document.querySelectorAll('.toast');
+		let toastList = [...toastElList].map(toastEl => {let t = new bootstrap.Toast(toastEl); t.show();});
 	}
 
 	if (document.readyState === 'loading') {
