@@ -417,7 +417,12 @@ XSH;
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
 	// Frequency
 	echo <<<XHTML
-<div class="card text-bg-light mb-3"><div class="card-body">
+<div class="card text-bg-light mb-3">
+<div class="card-header bg-lightblue text-center fw-bold fs-6">
+Frequency <i class="bi bi-sort-down"></i>
+<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
+</div>
+<div class="card-body">
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
@@ -471,8 +476,12 @@ XHTML;
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
+<div class="card-header bg-lightblue text-center fw-bold fs-6">
+Histogram <i class="bi bi-hourglass"></i>
+<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
+</div>
 <div class="card-body">
-<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Histogram <i class="bi bi-hourglass"></i></button></div>
+<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Chart histogram</button></div>
 <div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5">
 <option value="Y">Year</option>
 <option value="Y-m">Year-Month</option>
@@ -499,29 +508,35 @@ XHTML;
 	}
 
 	// Page size & Focus field
-	echo '<div class="card text-bg-light mb-3">';
-	echo '<div class="card-body"><div class="mb-3"><label for="qpagesize" class="form-label fw-bold">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>';
+	echo <<<XHTML
+<div class="card text-bg-light mb-3">
+<div class="card-header bg-lightblue text-center fw-bold fs-6">
+Other <i class="bi bi-sliders"></i>
+<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
+</div>
+<div class="card-body">
+<div class="mb-3"><label for="qpagesize" class="form-label">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>
+XHTML;
 	if ($_REQUEST['s'] === 's') {
-		echo '<div class="mb-3"><label class="form-label fw-bold" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
+		echo '<div class="my-3"><label class="form-label" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
-	echo '<button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button>';
-	echo '</div></div>';
+	echo '<div class="text-center my-3"><button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button></div>';
 
 	if ($_REQUEST['s'] !== 's') {
 		echo <<<XHTML
-<div class="card text-bg-light mb-3">
+<div class="text-center mt-3">
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
-<div class="card-body">
-<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="s" title="Back to search">Back to search</button></div>
+<button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="s" title="Back to concordance">Back to concordance</button>
 </form>
-</div></div>
+</div>
 
 XHTML;
 	}
+	echo '</div></div>';
 	echo '</div>';
 
 	// Body of results
