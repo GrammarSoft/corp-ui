@@ -256,12 +256,13 @@
 					inv[attr] = true;
 				}
 
-				let pcnts = inp.closest('tr').next().find('input[type="checkbox"]');
-				if (pcnts && pcnts.first().prop('checked')) {
-					cd[attr] += 'c';
+				let trans = inp.closest('tr').next().find('input[type="checkbox"]');
+				cd[attr] = '';
+				if (trans && trans.first().prop('checked')) {
+					cd[attr] = '_lc';
 				}
-				if (pcnts && pcnts.last().prop('checked')) {
-					cd[attr] += 'd';
+				if (trans && trans.last().prop('checked')) {
+					cd[attr] = '_nd';
 				}
 			}
 
@@ -305,8 +306,7 @@
 					}
 				}
 				let neg = inv[attr] ? '!' : '';
-				let pcnt = cd[attr] ? ('%'+cd[attr]) : '';
-				joins.push(attr + neg + '="'+ fields[attr].join('|') +'"'+pcnt);
+				joins.push(attr + cd[attr] + neg + '="'+ fields[attr].join('|') +'"');
 			}
 
 			tbl += joins.join(' & ');
@@ -412,6 +412,16 @@
 					had_sibling = true;
 				}
 
+				if (/_nd$/.test(fld)) {
+					fld = fld.substr(0, fld.length-3);
+					$(tbl).find('[name="'+fld+'_c_'+(rn-1)+'"]').prop('checked', true);
+					$(tbl).find('[name="'+fld+'_d_'+(rn-1)+'"]').prop('checked', true);
+				}
+				if (/_lc$/.test(fld)) {
+					fld = fld.substr(0, fld.length-3);
+					$(tbl).find('[name="'+fld+'_c_'+(rn-1)+'"]').prop('checked', true);
+				}
+
 				src = $.trim(src.substr(val[0].length));
 				//console.log(src);
 				if (fld === 'word' || fld === 'lex' || fld == 'h_word' || fld == 'h_lex' || fld == 's_word' || fld == 's_lex') {
@@ -447,15 +457,6 @@
 				}
 				//console.log(val);
 				//console.log(src);
-			}
-
-			if (src.charAt(0) === '%') {
-				src = $.trim(src.substr(1));
-				while (src.charAt(0) !== ']' && src.charAt(0) !== ' ' && src.charAt(0) !== '[') {
-					console.log(src.charAt(0));
-					$(tbl).find('[name="'+src.charAt(0)+'_'+(rn-1)+'"]').prop('checked', true);
-					src = $.trim(src.substr(1));
-				}
 			}
 
 			if (src.indexOf(']') === 0) {
@@ -612,7 +613,7 @@
 						tf += '</table></td><tr>';
 					}
 
-					if (tfs[i].nodeName === 'textfield') {
+					if (/^(word|lex)$/.test(attr)) {
 						tf += '<tr><td colspan="2"><label title="Case insensitive"><input type="checkbox" name="'+attr+'_c"> ¬case</label>, <label title="Diacritics insensitive"><input type="checkbox" name="'+attr+'_d"> ¬diacritics</label></td></tr>';
 					}
 				}
