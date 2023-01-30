@@ -463,8 +463,8 @@ XSH;
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
 	// Frequency
 	echo <<<XHTML
-<div class="card text-bg-light mb-3">
-<div class="card-header bg-lightblue text-center fw-bold fs-6">
+<div class="card bg-lightblue mb-3">
+<div class="card-header text-center fw-bold fs-6">
 Frequency <i class="bi bi-sort-down"></i>
 <a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
@@ -475,12 +475,12 @@ Frequency <i class="bi bi-sort-down"></i>
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="text-center">
-<button class="btn btn-sm btn-outline-primary mb-1" type="submit" name="s" value="abc" title="Sort alphabetically">Sort</button>
-<button class="btn btn-sm btn-outline-primary mb-1" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
+<button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="abc" title="Sort alphabetically">Sort</button>
+<button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
 <br>
-<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
-<button class="btn btn-sm btn-outline-primary btnRel" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
-<button class="btn btn-sm btn-outline-primary btnRel" id="btnRelS" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
+<button class="btn btn-sm btn-success btnRel" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
+<button class="btn btn-sm btn-success btnRel" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
+<button class="btn btn-sm btn-success btnRel" id="btnRelS" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_field">Field</label>
@@ -516,18 +516,18 @@ XHTML;
 	// Histogram
 	if ($has_hist) {
 		echo <<<XHTML
-<div class="card text-bg-light mb-3">
+<div class="card bg-lightblue mb-3">
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
-<div class="card-header bg-lightblue text-center fw-bold fs-6">
+<div class="card-header text-center fw-bold fs-6">
 Histogram <i class="bi bi-hourglass"></i>
 <a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
 <div class="card-body">
-<div class="text-center"><button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Chart histogram</button></div>
+<div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Chart histogram</button></div>
 <div class="mb-3"><label for="qhistgroup" class="form-label">Group by</label><select class="form-select" name="g" id="qhistgroup" size="5">
 <option value="Y">Year</option>
 <option value="Y-m">Year-Month</option>
@@ -555,8 +555,8 @@ XHTML;
 
 	// Page size & Focus field
 	echo <<<XHTML
-<div class="card text-bg-light mb-3">
-<div class="card-header bg-lightblue text-center fw-bold fs-6">
+<div class="card bg-lightblue mb-3">
+<div class="card-header text-center fw-bold fs-6">
 Other <i class="bi bi-sliders"></i>
 <a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
@@ -566,7 +566,7 @@ XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="my-3"><label class="form-label" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
-	echo '<div class="text-center my-3"><button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button></div>';
+	echo '<div class="text-center my-3"><button type="button" class="btn btn-success btnRefine">Refine <i class="bi bi-funnel"></i></button></div>';
 
 	if ($_REQUEST['s'] !== 's') {
 		echo <<<XHTML
@@ -576,7 +576,7 @@ XHTML;
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
-<button class="btn btn-sm btn-outline-primary mb-3" type="submit" name="s" value="s" title="Back to concordance">Back to concordance</button>
+<button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="s" title="Back to concordance">Back to concordance</button>
 </form>
 </div>
 

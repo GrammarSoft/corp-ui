@@ -1115,7 +1115,7 @@
 				}
 			});
 
-			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-outline-success');
+			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-warning');
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
 		}

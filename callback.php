@@ -218,6 +218,11 @@ while ($a === 'freq') {
 	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
 	$rv['n'] = $pagesize;
 
+	if (!empty($_REQUEST['tsv'])) {
+		$offset = 0;
+		$pagesize = 10000;
+	}
+
 	$corps = [];
 	$cs = [];
 	if (!empty($_REQUEST['cs']) && is_array($_REQUEST['cs'])) {
