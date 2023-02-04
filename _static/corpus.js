@@ -1067,7 +1067,7 @@
 		$('.btnRefine').click(function() {
 			$('#refine').html(state.refine);
 			window.refine.init();
-			$('#refine').show();
+			$('#refine').show().get(0).scrollIntoView(true);
 		});
 
 		// Concordances

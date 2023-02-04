@@ -42,7 +42,7 @@ else {
 }
 $GLOBALS['-auth']->lock();
 
-function b64_slug($rv) {
+function b64_slug($rv): string {
 	$rv = base64_encode($rv);
 	$rv = trim($rv, '=');
 	$rv = str_replace('+', 'z', $rv);
@@ -51,15 +51,15 @@ function b64_slug($rv) {
 	return $rv;
 }
 
-function sha256_lc20($in) {
+function sha256_lc20($in): string {
 	return strtolower(substr(b64_slug(hash('sha256', $in, true)), 0, 20));
 }
 
-function json_encode_vb($v, $o=0) {
+function json_encode_vb($v, $o=0): string {
 	return json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | $o);
 }
 
-function filter_corpora_k($arr) {
+function filter_corpora_k($arr): array {
 	foreach ($arr as $k => $v) {
 		$sub = explode('-', $k.'-');
 		if (empty($GLOBALS['-corplist'][$sub[0]])) {
@@ -73,7 +73,7 @@ function filter_corpora_k($arr) {
 	return $arr;
 }
 
-function filter_corpora_v($arr) {
+function filter_corpora_v($arr): array {
 	sort($arr);
 	$arr = array_unique($arr);
 	foreach ($arr as $k => $v) {
@@ -88,7 +88,7 @@ function filter_corpora_v($arr) {
 	return array_values($arr);
 }
 
-function format_corpsize($ws) {
+function format_corpsize($ws): string {
 	if ($ws < 10000000) {
 		return number_format($ws/1000000.0, 2, '.', '');
 	}

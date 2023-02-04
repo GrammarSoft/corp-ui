@@ -7,6 +7,17 @@ html, body {
 	max-width: 250px;
 }
 
+tr:target, td:target, th:target {
+	background-color: #ffa;
+}
+
+.btn-white-success {
+	background-color: #fff;
+}
+.btn-white-success:hover {
+	background-color: var(--bs-success);
+}
+
 .qpage {
 	min-height: 100%;
 }
@@ -38,7 +49,7 @@ html, body {
 }
 
 .bg-lightblue {
-	background-color: #cadaff;
+	background-color: #ddeeff;
 }
 
 .float-right {

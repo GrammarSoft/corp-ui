@@ -45,13 +45,13 @@ class SQLiteSessions implements \SessionHandlerInterface, \SessionIdInterface, \
 		return true;
 	}
 
-	public function read(string $id) {
+	public function read(string $id) : string|false {
 		$this->db->prepexec("UPDATE sessions SET s_seen = ? WHERE s_id = ?", [time(), $id]);
 		$rows = $this->db->prepexec("SELECT s_data FROM sessions WHERE s_id = ?", [$id])->fetchAll();
 		return $rows ? $rows[0]['s_data'] : '';
 	}
 
-	public function write(string $id, string $data) {
+	public function write(string $id, string $data): bool {
 		$this->db->beginTransaction();
 		$this->db->prepexec("UPDATE sessions SET s_data = ?, s_seen = ? WHERE s_id = ?", [$data, time(), $id]);
 		$this->db->commit();

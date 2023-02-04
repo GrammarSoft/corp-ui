@@ -132,7 +132,7 @@ else if (!empty($query2)) {
 
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
 
-	<script>let g_hash = ''; let g_hash_freq = '';</script>
+	<script>let g_corps = {}; let g_hash = ''; let g_hash_freq = ''; let g_hash_combo = '';</script>
 	<link href="_static/refine.css?<?=filemtime(__DIR__.'/_static/refine.css');?>" rel="stylesheet">
 	<script src="_static/refine.js?<?=filemtime(__DIR__.'/_static/refine.js');?>"></script>
 	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
@@ -566,7 +566,7 @@ XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="my-3"><label class="form-label" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
 	}
-	echo '<div class="text-center my-3"><button type="button" class="btn btn-success btnRefine">Refine <i class="bi bi-funnel"></i></button></div>';
+	echo '<div class="text-center my-3"><button type="button" class="btn btn-sm btn-success btnRefine">Refine <i class="bi bi-funnel"></i></button></div>';
 
 	if ($_REQUEST['s'] !== 's') {
 		echo <<<XHTML
@@ -588,7 +588,7 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1">Show search <i class="bi bi-search"></i></button></div></div>';
 	echo '<div class="row align-items-start row-cols-auto">';
 	if ($_REQUEST['s'] === 's') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
@@ -633,7 +633,7 @@ XHTML;
 
 ?>
 
-<div class="container my-5">
+<div class="container card bg-lightblue my-5">
 <?php
 if (empty($h_language)) {
 	echo '<div class="row align-items-start row-cols-auto">';
@@ -646,14 +646,14 @@ if (empty($h_language)) {
 
 		echo '<div class="col-3 my-3"><a class="text-decoration-none fs-3" href="./?l='.$group.'">'.$flag.' '.htmlspecialchars($g['name']).'</a></div>';
 	}
-	echo '<div class="col-12 my-3"><a class="text-decoration-none fs-3" href="./?l=mul">All languages</a></div>';
+	echo '<div class="col-12 my-3"><a class="text-decoration-none fs-3" href="./?l=mul"><i class="bi bi-translate"></i> All languages</a></div>';
 	echo '</div>';
 }
 else {
 ?>
 <form method="GET">
 <input type="hidden" name="l" value="<?=$h_language;?>">
-<div class="row align-items-start row-cols-auto" id="refine">
+<div class="row justify-content-center align-items-center row-cols-auto" id="refine">
 <div class="col">
 <div id="rs" class="rs">
 
@@ -707,8 +707,8 @@ else {
 	</div>
 </div>
 <div class="col">
-	<button type="submit" class="btn btn-primary" name="s" value="s">Search <i class="bi bi-search"></i></button>
-	<button type="button" class="btn btn-outline-primary btnRefine">Refine <i class="bi bi-funnel"></i></button>
+	<button type="submit" class="btn btn-success" name="s" value="s">Search <i class="bi bi-search"></i></button>
+	<button type="button" class="btn btn-white-success btn-outline-success btnRefine">Refine <i class="bi bi-funnel"></i></button>
 </div>
 </div>
 
@@ -791,10 +791,10 @@ else {
 <?php
 }
 ?>
+</div>
 
 <div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">
 <?=implode("\n", $toasts);?>
-</div>
 </div>
 
 </body>
