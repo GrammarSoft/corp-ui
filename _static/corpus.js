@@ -1080,6 +1080,19 @@
 
 		$('#btnRelS').prop('disabled', true).addClass('disabled');
 
+		$('.btnShowSearch').click(function() {
+			$('.btnShowCorpora').show();
+			$('#corpora').hide();
+			let s = $('#search').detach();
+			$('#search-holder').append(s).show();
+			$('.btnShowSearch').remove();
+			$('input[name="q"]').focus();
+		});
+		$('.btnShowCorpora').click(function() {
+			$('.btnShowCorpora').remove();
+			$('#corpora').show();
+		});
+
 		$('#refine').hide();
 		state.refine = $('#refine').html();
 		$('.btnRefine').click(function() {

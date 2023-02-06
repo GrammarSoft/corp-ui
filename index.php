@@ -588,7 +588,8 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1">Show search <i class="bi bi-search"></i></button></div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button></div></div>';
+	echo '<div class="row align-items-start" id="search-holder" style="display: none"></div>';
 	echo '<div class="row align-items-start row-cols-auto">';
 	if ($_REQUEST['s'] === 's') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
@@ -633,7 +634,7 @@ XHTML;
 
 ?>
 
-<div class="container card bg-lightblue my-5">
+<div class="container card bg-lightblue my-2" id="search">
 <?php
 if (empty($h_language)) {
 	echo '<div class="row align-items-start row-cols-auto">';
@@ -732,10 +733,11 @@ else {
 		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(empty($_REQUEST['ub']) ? '' : 'checked');?>>
 		<label class="form-check-label" for="unbound">Don't wrap <code>(…) within &lt;s/&gt;</code></label>
 	</div>
+	<button type="button" class="btn btn-white-success btn-outline-success btnShowCorpora mt-3" style="display: none">Show corpora <i class="bi bi-body-text"></i></button>
 </div>
 </div>
 
-<div class="row align-items-start row-cols-auto">
+<div class="row align-items-start row-cols-auto" id="corpora">
 <?php
 	foreach ($GLOBALS['-groups'] as $group => $g) {
 		if ($h_language != $group && $h_language != 'mul') {
