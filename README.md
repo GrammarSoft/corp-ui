@@ -21,25 +21,13 @@ rm -rf ~/storage/corpora/dan_twitter/tmp
 * Update global stats for the language with `time ~/public_html/_bin/stats-combine dan`
 
 ## TODO
-* Histogram:
-  * Click on bar to jump to that place in the table
-  * Click on table line to show all hits from that period
-  * Menu to pick which field to graph
 * Maybe split off more dynamic fields
 * /<((activity|amount|anbo|anent|anich|anmov|anorg|anzo|ar|bar|build|cc|co[lnv]+|coll|cord|cur|dir|dance|dir|domain|dur|er|event|fight|furn|game|genre|group|inst|ism|ling|mach|meta|method|mon|occ|part|p+|per|pict|play|pos|prize|process|repr|s[ds]|sick|sit|sport|talk|temp|therapy|tube|a[cmn]|act|c[cm]|clo[HA]?|drink|f|food|fruit|geom|mat|percep|pos|sem|state|struct|system|tool|unit|wea|astro|brand|civ|disease|hum|media|org|party|j[a-z]+)(-[^>]+)?|[HABLV][HABLV]?[a-z]*)>/
 * Adjective j.* ; Verb fn:.*
 * Frequencies should include POS
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
-* Light blue background for sidebar
-* Scroll refine into full view
-* Show search/refine over results
-* Highlight histogram row
 * Information link next to corpus name
 * Adjustable context size
-* "Back to concordance" and "To search" button
-* Fix refine case-insensitive
 * Implement sibling search
 * Highlight parents if searched for
-* Center search/refine forms
-* Export frequency hits
