@@ -875,14 +875,26 @@
 			let gs = [];
 			let g = [];
 			let Y = 0;
-			let max = 0;
+
+			// Determine the max analyzed bodies for a group and consider groups with <10% of that as sparse
+			let sparse = 0;
 			for (let k=0 ; k<to_render[corp].length ; ++k) {
 				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
-					max = Math.max(max, to_render[corp][k][i][f_aggr]);
+					sparse = Math.max(sparse, to_render[corp][k][i][f_aggr]);
+					to_render[corp][k][i][6] = to_render[corp][k][i][f_hits]*100.0 / to_render[corp][k][i][f_aggr];
 				}
 			}
-			max = max/10.0;
-			//console.log(max);
+			sparse = sparse/10.0;
+
+			// Find max value so all graphs can get the same Y-axis
+			let y_max = 0;
+			for (let k=0 ; k<to_render[corp].length ; ++k) {
+				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
+					if (to_render[corp][k][i][f_aggr] >= sparse) {
+						y_max = Math.max(y_max, Math.ceil(to_render[corp][k][i][6]));
+					}
+				}
+			}
 
 			for (let k=0 ; k<to_render[corp].length ; ++k) {
 				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
@@ -908,7 +920,7 @@
 					if (!params.has('xe') && to_render[corp][k][i][1] === 0) {
 						to_p = '- skip -';
 					}
-					if (!params.has('xs') && to_render[corp][k][i][f_aggr] < max) {
+					if (!params.has('xs') && to_render[corp][k][i][f_aggr] < sparse) {
 						to_p = '- sparse -';
 					}
 
@@ -976,8 +988,8 @@
 						c_borders.push('rgb(64, 64, 64)');
 					}
 					else {
-						bars.push(gs[k][i][f_hits]*100.0 / gs[k][i][f_aggr]);
-						if (gs[k][i][f_aggr] < max) {
+						bars.push(gs[k][i][6]);
+						if (gs[k][i][f_aggr] < sparse) {
 							c_bars.push('rgba(255, 159, 64, 0.2)');
 							c_borders.push('rgb(255, 159, 64)');
 						}
@@ -1015,6 +1027,12 @@
 							plugins: {
 								legend: {
 									display: false,
+								},
+							},
+							scales: {
+								y: {
+									beginAtZero: true,
+									max: y_max,
 								},
 							},
 							onClick: function(e) {
