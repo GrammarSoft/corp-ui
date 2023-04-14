@@ -283,6 +283,7 @@
 				if (!fields[attr]) {
 					fields[attr] = [];
 					inv[attr] = false;
+					cd[attr] = '';
 				}
 				fields[attr].push(val);
 
