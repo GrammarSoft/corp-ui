@@ -185,8 +185,11 @@ $GLOBALS['-corpora'] = [
 			'name' => 'ECIDE3',
 			'percent_combo' => 15,
 			],
-		'deu_facebook_minority_20180710' => [
-			'name' => 'Facebook (minority)',
+		'deu_facebook' => [
+			'name' => 'Facebook',
+			'subs' => [
+				'minority' => 'minority',
+				],
 			],
 		'deu_wiki_2019a' => [
 			'name' => 'Wikipedia (2019a)',

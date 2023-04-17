@@ -59,6 +59,10 @@ tr:target, td:target, th:target {
 	padding: 0 0.5rem;
 }
 
+.avoid-break {
+	break-inside: avoid;
+}
+
 @media (max-width: 767px) {
 	.columns {
 		columns: 2;

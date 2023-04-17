@@ -71,6 +71,9 @@ link_libs(index-corpus-year-both)
 add_executable(index-corpus-year-lstamp index-corpus-year-lstamp.cpp shared.hpp)
 link_libs(index-corpus-year-lstamp)
 
+add_executable(index-corpus-minority index-corpus-minority.cpp shared.hpp)
+link_libs(index-corpus-minority)
+
 add_executable(index-corpus-total index-corpus-total.cpp shared.hpp)
 link_libs(index-corpus-total)
 

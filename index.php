@@ -764,7 +764,7 @@ else {
 			if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
 				$icons .= ' <span class="text-success" title="Histogram available"><i class="bi bi-hourglass"></i></span>';
 			}
-			echo '<div><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+			echo '<div class="avoid-break"><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
 			$total_ws += $ws;
 
 			if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
