@@ -10,6 +10,7 @@ foreach ($GLOBALS['-corpora'] as $g => $cs) {
 	foreach ($cs as $corp => $data) {
 		$GLOBALS['-corplist'][$corp] =& $GLOBALS['-corpora'][$g][$corp];
 		$GLOBALS['-corplist'][$corp]['percent_combo'] = ($GLOBALS['-corplist'][$corp]['percent_combo'] ?? 0.001);
+		$GLOBALS['-corplist'][$corp]['infolink'] = ($GLOBALS['-corplist'][$corp]['infolink'] ?? "https://corp.hum.sdu.dk/copyright.html#{$corp}");
 	}
 }
 

@@ -139,6 +139,8 @@ else if (!empty($query2)) {
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
 <body>
+<div id="logo" class="container-fluid my-3"><a href="/"><img src="https://corp.hum.sdu.dk/flags/corpuseye-flat-transparent.gif"></a> - <a href="https://corp.hum.sdu.dk/cqp_help.html">Help</a> - <a href="https://visl.sdu.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://visl.sdu.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
+
 <?php
 
 if (!empty($locked)) {
@@ -466,7 +468,6 @@ XSH;
 <div class="card bg-lightblue mb-3">
 <div class="card-header text-center fw-bold fs-6">
 Frequency <i class="bi bi-sort-down"></i>
-<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
 <div class="card-body">
 <form method="GET">
@@ -484,18 +485,21 @@ Frequency <i class="bi bi-sort-down"></i>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_field">Field</label>
+<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="The field to focus statistical analysis on"><i class="bi bi-question-square"></i></a>
 <select class="form-select" name="f" id="freq_field">
 	{$freq_fields}
 </select>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_by">By</label>
+<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="What to sort by. Edge words are the first and last words in the highlighted hit string, context words are those just outside."><i class="bi bi-question-square"></i></a>
 <select class="form-select" name="b" id="freq_by" size="4">
 	{$by_sel}
 </select>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_offset">Offset</label>
+<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="Position right [+] or left [-] of edge or context word."><i class="bi bi-question-square"></i></a>
 <select class="form-select" name="o" id="freq_offset">
 	{$off_sel}
 </select>
@@ -524,7 +528,6 @@ XHTML;
 {$h_corps}
 <div class="card-header text-center fw-bold fs-6">
 Histogram <i class="bi bi-hourglass"></i>
-<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
 <div class="card-body">
 <div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="hist" title="Group results into a histogram">Chart histogram</button></div>
@@ -558,7 +561,6 @@ XHTML;
 <div class="card bg-lightblue mb-3">
 <div class="card-header text-center fw-bold fs-6">
 Other <i class="bi bi-sliders"></i>
-<a href="#" class="float-right fs-4"><i class="bi bi-question-square-fill"></i></a>
 </div>
 <div class="card-body">
 <div class="mb-3"><label for="qpagesize" class="form-label">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>
@@ -764,7 +766,7 @@ else {
 			if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
 				$icons .= ' <span class="text-success" title="Histogram available"><i class="bi bi-hourglass"></i></span>';
 			}
-			echo '<div class="avoid-break"><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
+			echo '<div class="avoid-break"><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <a href="'.$vis['infolink'].'" target="_blank"><i class="bi bi-info-square"></i></a> <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
 			$total_ws += $ws;
 
 			if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
@@ -785,7 +787,9 @@ else {
 ?>
 <div class="my-3">
 	<span class="text-danger"><i class="bi bi-lock"></i></span> Requires password,
-	<span class="text-success"><i class="bi bi-hourglass"></i></span> Histogram available
+	<span class="text-success"><i class="bi bi-hourglass"></i></span> Histogram available,
+	<span class="text-primary"><i class="bi bi-info-square"></i></span> Corpus information link,
+	<span class="text-primary"><i class="bi bi-question-square"></i></span> Help link
 </div>
 </div>
 

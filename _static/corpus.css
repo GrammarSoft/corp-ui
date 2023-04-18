@@ -2,6 +2,15 @@ html, body {
 	font-size: 12px;
 }
 
+#logo img {
+	width: 240px;
+	height: 40px;
+}
+
+a {
+	text-decoration: none;
+}
+
 .sidebar {
 	min-width: 175px;
 	max-width: 250px;
@@ -55,7 +64,6 @@ tr:target, td:target, th:target {
 .float-right {
 	position: absolute;
 	right: 0;
-	top: 0;
 	padding: 0 0.5rem;
 }
 
