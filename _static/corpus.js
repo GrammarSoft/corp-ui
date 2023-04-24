@@ -111,7 +111,6 @@
 		}
 
 		state.popup = window.open(href, 'corp_export', 'left=100,top=100,width=400,height=600,popup');
-		console.log(state.popup);
 	}
 
 	function popupExportAll(e) {
@@ -126,6 +125,19 @@
 		btn.attr('href', href + ids.join(','));
 
 		return popupExport(e, btn);
+	}
+
+	function popupInfo(e) {
+		e.preventDefault();
+		let href = $(this).attr('href');
+
+		if (state.popup_info && !state.popup_info.closed) {
+			state.popup_info.location = href;
+			state.popup_info.focus();
+			return;
+		}
+
+		state.popup_info = window.open(href, 'corp_info', 'left=100,top=100,width=900,height=300,popup');
 	}
 
 	function repaginate() {
@@ -349,7 +361,7 @@
 				let html = '';
 				html += '';
 				html += '<table class="table table-striped table-hover my-3">';
-				html += '<thead><tr class="text-begin"><th colspan="4"><div><a class="btn btn-outline-primary btnExportAll" target="corp_export" href="#" data-href="./export.php?c['+corp+']=1&amp;ids="><i class="bi bi-box-arrow-up-right"></i> Export all</a></div></th></tr></thead>';
+				html += '<thead><tr class="text-begin"><th colspan="4"><div><a class="btn btn-outline-primary btnExportAll" target="corp_export" href="#" data-href="./export.php?c['+corp+']=1&amp;ids=">Export all <i class="bi bi-box-arrow-up-right"></i></a></div></th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.rs[corp].length ; ++i) {
 					html += '<tr id="'+corp+'-'+rv.rs[corp][i].i+'" data-p="'+rv.rs[corp][i].p+'"><td class="qpending opacity-25">'+rv.rs[corp][i].i+'</td><td class="opacity-25">…loading…</td><td class="text-center fw-bold opacity-25">'+escHTML(rv.rs[corp][i].t)+'</td><td class="opacity-25">…loading…</td></tr>';
@@ -520,7 +532,7 @@
 						}
 					}
 
-					let info = '<a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="bottom" title="'+escHTML(s_tag)+'"><i class="bi bi-info-square"></i></a>';
+					let info = '<a class="popup-info" target="corp_info" href="./info.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-info-square"></i></a>';
 					if (s_article) {
 						info += ' <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
 					}
@@ -546,6 +558,7 @@
 					let popoverTriggerList = row.get(0).querySelectorAll('[data-bs-toggle="popover"]');
 					let popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
 					$(row).find('.popup-export').off().click(popupExport);
+					$(row).find('.popup-info').off().click(popupInfo);
 				}
 
 				rq.cs[corp] = {};
