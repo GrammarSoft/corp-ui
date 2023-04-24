@@ -56,25 +56,42 @@ if ($_REQUEST['a'] === 'clear') {
 <?php
 
 $_REQUEST['c'] = filter_corpora_k($_REQUEST['c'] ?? []);
-$_REQUEST['id'] = intval($_REQUEST['id'] ?? 0);
+$_REQUEST['ids'] = preg_replace('~[^\d,]+~', '', $_REQUEST['ids'] ?? '');
 
-if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
+if (!empty($_REQUEST['c']) && !empty($_REQUEST['ids'])) {
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
 
 		if (!$_SESSION['corpora'][$s_corp]) {
 			break;
 		}
-		if (!empty($_SESSION['exported'][$s_corp][$_REQUEST['id']])) {
+
+		$_REQUEST['ids'] = explode(',', $_REQUEST['ids']);
+		foreach ($_REQUEST['ids'] as $k => $id) {
+			if (!empty($_SESSION['exported'][$s_corp][$id])) {
+				unset($_REQUEST['ids'][$k]);
+			}
+		}
+
+		sort($_REQUEST['ids']);
+		$_REQUEST['ids'] = array_unique($_REQUEST['ids']);
+		$_REQUEST['ids'] = implode('|', $_REQUEST['ids']);
+
+		if (empty($_REQUEST['ids'])) {
 			break;
 		}
 
-		$s_query = escapeshellarg('<s id="'.$_REQUEST['id'].'"/> containing []');
+		$s_query = escapeshellarg('<s id="('.$_REQUEST['ids'].')"/> containing []');
 		$line = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query");
 
-		$pcs = explode("\t", trim($line), 3);
-		$pcs[2] = trim(str_replace('¤ ', '', str_replace("\t", ' ', trim($pcs[2]))));
-		$_SESSION['exported'][$s_corp][$_REQUEST['id']] = [$pcs[1], $pcs[2]];
+		$lines = explode("\n", trim($line));
+		foreach ($lines as $line) {
+			$pcs = explode("\t", trim($line), 3);
+			preg_match('~ id="(\d+)"~', $pcs[1], $m);
+			$id = intval($m[1]);
+			$pcs[2] = trim(str_replace('¤ ', '', str_replace("\t", ' ', trim($pcs[2]))));
+			$_SESSION['exported'][$s_corp][$id] = [$pcs[1], $pcs[2]];
+		}
 		ksort($_SESSION['exported'][$s_corp]);
 		ksort($_SESSION['exported']);
 		break;

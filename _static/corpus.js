@@ -97,9 +97,12 @@
 		$('#t'+p).addClass('depParent');
 	}
 
-	function popupExport(e) {
+	function popupExport(e, btn) {
 		e.preventDefault();
-		let href = $(this).attr('href');
+		if (typeof btn == 'undefined') {
+			btn = $(this);
+		}
+		let href = btn.attr('href');
 
 		if (state.popup && !state.popup.closed) {
 			state.popup.location = href;
@@ -109,6 +112,20 @@
 
 		state.popup = window.open(href, 'corp_export', 'left=100,top=100,width=400,height=600,popup');
 		console.log(state.popup);
+	}
+
+	function popupExportAll(e) {
+		e.preventDefault();
+
+		let btn = $(this);
+		let href = btn.attr('data-href');
+		let ids = [];
+		btn.closest('table').find('a[data-id]').each(function(i, elem) {
+			ids.push(elem.getAttribute('data-id'));
+		});
+		btn.attr('href', href + ids.join(','));
+
+		return popupExport(e, btn);
 	}
 
 	function repaginate() {
@@ -329,8 +346,10 @@
 				}
 
 				c.find('.qrange').text(rv.rs[corp][0].i+' to '+(rv.rs[corp][rv.rs[corp].length-1].i));
-				let html = '<table class="table table-striped table-hover my-3">';
-				//html += '<thead><tr class="text-center"><th>#</th><th>LHS</th><th class="text-center">Hit</th><th>RHS</th></tr></thead>';
+				let html = '';
+				html += '';
+				html += '<table class="table table-striped table-hover my-3">';
+				html += '<thead><tr class="text-begin"><th colspan="4"><div><a class="btn btn-outline-primary btnExportAll" target="corp_export" href="#" data-href="./export.php?c['+corp+']=1&amp;ids="><i class="bi bi-box-arrow-up-right"></i> Export all</a></div></th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.rs[corp].length ; ++i) {
 					html += '<tr id="'+corp+'-'+rv.rs[corp][i].i+'" data-p="'+rv.rs[corp][i].p+'"><td class="qpending opacity-25">'+rv.rs[corp][i].i+'</td><td class="opacity-25">…loading…</td><td class="text-center fw-bold opacity-25">'+escHTML(rv.rs[corp][i].t)+'</td><td class="opacity-25">…loading…</td></tr>';
@@ -338,6 +357,7 @@
 				}
 				html += '</tbody></table>';
 				c.find('.qbody').html(html);
+				$('.btnExportAll').off().click(popupExportAll);
 			}
 		}
 
@@ -504,7 +524,7 @@
 					if (s_article) {
 						info += ' <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
 					}
-					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
+					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;ids='+s_id+'" data-id="'+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
