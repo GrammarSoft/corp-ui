@@ -1,0 +1,8 @@
+#!/bin/bash
+cd ~/storage/cache
+
+find . -type f -mtime +7 | perl -wpne 'm@^(./../../[^-]+-)@; $_ = "$1\n";' | uniq | xargs -r '-IX' sh -c 'rm -rfv X*'
+
+find . -type d -empty | xargs -rn1 rm -rfv
+find . -type d -empty | xargs -rn1 rm -rfv
+find . -type d -empty | xargs -rn1 rm -rfv
