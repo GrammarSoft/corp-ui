@@ -246,7 +246,7 @@
 
 	function appendIfNot0(tabs) {
 		if (state.focus_n != 0) {
-			return '<br><span class="fw-light text-muted">'+escHTML(tabs[state.focus_n] ? tabs[state.focus_n] : '-')+'</span>';
+			return '<br><span class="fw-light text-muted">'+escHTML(tabs[state.focus_n] ? tabs[state.focus_n] : '-').replace(/ /g, "<br>")+'</span>';
 		}
 		return '';
 	}
@@ -477,21 +477,21 @@
 								title = escHTML(title);
 
 								if (n < p) {
-									parts.p.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.p.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.pz.push(u_length(tabs[0]));
 									parts.ptz += u_length(tabs[0]) + 1;
 								}
 								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
-									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(tabs[0].length).trim();
 								}
 								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
-									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
 									named.shift();
 								}
 								else {
-									parts.s.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.s.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.sz.push(u_length(tabs[0]));
 									parts.stz += u_length(tabs[0]) + 1;
 								}
