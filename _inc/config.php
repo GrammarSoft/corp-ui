@@ -91,30 +91,37 @@ $GLOBALS['-corpora'] = [
 		'dan_facebook_minority' => [
 			'name' => 'FBmin v.1',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_20180710' => [
 			'name' => 'FBmin v.2',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_avis_20180710' => [
 			'name' => 'FBmin news',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_dr' => [
 			'name' => 'FBmin DR/TV2',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_dr_20180710' => [
 			'name' => 'FBmin DR/TV2 v.2',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_negative' => [
 			'name' => 'FBmin-neg',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_facebook_minority_negative_dr' => [
 			'name' => 'FBmin-neg DR/TV2',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#dan_facebook',
 			],
 		'dan_firma_1' => [
 			'name' => 'Firma_1',
@@ -194,10 +201,12 @@ $GLOBALS['-corpora'] = [
 		'deu_wiki_2019a' => [
 			'name' => 'Wikipedia (2019a)',
 			'percent_combo' => 12.5,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_wiki',
 			],
 		'deu_wiki_2019b' => [
 			'name' => 'Wikipedia (2019b)',
 			'percent_combo' => 12.5,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_wiki',
 			],
 		'deu_twitter_2008_2017' => [
 			'name' => 'Twitter (2008-2017)',
@@ -205,26 +214,32 @@ $GLOBALS['-corpora'] = [
 			'subs' => [
 				'2017' => '2017',
 				],
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		'deu_twitter_2018' => [
 			'name' => 'Twitter (2018)',
 			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		'deu_twitter_2019' => [
 			'name' => 'Twitter (2019)',
 			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		'deu_twitter_2020' => [
 			'name' => 'Twitter (2020)',
 			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		'deu_twitter_2021' => [
 			'name' => 'Twitter (2021)',
 			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		'deu_twitter_2022' => [
 			'name' => 'Twitter (2022 Jan-Aug)',
 			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],
 		],
 	'eng' => [
@@ -235,14 +250,17 @@ $GLOBALS['-corpora'] = [
 		'eng_wiki_a' => [
 			'name' => 'Wikipedia (a)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_wiki',
 			],
 		'eng_wiki_b' => [
 			'name' => 'Wikipedia (b)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_wiki',
 			],
 		'eng_wiki_c' => [
 			'name' => 'Wikipedia (c)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_wiki',
 			],
 		'eng_bnc_written' => [
 			'name' => 'BNC-written',
@@ -264,25 +282,31 @@ $GLOBALS['-corpora'] = [
 		'eng_ucla_2005_2009' => [
 			'name' => 'UCLA CSA television news 2005-2009',
 			'percent_combo' => 10,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_ucla',
 			],
 		'eng_ucla_2010_2012' => [
 			'name' => 'UCLA CSA television news 2010-2012',
 			'percent_combo' => 10,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_ucla',
 			],
 		'eng_wiki_conversations' => [
 			'name' => 'Wikipedia Talkpages',
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_wiki',
 			],
 		'eng_enron_a' => [
 			'name' => 'Enron e-mails (a)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_enron',
 			],
 		'eng_enron_b' => [
 			'name' => 'Enron e-mails (b)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_enron',
 			],
 		'eng_enron_c' => [
 			'name' => 'Enron e-mails (c)',
 			'percent_combo' => 6.66,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#eng_enron',
 			],
 		'eng_email' => [
 			'name' => 'E-mail corpus',
@@ -318,10 +342,12 @@ $GLOBALS['-corpora'] = [
 		'epo_wiki' => [
 			'name' => 'Wikipedia 2005',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#epo_wiki',
 			],
 		'epo_wiki_2010' => [
 			'name' => 'Wikipedia 2010',
 			'percent_combo' => 25,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#epo_wiki',
 			],
 		'epo_zamenhof' => [
 			'name' => 'Zamenhof classics',
@@ -448,38 +474,47 @@ $GLOBALS['-corpora'] = [
 		'por_publico' => [
 			'name' => 'Público',
 			'percent_combo' => 35,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_91' => [
 			'name' => 'Público-91',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_92' => [
 			'name' => 'Público-92',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_93' => [
 			'name' => 'Público-93',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_94' => [
 			'name' => 'Público-94',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_95' => [
 			'name' => 'Público-95',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_96' => [
 			'name' => 'Público-96',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_97' => [
 			'name' => 'Público-97',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_publico_98' => [
 			'name' => 'Público-98',
 			'percent_combo' => 0,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#por_publico',
 			],
 		'por_wiki' => [
 			'name' => 'Wikipedia',

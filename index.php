@@ -117,12 +117,17 @@ else if (!empty($query2)) {
 	$query = '('.$query2.') within ('.$query.')';
 }
 
+$title = '';
+if (!empty($_REQUEST['c'])) {
+	$title = implode(', ', array_keys($_REQUEST['c'])).' &laquo; ';
+}
+
 ?>
 <!DOCTYPE html>
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>VISL Corpora</title>
+	<title><?=$title;?>VISL Corpora</title>
 
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
@@ -139,7 +144,7 @@ else if (!empty($query2)) {
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
 <body>
-<div id="logo" class="container-fluid my-3"><a href="/"><img src="https://corp.hum.sdu.dk/flags/corpuseye-flat-transparent.gif"></a> - <a href="https://corp.hum.sdu.dk/cqp_help.html">Help</a> - <a href="https://visl.sdu.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://visl.sdu.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
+<div id="logo" class="container-fluid my-3"><a href="/" class="me-5"><img src="https://corp.hum.sdu.dk/flags/corpuseye-flat-transparent.gif"></a> <a href="https://corp.hum.sdu.dk/cqp_help.html">Help</a> - <a href="https://visl.sdu.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://visl.sdu.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
 
 <?php
 
