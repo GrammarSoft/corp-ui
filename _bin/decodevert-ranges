@@ -16,7 +16,7 @@ import bisect
 
 import re
 attr_skip = re.compile(r'^(?:endmark|h_.*)$')
-attr_keep = re.compile(r'^.*?_(lc|nd)$')
+attr_keep = re.compile(r'^(.*?_(lc|nd))|sem$')
 
 try:
     range = xrange

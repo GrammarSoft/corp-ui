@@ -300,7 +300,7 @@
 				}
 				for (let i=0 ; i<fields[attr].length ; ++i) {
 					if (!verbatims.hasOwnProperty(attr)) {
-						fields[attr][i] = '(?:.* )?'+fields[attr][i]+'(?: .*)?';
+						fields[attr][i] = '.*(?:^| )'+fields[attr][i]+'(?: |$).*';
 					}
 					if (fields[attr].length > 1) {
 						fields[attr][i] = '(?:'+fields[attr][i]+')';

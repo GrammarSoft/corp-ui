@@ -58,7 +58,7 @@
 		};
 
 	let fields = {};
-	'word	lex	extra	pos	morph	func	role	dself	dparent	word_lc	word_nd	lex_lc	lex_nd'.split(/\t/).forEach(function(e, i) {
+	'word	lex	extra	pos	morph	func	sem	role	dself	dparent	word_lc	word_nd	lex_lc	lex_nd'.split(/\t/).forEach(function(e, i) {
 		fields[e] = i;
 	});
 
@@ -600,7 +600,10 @@
 
 		let field = params.get('f');
 
-		let query = params.get('q');
+		let query1 = params.get('q');
+		let query2 = params.has('q2') ? params.get('q2') : '';
+		let query = query2 ? query2 : query1;
+
 		let by = params.get('b');
 		let offset = parseInt(params.get('o'));
 		// Turn context conditions into edge conditions
@@ -650,6 +653,9 @@
 			}
 			search += bits.join(' ');
 		}
+
+		let search1 = query2 ? query1 : search;
+		let search2 = query2 ? search : query2;
 
 		if (rv.hasOwnProperty('cs')) {
 			for (let corp in rv.cs) {
@@ -737,7 +743,8 @@
 				html += '<th class="color-green text-vertical" title="Percentage of total hits">freq∕conc</th><th class="text-vertical" title="Number of hits">num</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
-					url.searchParams.set('q', search.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
+					url.searchParams.set('q', search1.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
+					url.searchParams.set('q2', search2.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
 					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
 					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
@@ -862,6 +869,9 @@
 					}
 					let lstamp = rv.cs[corp].h[i][0].toString().replace(link.rx, link.rpl);
 					url.searchParams.set('q', '('+params.get('q')+') within <s lstamp="'+lstamp+'"/>');
+					if (params.has('q2')) {
+						url.searchParams.set('q2', params.get('q2'));
+					}
 					html += '<tr id="h'+escHTML(rv.cs[corp].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
 					tsv += rv.cs[corp].h[i].join('\t')+'\n';
 				}
