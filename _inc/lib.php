@@ -11,6 +11,7 @@ foreach ($GLOBALS['-corpora'] as $g => $cs) {
 		$GLOBALS['-corplist'][$corp] =& $GLOBALS['-corpora'][$g][$corp];
 		$GLOBALS['-corplist'][$corp]['percent_combo'] = ($GLOBALS['-corplist'][$corp]['percent_combo'] ?? 0.001);
 		$GLOBALS['-corplist'][$corp]['infolink'] = ($GLOBALS['-corplist'][$corp]['infolink'] ?? "https://corp.visl.dk/copyright.html#{$corp}");
+		$GLOBALS['-corplist'][$corp]['features'] = ($GLOBALS['-corplist'][$corp]['features'] ?? []);
 	}
 }
 
