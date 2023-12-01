@@ -144,7 +144,7 @@ if (!empty($_REQUEST['c'])) {
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
 <body>
-<div id="logo" class="container-fluid my-3"><a href="/" class="me-5"><img src="https://corp.hum.sdu.dk/flags/corpuseye-flat-transparent.gif"></a> <a href="https://corp.hum.sdu.dk/cqp_help.html">Help</a> - <a href="https://visl.sdu.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://visl.sdu.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
+<div id="logo" class="container-fluid my-3"><a href="/" class="me-5"><img src="https://corp.visl.dk/flags/corpuseye-flat-transparent.gif"></a> <a href="https://corp.visl.dk/cqp_help.html">Help</a> - <a href="https://edu.visl.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://edu.visl.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
 
 <?php
 

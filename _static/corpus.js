@@ -534,7 +534,7 @@
 
 					let info = '<a class="popup-info" target="corp_info" href="./info.php?c['+escHTML(corp)+']=1&amp;id='+s_id+'"><i class="bi bi-info-square"></i></a>';
 					if (s_article) {
-						info += ' <a href="https://alpha.visl.sdu.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
+						info += ' <a href="https://edu.visl.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
 					}
 					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;ids='+s_id+'" data-id="'+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
 					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
