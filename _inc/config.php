@@ -166,9 +166,9 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Youtube',
 			],
 		'dan_twitter' => [
-			'name' => 'Twitter (2008-2022 Aug)',
+			'name' => 'Twitter (2008-2023 Mar)',
 			'percent_combo' => 25,
-			'subs' => array_combine(range(2017, 2022), range(2017, 2022)),
+			'subs' => array_combine(range(2017, 2023), range(2017, 2023)),
 			],
 		],
 	'deu' => [
@@ -238,6 +238,11 @@ $GLOBALS['-corpora'] = [
 			],
 		'deu_twitter_2022' => [
 			'name' => 'Twitter (2022 Jan-Aug)',
+			'percent_combo' => 4.16,
+			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
+			],
+		'deu_twitter_2023' => [
+			'name' => 'Twitter (2023 Jan-Mar)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.hum.sdu.dk/copyright.html#deu_twitter',
 			],

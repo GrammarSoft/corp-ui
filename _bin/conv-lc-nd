@@ -32,12 +32,41 @@ while ($line = fgets(STDIN)) {
 	$line = $any2name->transliterate($line);
 	$line = str_replace(' DOTLESS ', ' ', $line); // Dotless i (ı) and any other potential dotless variant
 	$line = preg_replace('~ WITH [^}]+~', '', $line); // Diacritics are all WITH something, so just remove the WITH part
-	$line = $name2any->transliterate($line);
 
-	$line = $any2lower->transliterate($line);
-	$line = $any2latin->transliterate($line);
-	$line = $latin2ascii->transliterate($line);
-	$line = $remove->transliterate($line);
+	$out = $name2any->transliterate($line);
+	if ($out === false) {
+		fprintf(STDERR, "name2any(%s) => false!\n", $line);
+		$out = $line;
+	}
+	$line = $out;
+
+	$out = $any2lower->transliterate($line);
+	if ($out === false) {
+		fprintf(STDERR, "any2lower(%s) => false!\n", $line);
+		$out = $line;
+	}
+	$line = $out;
+
+	$out = $any2latin->transliterate($line);
+	if ($out === false) {
+		fprintf(STDERR, "any2latin(%s) => false!\n", $line);
+		$out = $line;
+	}
+	$line = $out;
+
+	$out = $latin2ascii->transliterate($line);
+	if ($out === false) {
+		fprintf(STDERR, "latin2ascii(%s) => false!\n", $line);
+		$out = $line;
+	}
+	$line = $out;
+
+	$out = $remove->transliterate($line);
+	if ($out === false) {
+		fprintf(STDERR, "remove(%s) => false!\n", $line);
+		$out = $line;
+	}
+	$line = $out;
 
 	echo $line;
 	$cache[$org] = $line;

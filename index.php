@@ -478,6 +478,7 @@ Frequency <i class="bi bi-sort-down"></i>
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="text-center">
@@ -529,6 +530,7 @@ XHTML;
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="card-header text-center fw-bold fs-6">
@@ -581,6 +583,7 @@ XHTML;
 <form method="GET">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="s" title="Back to concordance">Back to concordance</button>
@@ -807,6 +810,31 @@ else {
 <div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">
 <?=implode("\n", $toasts);?>
 </div>
+
+<script src="https://www.google-analytics.com/urchin.js" type="text/javascript"></script>
+<script type="text/javascript"> _uacct = "UA-87771-8"; urchinTracker(); </script>
+
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-4QX6X7X8P8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-4QX6X7X8P8');
+</script>
+
+<script>
+  var _paq = window._paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="//gramtrans.com/matomo/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '14']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
 
 </body>
 </html>

@@ -27,8 +27,8 @@ rm -rf ~/storage/corpora/dan_twitter/tmp
 * (Frequencies should include POS) - No, restrict it in the search and compare manually instead
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
-* Information link next to corpus name
 * Adjustable context size
 * Implement sibling search
 * Highlight parents if searched for
 * Per-language help links in top to CG grammar docs
+* Per-corpus refine fields for S-attributes (single-corpus only)
