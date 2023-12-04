@@ -580,7 +580,7 @@
 		}
 
 		if (retry) {
-			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 500);
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 1000);
 		}
 	}
 
@@ -768,7 +768,7 @@
 		}
 
 		if (retry) {
-			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 1000);
 		}
 	}
 
@@ -1095,7 +1095,7 @@
 		}
 
 		if (retry) {
-			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 500);
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 1000);
 		}
 	}
 

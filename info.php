@@ -47,7 +47,7 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 		foreach ($lines as $k => $line) {
 			$lines[$k] = explode("\t", $line);
 
-			foreach (['lex_nd', 'lex_lc', 'word_nd', 'word_lc'] as $snip) {
+			foreach (['lex_nd', 'lex_lc', 'word_nd', 'word_lc', 'sem', 'h_sem'] as $snip) {
 				if (array_key_exists($snip, $fields)) {
 					array_pop($lines[$k]);
 					unset($fields[$snip]);
