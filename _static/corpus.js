@@ -156,7 +156,10 @@
 			html += '<li class="page-item"><a href="'+escHTML(url)+'" class="page-link qpage" data-which="'+(i*state.pagesize+1)+'">'+(i+1)+'</a></li>';
 		}
 		if (pgs > 10) {
-			if (pgs > 11) {
+			if (pgs > 500) {
+				html += '<li class="page-item"><span class="page-link"><input type="number" class="form-control form-control-sm qpageinput"></span></li>';
+			}
+			else if (pgs > 11) {
 				html += '<li class="page-item"><span class="page-link"><select class="form-select form-select-sm qpagesel">';
 				for ( ; i<pgs-1 ; ++i) {
 					html += '<option value="'+(i*state.pagesize+1)+'">'+(i+1)+'</option>';
@@ -190,6 +193,10 @@
 			let p = $(this).val();
 			loadOffset(parseInt(p), true);
 		});
+		$('.qpageinput').change(function() {
+			let p = $(this).val();
+			loadOffset((parseInt(p)-1)*state.pagesize+1, true);
+		});
 	}
 
 	function pageToggleButtons() {
@@ -197,6 +204,7 @@
 		url.searchParams.set('pagesize', state.pagesize);
 
 		$('.qpagesel').val(state.offset);
+		$('.qpageinput').val(Math.ceil(state.offset/state.pagesize));
 		url.searchParams.set('offset', Math.max(state.offset - state.pagesize, 1));
 		$('.qpage-prev').find('.qpage').attr('href', url.toString()).attr('data-which', Math.max(state.offset - state.pagesize, 1));
 		url.searchParams.set('offset', state.offset + state.pagesize);
