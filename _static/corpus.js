@@ -55,6 +55,7 @@
 		depc: 0,
 		histgs: {},
 		popup: null,
+		popup_info: null,
 		};
 
 	let fields = {};
@@ -137,7 +138,7 @@
 			return;
 		}
 
-		state.popup_info = window.open(href, 'corp_info', 'left=100,top=100,width=900,height=300,popup');
+		state.popup_info = window.open(href, 'corp_info', 'left=100,top=100,width=900,height=700,popup');
 	}
 
 	function repaginate() {
