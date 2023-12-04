@@ -300,9 +300,11 @@
 				}
 				for (let i=0 ; i<fields[attr].length ; ++i) {
 					if (!verbatims.hasOwnProperty(attr)) {
+						// Caveat: Adjust both here and in parse_values
 						fields[attr][i] = '.*(?:^| )'+fields[attr][i]+'(?: |$).*';
 					}
 					if (fields[attr].length > 1) {
+						// Caveat: Adjust both here and in parse_values
 						fields[attr][i] = '(?:'+fields[attr][i]+')';
 					}
 				}
@@ -340,6 +342,29 @@
 		let found = true;
 		while (found) {
 			found = false;
+			// Caveat: Adjust both here and in _update_search_helper
+			for (let i=0 ; i<values.length ; ++i) {
+				if (s.indexOf('(.*(^| )'+values[i]+'( |$).*)') === 0) {
+					s = s.substr(values[i].length + 16);
+					if (s.indexOf('|') === 0) {
+						s = s.substr(1);
+					}
+					vals.push(values[i]);
+					found = true;
+					break;
+				}
+			}
+			for (let i=0 ; i<values.length ; ++i) {
+				if (s.indexOf('.*(^| )'+values[i]+'( |$).*') === 0) {
+					s = s.substr(values[i].length + 14);
+					if (s.indexOf('|') === 0) {
+						s = s.substr(1);
+					}
+					vals.push(values[i]);
+					found = true;
+					break;
+				}
+			}
 			for (let i=0 ; i<values.length ; ++i) {
 				if (s.indexOf('('+values[i]+')') === 0) {
 					s = s.substr(values[i].length + 2);
