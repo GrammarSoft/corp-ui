@@ -138,7 +138,6 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Information 1996-2008',
 			'percent_combo' => 15,
 			'subs' => array_combine(range(1996, 2008), range(1996, 2008)),
-			'features' => ['sem' => true],
 			],
 		'dan_leipzig' => [
 			'name' => 'Leipzig internet corpus',
@@ -172,7 +171,9 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Twitter (2008-2023 Mar)',
 			'percent_combo' => 25,
 			'subs' => array_combine(range(2017, 2023), range(2017, 2023)),
-			'features' => ['sem' => true],
+			],
+		'dan_literature' => [
+			'name' => 'Literature 1800-1940',
 			],
 		],
 	'deu' => [

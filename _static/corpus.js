@@ -405,7 +405,7 @@
 						if (/^<s[ >]/.test(ts[j])) {
 							if (n <= p) {
 								s_tag = ts[j];
-								let m = ts[j].match(/ (?:tweet|article|title)="([^"]+)"/);
+								let m = ts[j].match(/ (?:tweet)="([^"]+)"/);
 								if (m) {
 									s_article = m[1];
 								}

@@ -31,7 +31,7 @@ if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 	$_REQUEST['f'] = 'word';
 }
 
-$_REQUEST['b'] = trim($_REQUEST['b'] ?? 'rc');
+$_REQUEST['b'] = trim($_REQUEST['b'] ?? 'le');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 
 $toasts = [];

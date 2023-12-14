@@ -21,6 +21,12 @@ $GLOBALS['WEB_ROOT'] = dirname(__DIR__);
 $GLOBALS['CORP_ROOT'] = dirname($GLOBALS['WEB_ROOT']).'/storage';
 $_REQUEST = array_merge($_GET, $_POST);
 
+foreach ($GLOBALS['-corplist'] as $corp => $_) {
+	if (file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$corp}/sem.fsa")) {
+		$GLOBALS['-corplist'][$corp]['features']['sem'] = true;
+	}
+}
+
 $GLOBALS['-value-class'] = [
 	'word' => '~^[\pL][- \'`´\pL\pM]*$~u',
 	'number' => '~^[\pN\d][- \pN\d]*$~u',
