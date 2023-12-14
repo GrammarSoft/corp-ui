@@ -54,6 +54,7 @@
 		last_rv: null,
 		depc: 0,
 		histgs: {},
+		groupgs: {},
 		popup: null,
 		popup_info: null,
 		};
@@ -870,7 +871,7 @@
 
 				c.find('.qrange').text('');
 				let html = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="d-inline-block table table-striped table-hover my-3">';
-				html += '<thead><tr><th>Group</th><th class="text-vertical">Articles</th><th class="text-vertical">Sentences</th><th class="text-vertical">Hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
+				html += '<thead><tr><th>Group</th><th class="text-vertical">Article hits</th><th class="text-vertical">Sentence hits</th><th class="text-vertical">All hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
 					if (rv.cs[corp].h[i][1] <= 0) {
@@ -943,7 +944,7 @@
 			for (let k=0 ; k<to_render[corp].length ; ++k) {
 				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
 					if (to_render[corp][k][i][f_aggr] >= sparse) {
-						y_max = Math.max(y_max, Math.ceil(to_render[corp][k][i][6]));
+						y_max = Math.max(y_max, to_render[corp][k][i][6]);
 					}
 				}
 			}
@@ -1066,7 +1067,7 @@
 									minBarLength: 5,
 									barPercentage: 1,
 									categoryPercentage: 1,
-            					},
+								},
 							],
 						},
 						options: {
@@ -1104,6 +1105,305 @@
 
 		if (retry) {
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 1000);
+		}
+	}
+
+	function handleGroup(rv) {
+		let url = new URL(window.location);
+		let params = url.searchParams;
+		let retry = false;
+		let rq = {
+			a: 'group',
+			h: state.hash,
+			gc: params.get('gc'),
+			s: rv.s,
+			n: rv.n,
+			cs: [],
+			};
+		let gs = [];
+		for (let i=0 ; i<10 ; ++i) {
+			let g = 'g'+i;
+			if (params.has(g)) {
+				rq[g] = params.get(g);
+				gs.push(rq[g]);
+			}
+		}
+
+		let by_art = (params.has('ha') && params.get('ha'));
+
+		$('.qpages').hide();
+		let to_render = {};
+
+		if (rv.hasOwnProperty('cs')) {
+			for (let corp in rv.cs) {
+				if (!rv.cs[corp].d) {
+					rq.cs.push(corp);
+					retry = true;
+				}
+
+				let c = $('#'+corp);
+				state.ts[corp] = rv.cs[corp];
+				c.find('.qtotal').text(rv.cs[corp].h.length);
+
+				if (!rv.cs[corp].d) {
+					c.find('.qtotal').text(rv.cs[corp].h.length + '…');
+				}
+				else {
+					if (rv.cs[corp].h.length === 0) {
+						let c = $('#'+corp);
+						c.find('.qrange').text('0');
+						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
+					}
+				}
+
+				if (!rv.cs[corp].h.length) {
+					c.find('.qrange').text('…');
+					if (!rv.cs[corp].d) {
+						c.find('.qbody').text('…still searching…');
+					}
+					else {
+						c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
+					}
+					continue;
+				}
+
+				let url = new URL(window.location.origin + window.location.pathname);
+				url.searchParams.set('l', params.get('l'));
+				url.searchParams.set('c['+corp+']', '1');
+				url.searchParams.set('s', 's');
+				if (params.has('ub') && params.get('ub')) {
+					url.searchParams.set('ub', '1');
+				}
+
+				state.groupgs[corp] = rv.cs[corp].h;
+				to_render[corp] = [];
+				if (corp.indexOf('-') !== -1) {
+					to_render[corp.substr(0, corp.indexOf('-'))+'-subc'] = [];
+				}
+
+				let tsv = 'Group\tArticles\tSentences\tHits\tCArticles\tCSentences\tCTokens\tCWords\n';
+
+				c.find('.qrange').text('');
+				let html = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="d-inline-block table table-striped table-hover my-3">';
+				html += '<thead><tr><th>Group</th><th class="text-vertical">Article hits</th><th class="text-vertical">Sentence hits</th><th class="text-vertical">All hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
+				html += '<tbody class="font-monospace text-nowrap text-break">';
+				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
+					if (rv.cs[corp].h[i][1] <= 0) {
+						continue;
+					}
+					let attrs = rv.cs[corp].h[i][0].split(' |~| ');
+					for (let a=0 ; a<attrs.length ; ++a) {
+						attrs[a] = gs[a]+'="'+escHTML(attrs[a])+'"';
+					}
+					url.searchParams.set('q', '('+params.get('q')+') within <s '+attrs.join(' & ')+'/>');
+					if (params.has('q2')) {
+						url.searchParams.set('q2', params.get('q2'));
+					}
+					rv.cs[corp].h[i][0] = rv.cs[corp].h[i][0].replace(' |~| ', '; ');
+					html += '<tr id="h'+escHTML(rv.cs[corp].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
+					tsv += rv.cs[corp].h[i].join('\t')+'\n';
+				}
+				state.tsv = tsv;
+				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
+				c.find('.qbody').html(html);
+
+				c.find('.btnGetTSV').click(function() {
+					saveAs(new Blob([state.tsv], {type: 'text/tab-separated-values'}), 'histogram.tsv');
+				});
+			}
+		}
+
+		let ks = Object.keys(state.groupgs).sort();
+		for (let corp in to_render) {
+			if (corp.indexOf('-subc') !== -1) {
+				let p = corp.substr(0, corp.indexOf('-subc'))+'-';
+				for (let k=0 ; k<ks.length ; ++k) {
+					if (ks[k].indexOf(p) === 0) {
+						to_render[corp].push(state.groupgs[ks[k]]);
+					}
+				}
+				if (to_render[corp].length == 1) {
+					delete to_render[corp];
+				}
+			}
+			else {
+				to_render[corp].push(state.groupgs[corp]);
+			}
+		}
+
+		let f_hits = 3;
+		let f_aggr = 5;
+		let f_label = '% Hits/CSentences';
+		if (by_art) {
+			f_hits = 1;
+			f_aggr = 4;
+			f_label = '% Articles/CArticles';
+		}
+
+		for (let corp in to_render) {
+			let c = $('#graph-'+corp);
+
+			let gs = [];
+			let g = [];
+			let Y = 0;
+
+			// Determine the average analyzed bodies for a group and consider groups with <10% of that as sparse
+			let sparse = 0;
+			for (let k=0 ; k<to_render[corp].length ; ++k) {
+				let psp = 0;
+				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
+					psp += to_render[corp][k][i][f_aggr];
+					to_render[corp][k][i][6] = to_render[corp][k][i][f_hits]*100.0 / to_render[corp][k][i][f_aggr];
+				}
+				sparse += psp/to_render[corp][k].length;
+			}
+			sparse = sparse/10.0;
+
+			// Find max value so all graphs can get the same Y-axis
+			let y_max = 0;
+			for (let k=0 ; k<to_render[corp].length ; ++k) {
+				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
+					if (to_render[corp][k][i][f_aggr] >= sparse) {
+						y_max = Math.max(y_max, to_render[corp][k][i][6]);
+					}
+				}
+			}
+
+			for (let k=0 ; k<to_render[corp].length ; ++k) {
+				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
+					let y = to_render[corp][k][i][0].toString().substr(0, 4);
+					if (g.length >= 365 && Y != y) {
+						if (typeof g[g.length-1] === 'string') {
+							g.pop();
+						}
+						gs.push([].concat(g));
+						g = [];
+					}
+					Y = y;
+
+					if (g.length >= 1000) {
+						if (typeof g[g.length-1] === 'string') {
+							g.pop();
+						}
+						gs.push([].concat(g));
+						g = [];
+					}
+
+					let to_p = to_render[corp][k][i];
+					if (!params.has('xe') && to_render[corp][k][i][1] === 0) {
+						to_p = '- skip -';
+					}
+					if (params.has('xs') && to_render[corp][k][i][f_aggr] < sparse) {
+						to_p = '- sparse -';
+					}
+
+					if (typeof to_p === 'string') {
+						if (g.length && typeof g[g.length-1] !== 'string') {
+							g.push(to_p);
+						}
+					}
+					else {
+						g.push(to_p);
+					}
+				}
+				g.push('- sub-break -');
+			}
+			g.pop();
+			gs.push(g);
+			//console.log(gs);
+
+			let html = '';
+			for (let k=0 ; k<gs.length ; ++k) {
+				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+'</div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div>';
+			}
+			c.find('.qbody').html(html);
+
+			for (let k=0 ; k<gs.length ; ++k) {
+				let labels = [];
+				let bars = [];
+				let c_bars = [];
+				let c_borders = [];
+
+				for (let i=0 ; i<gs[k].length ; ++i) {
+					if (typeof gs[k][i] === 'string') {
+						labels.push(gs[k][i]);
+						bars.push(0);
+						c_bars.push('rgba(32, 32, 32, 0.2)');
+						c_borders.push('rgb(32, 32, 32)');
+						continue;
+					}
+
+					labels.push(gs[k][i][0]);
+					if (gs[k][i][f_aggr] < 1) {
+						bars.push(0);
+						c_bars.push('rgba(64, 64, 64, 0.2)');
+						c_borders.push('rgb(64, 64, 64)');
+					}
+					else {
+						bars.push(gs[k][i][6]);
+						if (gs[k][i][f_aggr] < sparse) {
+							c_bars.push('rgba(255, 159, 64, 0.2)');
+							c_borders.push('rgb(255, 159, 64)');
+						}
+						else {
+							c_bars.push('rgba(54, 162, 235, 0.2)');
+							c_borders.push('rgb(54, 162, 235)');
+						}
+					}
+				}
+
+				let chart = new Chart(document.getElementById('chart-'+corp+'-'+k),
+					{
+						data: {
+							labels: labels,
+							datasets: [
+								{
+									type: 'bar',
+									label: f_label,
+									data: bars,
+									backgroundColor: c_bars,
+									borderColor: c_borders,
+									minBarLength: 5,
+									barPercentage: 1,
+									categoryPercentage: 1,
+								},
+							],
+						},
+						options: {
+							responsive: false,
+							maintainAspectRatio: false,
+							interaction: {
+								mode: 'index',
+								intersect: false,
+							},
+							plugins: {
+								legend: {
+									display: false,
+								},
+							},
+							scales: {
+								y: {
+									beginAtZero: true,
+									max: y_max,
+								},
+							},
+							onClick: function(e) {
+								let pos = Chart.helpers.getRelativePosition(e, chart);
+								let x = chart.scales.x.getValueForPixel(pos.x);
+								let l = chart.scales.x.getLabelForValue(x);
+								if (!/^\d/.test(l)) {
+									return;
+								}
+								window.location.hash = '#h'+l;
+							},
+						},
+					});
+				chart.resize(gs[k].length*10, 300);
+			}
+		}
+
+		if (retry) {
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleGroup);}, 1000);
 		}
 	}
 
@@ -1203,7 +1503,7 @@
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
 		}
 
-		// Concordances
+		// Histogram
 		if ($('.qhist').length) {
 			let rq = {
 				a: 'hist',
@@ -1223,6 +1523,34 @@
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 500);
+		}
+
+		// Group by
+		if ($('.qgroup').length) {
+			let rq = {
+				a: 'group',
+				h: state.hash,
+				gc: params.get('gc'),
+				s: state.offset,
+				n: state.pagesize,
+				cs: [],
+				};
+			for (let i=0 ; i<10 ; ++i) {
+				let g = 'g'+i;
+				if (params.has(g)) {
+					rq[g] = params.get(g);
+				}
+			}
+
+			$('.qgroup').each(function() {
+				let id = $(this).attr('id');
+				rq.cs.push(id);
+				if (id.indexOf('-') !== -1) {
+					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+				}
+			});
+
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleGroup);}, 500);
 		}
 
 		$('#qpagesize').change(function() {

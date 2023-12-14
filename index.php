@@ -203,6 +203,7 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	}
 
 	$has_hist = false;
+	$has_group = false;
 	$corps = [];
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
@@ -215,6 +216,7 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 			$corps[$s_corp]['hist'] = true;
 			$has_hist = true;
 		}
+		$has_group = $GLOBALS['-corplist'][$s_corp]['group_by'] ?? false;
 	}
 
 	// Search
@@ -419,7 +421,7 @@ XSH;
 			$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.hist.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.hist.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/histogram' $hash-$corp.hist.sqlite >$hash-$corp.hist.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.hist.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/histogram' $hash-$corp.hist.sqlite >$hash-$corp.hist.err 2>&1 &
 fi
 
 XSH;
@@ -439,6 +441,55 @@ XSH;
 			file_put_contents("$hash-$hash_sh.hist.sh", $sh);
 			chmod("$hash-$hash_sh.hist.sh", 0700);
 			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.hist.time ./$hash-$hash_sh.hist.sh >$hash-$hash_sh.hist.err 2>&1 &");
+		}
+	}
+	// Group By
+	else if ($_REQUEST['s'] === 'group') {
+		$gs = implode(':', $has_group);
+
+		$sh = <<<XSH
+#!/bin/bash
+set -e
+cd '$folder'
+
+XSH;
+
+		$exec = false;
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+			}
+			else {
+				$subc = '';
+			}
+			if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+				$exec = true;
+			}
+
+			$sh .= <<<XSH
+
+if [ ! -s '$hash-$corp.group.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $hash-$corp.group.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group.sqlite '$gs' >$hash-$corp.group.err 2>&1 &
+fi
+
+XSH;
+	}
+
+	$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+
+		$hash_sh = substr(sha256_lc20($sh), 0, 8);
+		if ($exec) {
+			file_put_contents("$hash-$hash_sh.group.sh", $sh);
+			chmod("$hash-$hash_sh.group.sh", 0700);
+			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group.time ./$hash-$hash_sh.group.sh >$hash-$hash_sh.group.err 2>&1 &");
 		}
 	}
 
@@ -563,6 +614,61 @@ Histogram <i class="bi bi-hourglass"></i>
 XHTML;
 	}
 
+	// Group by
+	if ($has_group) {
+		echo <<<XHTML
+<div class="card bg-lightblue mb-3">
+<form method="GET">
+<input type="hidden" name="l" value="{$h_language}">
+<input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
+<input type="hidden" name="ub" value="{$h_unbound}">
+{$h_corps}
+<div class="card-header text-center fw-bold fs-6">
+Group By <i class="bi bi-bar-chart-steps"></i>
+</div>
+<div class="card-body">
+<div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="group">Group results</button></div>
+<div><label class="form-label">By attributes</label></div>
+
+XHTML;
+		foreach ($has_group as $gk => $gv) {
+			$gi = $gk + 1;
+			echo <<<XHTML
+<div class="mb-3"><select class="form-select" name="g{$gk}">
+
+XHTML;
+			if ($gk > 0) {
+				echo '<option value="">(none)</option>';
+			}
+			foreach ($has_group as $av) {
+				$sel = '';
+				if (!empty($_REQUEST["g{$gk}"]) && $_REQUEST["g{$gk}"] === $av) {
+					$sel = ' selected';
+				}
+				echo '<option value="'.$av.'"'.$sel.'>'.$av.'</option>';
+			}
+			echo '</select></div>';
+		}
+		echo <<<XHTML
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="ha" id="ha" {$checked['ha']}>
+<label class="form-check-label" for="ha">Aggregate articles instead of sentences</label>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="xe" id="xe" {$checked['xe']}>
+<label class="form-check-label" for="xe">Expand empty ranges</label>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="xs" id="xs" {$checked['xs']}>
+<label class="form-check-label" for="xs">Hide sparse ranges</label>
+</div>
+</form>
+</div></div>
+
+XHTML;
+	}
+
 	// Page size & Focus field
 	echo <<<XHTML
 <div class="card bg-lightblue mb-3">
@@ -633,6 +739,18 @@ XHTML;
 		echo '<div class="row">';
 		foreach ($_REQUEST['c'] as $corp => $_) {
 			echo '<div class="col qhist" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
+		}
+	}
+	else if ($_REQUEST['s'] === 'group') {
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			echo '<div class="col qgroupgraph" id="graph-'.htmlspecialchars($s_corp).'-subc"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4"></span><div class="qbody"></div></div></div>';
+			echo '<div class="col qgroupgraph" id="graph-'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4"></span><div class="qbody"></div></div></div>';
+		}
+		echo '</div>';
+		echo '<div class="row">';
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			echo '<div class="col qgroup" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
 		}
 	}
 	echo '</div>';

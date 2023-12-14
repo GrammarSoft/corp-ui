@@ -474,7 +474,7 @@
 						dv.change();
 					}
 					if (vals.length === 0) {
-						$(tbl).find('[data-attr="'+fld+'"]').val(val[1]);
+						$(tbl).find('[data-attr="'+fld+'"]').val(val[1].replace('.*(^| )', '').replace('( |$).*', ''));
 					}
 				}
 

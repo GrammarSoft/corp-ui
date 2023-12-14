@@ -174,6 +174,8 @@ $GLOBALS['-corpora'] = [
 			],
 		'dan_literature' => [
 			'name' => 'Literature 1800-1940',
+			'percent_combo' => 0,
+			'group_by' => ['author', 'title', 'year'],
 			],
 		],
 	'deu' => [

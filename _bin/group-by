@@ -1,0 +1,135 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$db_file = $argv[1] ?? 'out.sqlite';
+$db = new \TDC\PDO\SQLite($db_file);
+
+$db->exec("PRAGMA journal_mode = delete");
+$db->exec("PRAGMA page_size = 65536");
+$db->exec("VACUUM");
+
+$db->exec("PRAGMA auto_vacuum = INCREMENTAL");
+$db->exec("PRAGMA case_sensitive_like = ON");
+$db->exec("PRAGMA foreign_keys = OFF");
+$db->exec("PRAGMA ignore_check_constraints = ON");
+$db->exec("PRAGMA journal_mode = MEMORY");
+$db->exec("PRAGMA locking_mode = EXCLUSIVE");
+$db->exec("PRAGMA synchronous = OFF");
+$db->exec("PRAGMA threads = 4");
+$db->exec("PRAGMA trusted_schema = OFF");
+
+$db->exec("CREATE TABLE counts (
+	c_which TEXT NOT NULL,
+	c_articles INTEGER NOT NULL DEFAULT 0,
+	c_sentences INTEGER NOT NULL DEFAULT 0,
+	c_hits INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY (c_which)
+) WITHOUT ROWID");
+
+$hist = [];
+
+$attrs = trim($argv[2]);
+$s_attrs = explode(':', $attrs);
+sort($s_attrs);
+
+$last = [
+// On the off-chance there is a sentence without an attribute first, don't record it
+	];
+$s_last = '';
+$total = [
+	'w' => 'total',
+	'a' => 0,
+	's' => 0,
+	'h' => 0,
+	];
+$id = '';
+$art = '';
+while ($line = fgets(STDIN)) {
+	foreach ($s_attrs as $attr) {
+		if (preg_match('~ '.$attr.'="([^"]*)"~', $line, $m)) {
+			$m[1] = trim($m[1]);
+			if ($attr === 'year') {
+				if ($m[1] === 'x') {
+					$m[1] = 9999;
+				}
+				$m[1] = intval($m[1]);
+			}
+			$last[$attr] = $m[1];
+		}
+	}
+	$s_last = implode("\ue001", $last);
+
+	if (empty($hist[$s_last])) {
+		$hist[$s_last] = [
+			's' => 0,
+			'a' => 0,
+			'h' => 0,
+			];
+	}
+	++$hist[$s_last]['h'];
+	++$total['h'];
+
+	if (preg_match('~ id="([^"]+)"~', $line, $m)) {
+		if ($id !== $m[1]) {
+			if (empty($hist[$s_last])) {
+				$hist[$s_last] = [
+					's' => 0,
+					'a' => 0,
+					'h' => 0,
+					];
+			}
+			++$hist[$s_last]['s'];
+			++$total['s'];
+			$id = $m[1];
+		}
+	}
+	if (preg_match('~ (?:tweet|article|title|oid)="([^"]+)"~', $line, $m)) {
+		if ($art !== $m[1]) {
+			if (empty($hist[$s_last])) {
+				$hist[$s_last] = [
+					's' => 0,
+					'a' => 0,
+					'h' => 0,
+					];
+			}
+			++$hist[$s_last]['a'];
+			++$total['a'];
+			$art = $m[1];
+		}
+	}
+}
+
+$db->beginTransaction();
+$cnt = $db->prepare("INSERT INTO counts (c_which, c_articles, c_sentences, c_hits) VALUES (?, ?, ?, ?)");
+$cnt->execute(array_values($total));
+
+$sql = "CREATE TABLE group_by (
+	{ATTRS},
+	g_articles INTEGER NOT NULL DEFAULT 0,
+	g_sentences INTEGER NOT NULL DEFAULT 0,
+	g_hits INTEGER NOT NULL DEFAULT 0,
+	PRIMARY KEY ({INSATTR})
+) WITHOUT ROWID";
+$cols = [];
+$inscol = [];
+foreach ($s_attrs as $attr) {
+	$cols[] = "ga_{$attr} TEXT NOT NULL";
+	$inscol[] = "ga_{$attr}";
+}
+$sql = str_replace('{ATTRS}', implode(",\n\t", $cols), $sql);
+$sql = str_replace('{INSATTR}', implode(",\n\t", $inscol), $sql);
+$db->exec($sql);
+$ins_h = $db->prepare("INSERT INTO group_by (".implode(', ', $inscol).", g_articles, g_sentences, g_hits) VALUES (?".str_repeat(', ?', count($inscol)-1).", ?, ?, ?)");
+
+foreach ($hist as $k => $v) {
+	//$cnt->execute([$k, $vs[$y]['a'], $vs[$y]['s'], $vs[$y]['h']]);
+	$k = explode("\ue001", $k);
+	$ins_h->execute([...$k, $v['a'], $v['s'], $v['h']]);
+}
+
+$db->commit();
+
+$db->exec("PRAGMA locking_mode = NORMAL");
+$db->exec("VACUUM");

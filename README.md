@@ -20,6 +20,12 @@ rm -rf ~/storage/corpora/dan_twitter/tmp
 * Edit `_inc/config.php` to add it and all subcorpora to the `$GLOBALS['-corpora']` array.
 * Update global stats for the language with `time ~/public_html/_bin/stats-combine dan`
 
+* If there are group-by attributes, index those, passing a colon-separated list of attributes:
+```
+cd ~/storage/corpora/dan_literature/meta
+~/public_html/_bin/decodevert-word-lex ~/storage/registry/dan_literature | grep -v '===NONE===' | time ~/public_html/_bin/group-by group-by.sqlite 'author:title:year'
+```
+
 ## TODO
 * (Frequencies should include POS) - No, restrict it in the search and compare manually instead
 * Share corpus search without password
@@ -29,3 +35,4 @@ rm -rf ~/storage/corpora/dan_twitter/tmp
 * Highlight parents if searched for
 * Per-language help links in top to CG grammar docs
 * Per-corpus refine fields for S-attributes (single-corpus only)
+* Stacked bar charts for grouped frequencies

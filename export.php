@@ -8,14 +8,9 @@ if ($_REQUEST['a'] === 'tsv') {
 	header('Content-Type: text/tab-separated-values; charset=UTF-8');
 	header('Content-disposition: attachment; filename=export.tsv');
 
-	echo "# Corpus\n";
 	echo "# Info\tText\n";
-	foreach ($_SESSION['exported'] as $corp => $txts) {
-		echo '# '.$corp."\n";
-		foreach ($txts as $id => $txt) {
-			echo $txt[0]."\t".$txt[1]."\n";
-		}
-		echo "\n";
+	foreach ($_SESSION['exported'] as $txts) {
+		echo $txts[0]."\t".$txts[1]."\n";
 	}
 
 	die();
@@ -36,6 +31,8 @@ if ($_REQUEST['a'] === 'clear') {
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
+
+	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
 </head>
 <body>
 <div class="container-fluid">
@@ -58,6 +55,7 @@ if ($_REQUEST['a'] === 'clear') {
 $_REQUEST['c'] = filter_corpora_k($_REQUEST['c'] ?? []);
 $_REQUEST['ids'] = preg_replace('~[^\d,]+~', '', $_REQUEST['ids'] ?? '');
 
+$focus = '';
 if (!empty($_REQUEST['c']) && !empty($_REQUEST['ids'])) {
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
@@ -89,25 +87,22 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['ids'])) {
 			$pcs = explode("\t", trim($line), 3);
 			preg_match('~ id="(\d+)"~', $pcs[1], $m);
 			$id = intval($m[1]);
+			$pcs[1] = str_replace('<s ', '<s c="'.$corp.'" ', $pcs[1]);
 			$pcs[2] = trim(str_replace('¤ ', '', str_replace("\t", ' ', trim($pcs[2]))));
-			$_SESSION['exported'][$s_corp][$id] = [$pcs[1], $pcs[2]];
+			$focus = "$s_corp-$id";
+			$_SESSION['exported'][$focus] = [$pcs[1], $pcs[2]];
 		}
-		ksort($_SESSION['exported'][$s_corp]);
-		ksort($_SESSION['exported']);
 		break;
 	}
 }
 
 if (!empty($_SESSION['exported'])) {
-	foreach ($_SESSION['exported'] as $corp => $txts) {
-		echo '<h4>'.htmlspecialchars($corp).'</h4>'."\n";
-		echo '<table class="table table-striped table-hover my-3"><thead><tr><th><i class="bi bi-info-square"></i></th><th>Sentence</th></tr></thead><tbody>'."\n";
-		foreach ($txts as $id => $txt) {
-			echo '<tr><td><a data-bs-toggle="popover" data-bs-placement="bottom" title="'.htmlspecialchars($txt[0]).'"><i class="bi bi-info-square"></i></a></td><td>'.htmlspecialchars($txt[1]).'</td></tr>'."\n";
-		}
-		echo '</tbody></table>'."\n";
-		echo "\n";
+	echo '<table class="table table-striped table-hover my-3"><thead><tr><th><i class="bi bi-info-square"></i></th><th>Sentence</th></tr></thead><tbody>'."\n";
+	foreach ($_SESSION['exported'] as $id => $txts) {
+		echo '<tr id="'.$id.'"><td><a data-bs-toggle="popover" data-bs-placement="bottom" title="'.htmlspecialchars($txts[0]).'"><i class="bi bi-info-square"></i></a></td><td>'.htmlspecialchars($txts[1]).'</td></tr>'."\n";
 	}
+	echo '</tbody></table>'."\n";
+	echo "\n";
 }
 ?>
 </div>
@@ -116,6 +111,11 @@ if (!empty($_SESSION['exported'])) {
 <script>
 let popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
 let popoverList = [...popoverTriggerList].map(popoverTriggerEl => new bootstrap.Popover(popoverTriggerEl));
+<?php
+if ($focus) {
+	echo 'window.location.hash = "'.$focus.'"; $("#'.$focus.'").focus();';
+}
+?>
 </script>
 </body>
 </html>

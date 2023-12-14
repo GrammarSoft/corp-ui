@@ -469,6 +469,120 @@ while ($a === 'hist') {
 	break;
 }
 
+while ($a === 'group') {
+	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
+		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+
+	$gs = [];
+	for ($i=0 ; $i<10 ; ++$i) {
+		if (preg_match('~^[_a-zA-Z]+$~', $_REQUEST["g{$i}"] ?? '')) {
+			$gs[] = 'ga_'.$_REQUEST["g{$i}"];
+		}
+	}
+	if (empty($gs)) {
+		$rv['errors'][] = 'E055: Invalid grouping';
+		break;
+	}
+
+	$hash = $_REQUEST['h'];
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	if (!is_dir($folder)) {
+		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	chdir($folder);
+
+	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
+	$rv['s'] = $offset;
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$rv['n'] = $pagesize;
+
+	$corps = [];
+	$cs = [];
+	if (!empty($_REQUEST['cs']) && is_array($_REQUEST['cs'])) {
+		$cs = filter_corpora_v($_REQUEST['cs']);
+		$corps = array_merge($corps, $cs);
+	}
+	sort($corps);
+	$corps = array_unique($corps);
+
+	clearstatcache();
+	$dbs = [];
+	foreach ($corps as $corp) {
+		if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+			$rv['info'][] = 'Not ready '.$corp;
+			continue;
+		}
+		[$s_corp,$subc] = explode('-', $corp.'-');
+		if (!$_SESSION['corpora'][$s_corp]) {
+			$rv['errors'][] = 'E060: No access to '.$_corp;
+			break;
+		}
+		$dbs[$corp] = [
+			'group' => new \TDC\PDO\SQLite("$hash-$corp.group.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/group-by.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+			];
+	}
+
+	foreach ($cs as $corp) {
+		$rv['cs'][$corp] = [
+			'ts' => [],
+			'd' => 1,
+			'h' => [],
+			];
+
+		if (!array_key_exists($corp, $dbs)) {
+			$rv['cs'][$corp]['d'] = 0;
+			$rv['info'][] = 'I010: Not loaded '.$corp;
+			continue;
+		}
+
+		$ys = [];
+		$res = $dbs[$corp]['group']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h from counts WHERE c_which != 'total'");
+		while ($row = $res->fetch()) {
+			foreach ($row as $k => $v) {
+				$row[$k] = intval($v);
+			}
+			$ys[$row['w']] = $row;
+			$rv['cs'][$corp]['ts'][$row['w']] = $row;
+		}
+
+		$s_concat = implode(" || ' |~| ' || ", $gs);
+		$s_gs = implode(', ', $gs);
+		$res_h = $dbs[$corp]['group']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+		$res_c = $dbs[$corp]['corp']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+		while ($row = $res_h->fetch()) {
+			foreach ($row as $k => $v) {
+				if ($k !== 'w') {
+					$row[$k] = intval($v);
+				}
+			}
+			$rv['cs'][$corp]['h'][$row['w']] = array_values($row);
+		}
+		while ($row = $res_c->fetch()) {
+			foreach ($row as $k => $v) {
+				if ($k !== 'w') {
+					$row[$k] = intval($v);
+				}
+			}
+			$g = array_shift($row);
+			if (array_key_exists($g, $rv['cs'][$corp]['h'])) {
+				$rv['cs'][$corp]['h'][$g] = array_merge($rv['cs'][$corp]['h'][$g], array_values($row));
+			}
+		}
+		$rv['cs'][$corp]['h'] = array_values($rv['cs'][$corp]['h']);
+		foreach ($rv['cs'][$corp]['h'] as $g => $v) {
+			for ($i=1 ; $i<7 ; ++$i) {
+				$rv['cs'][$corp]['h'][$g][$i] = $rv['cs'][$corp]['h'][$g][$i] ?? -1;
+			}
+		}
+	}
+
+	break;
+}
+
 if (!empty($rv['errors'])) {
 	header('HTTP/1.1 400 Bad Request');
 }
