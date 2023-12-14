@@ -21,9 +21,6 @@ rm -rf ~/storage/corpora/dan_twitter/tmp
 * Update global stats for the language with `time ~/public_html/_bin/stats-combine dan`
 
 ## TODO
-* Maybe split off more dynamic fields
-* /<((activity|amount|anbo|anent|anich|anmov|anorg|anzo|ar|bar|build|cc|co[lnv]+|coll|cord|cur|dir|dance|dir|domain|dur|er|event|fight|furn|game|genre|group|inst|ism|ling|mach|meta|method|mon|occ|part|p+|per|pict|play|pos|prize|process|repr|s[ds]|sick|sit|sport|talk|temp|therapy|tube|a[cmn]|act|c[cm]|clo[HA]?|drink|f|food|fruit|geom|mat|percep|pos|sem|state|struct|system|tool|unit|wea|astro|brand|civ|disease|hum|media|org|party|j[a-z]+)(-[^>]+)?|[HABLV][HABLV]?[a-z]*)>/
-* Adjective j.* ; Verb fn:.*
 * (Frequencies should include POS) - No, restrict it in the search and compare manually instead
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
