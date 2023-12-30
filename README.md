@@ -34,5 +34,8 @@ cd ~/storage/corpora/dan_literature/meta
 * Implement sibling search
 * Highlight parents if searched for
 * Per-language help links in top to CG grammar docs
-* Per-corpus refine fields for S-attributes (single-corpus only)
-* Stacked bar charts for grouped frequencies
+* Break down Group By hits into per-s histogram
+* View the whole work (for open corpora)
+* Vector space scatter plots (word2vec)
+* 2D queries as scatter plots (E.g., Q+/- and a semantic class)
+* Sparse show only in table

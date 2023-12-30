@@ -470,7 +470,7 @@ while ($a === 'hist') {
 }
 
 while ($a === 'group') {
-	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
+	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}(;[a-z0-9]{20})*$~', $_REQUEST['h'])) {
 		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
 		break;
 	}
@@ -485,14 +485,6 @@ while ($a === 'group') {
 		$rv['errors'][] = 'E055: Invalid grouping';
 		break;
 	}
-
-	$hash = $_REQUEST['h'];
-	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
-	if (!is_dir($folder)) {
-		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
-		break;
-	}
-	chdir($folder);
 
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;
@@ -509,73 +501,98 @@ while ($a === 'group') {
 	$corps = array_unique($corps);
 
 	clearstatcache();
-	$dbs = [];
-	foreach ($corps as $corp) {
-		if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
-			$rv['info'][] = 'Not ready '.$corp;
-			continue;
-		}
-		[$s_corp,$subc] = explode('-', $corp.'-');
-		if (!$_SESSION['corpora'][$s_corp]) {
-			$rv['errors'][] = 'E060: No access to '.$_corp;
+
+	$all_ready = true;
+	$arr_hash = explode(';', $_REQUEST['h']);
+	$arr_dbs = [];
+	foreach ($arr_hash as $hk => $hash) {
+		$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+		if (!is_dir($folder)) {
+			$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
 			break;
 		}
-		$dbs[$corp] = [
-			'group' => new \TDC\PDO\SQLite("$hash-$corp.group.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
-			'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/group-by.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
-			];
+		chdir($folder);
+
+		$dbs = [];
+		foreach ($corps as $corp) {
+			if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+				$rv['info'][] = 'I050: Not ready '.$corp;
+				continue;
+			}
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			if (!$_SESSION['corpora'][$s_corp]) {
+				$rv['errors'][] = 'E060: No access to '.$_corp;
+				break;
+			}
+			$dbs[$corp] = [
+				'group' => new \TDC\PDO\SQLite("$hash-$corp.group.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+				'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/group-by.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+				];
+		}
+		$arr_dbs[$hk] = $dbs;
+
+		foreach ($cs as $corp) {
+			$rv['cs'][$corp][$hk] = [
+				'ts' => [],
+				'd' => 1,
+				'h' => [],
+				];
+
+			if (!array_key_exists($corp, $dbs)) {
+				$rv['cs'][$corp][$hk]['d'] = 0;
+				$rv['info'][] = 'I010: Not loaded '.$corp;
+				$all_ready = false;
+				continue;
+			}
+		}
 	}
 
-	foreach ($cs as $corp) {
-		$rv['cs'][$corp] = [
-			'ts' => [],
-			'd' => 1,
-			'h' => [],
-			];
+	if (!$all_ready) {
+		break;
+	}
 
-		if (!array_key_exists($corp, $dbs)) {
-			$rv['cs'][$corp]['d'] = 0;
-			$rv['info'][] = 'I010: Not loaded '.$corp;
-			continue;
-		}
+	foreach ($arr_hash as $hk => $hash) {
+		$dbs = $arr_dbs[$hk];
 
-		$ys = [];
-		$res = $dbs[$corp]['group']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h from counts WHERE c_which != 'total'");
-		while ($row = $res->fetch()) {
-			foreach ($row as $k => $v) {
-				$row[$k] = intval($v);
-			}
-			$ys[$row['w']] = $row;
-			$rv['cs'][$corp]['ts'][$row['w']] = $row;
-		}
-
-		$s_concat = implode(" || ' |~| ' || ", $gs);
-		$s_gs = implode(', ', $gs);
-		$res_h = $dbs[$corp]['group']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
-		$res_c = $dbs[$corp]['corp']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
-		while ($row = $res_h->fetch()) {
-			foreach ($row as $k => $v) {
-				if ($k !== 'w') {
+		foreach ($cs as $corp) {
+			$ys = [];
+			$res = $dbs[$corp]['group']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h from counts WHERE c_which != 'total'");
+			while ($row = $res->fetch()) {
+				foreach ($row as $k => $v) {
 					$row[$k] = intval($v);
 				}
+				$ys[$row['w']] = $row;
+				$rv['cs'][$corp][$hk]['ts'][$row['w']] = $row;
 			}
-			$rv['cs'][$corp]['h'][$row['w']] = array_values($row);
-		}
-		while ($row = $res_c->fetch()) {
-			foreach ($row as $k => $v) {
-				if ($k !== 'w') {
-					$row[$k] = intval($v);
+
+			$s_concat = implode(" || ' |~| ' || ", $gs);
+			$s_gs = implode(', ', $gs);
+			$res_h = $dbs[$corp]['group']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+			$res_c = $dbs[$corp]['corp']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+			while ($row = $res_h->fetch()) {
+				foreach ($row as $k => $v) {
+					if ($k !== 'w') {
+						$row[$k] = intval($v);
+					}
+				}
+				$rv['cs'][$corp][$hk]['h'][$row['w']] = array_values($row);
+			}
+			while ($row = $res_c->fetch()) {
+				foreach ($row as $k => $v) {
+					if ($k !== 'w') {
+						$row[$k] = intval($v);
+					}
+				}
+				$g = array_shift($row);
+				if (array_key_exists($g, $rv['cs'][$corp][$hk]['h'])) {
+					$rv['cs'][$corp][$hk]['h'][$g] = array_merge($rv['cs'][$corp][$hk]['h'][$g], array_values($row));
 				}
 			}
-			$g = array_shift($row);
-			if (array_key_exists($g, $rv['cs'][$corp]['h'])) {
-				$rv['cs'][$corp]['h'][$g] = array_merge($rv['cs'][$corp]['h'][$g], array_values($row));
-			}
-		}
-		$rv['cs'][$corp]['h'] = array_values($rv['cs'][$corp]['h']);
-		foreach ($rv['cs'][$corp]['h'] as $g => $v) {
-			for ($i=1 ; $i<7 ; ++$i) {
-				$rv['cs'][$corp]['h'][$g][$i] = $rv['cs'][$corp]['h'][$g][$i] ?? -1;
+			$rv['cs'][$corp][$hk]['h'] = array_values($rv['cs'][$corp][$hk]['h']);
+			foreach ($rv['cs'][$corp][$hk]['h'] as $g => $v) {
+				for ($i=1 ; $i<7 ; ++$i) {
+					$rv['cs'][$corp][$hk]['h'][$g][$i] = $rv['cs'][$corp][$hk]['h'][$g][$i] ?? -1;
+				}
 			}
 		}
 	}

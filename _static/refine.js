@@ -35,6 +35,7 @@
 	let params = {};
 	let values = [];
 	let form = null;
+	let update_timer = null;
 
 	let verbatims = {
 		'word': true, 'lex': true, 'pos': true,
@@ -320,6 +321,31 @@
 		search = search.replace(/\uE001[^=!]+/g, '');
 		//search = search.replace(/</g, 'lltt').replace(/>/g, 'ggtt').replace(/&/g, '_AND_');
 		search = $.trim(search);
+
+		if (where === '#query') {
+			let joins = [];
+			$('[data-sattr]').each(function() {
+				let inp = $(this);
+				let attr = inp.attr('data-sattr');
+				let val = inp.val();
+
+				if (!val) {
+					return;
+				}
+
+				if ($('#'+inp.attr('id')+'-neg').prop('checked')) {
+					joins.push(attr + '!="'+val+'"');
+				}
+				else {
+					joins.push(attr + '="'+val+'"');
+				}
+			});
+
+			if (joins) {
+				search = '('+search+') within <s '+joins.join(' & ')+'/>';
+			}
+		}
+
 		$(where).val(search);
 
 		if (where === '#query2') {
@@ -332,9 +358,15 @@
 		}
 	}
 
-	function update_search(which, where) {
-		_update_search_helper(rs, '#query');
-		_update_search_helper(rs2, '#query2');
+	function update_search() {
+		if (update_timer) {
+			clearTimeout(update_timer);
+			update_timer = null;
+		}
+		update_timer = setTimeout(function() {
+			_update_search_helper(rs, '#query');
+			_update_search_helper(rs2, '#query2');
+		}, 100);
 	}
 
 	function parse_values(s, fld) {
@@ -398,6 +430,13 @@
 
 		let did_anything = false;
 		let src = $.trim(q.replace(/\?:/g, '').replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%').replace(/\(\.\* \)\?/g, '').replace(/\( \.\*\)\?/g, ''));
+
+		let meta = null;
+		let re_meta = /^\((.+?)\) within <s (.+?)\/>$/;
+		if ((meta = re_meta.exec(src)) !== null) {
+			src = meta[1];
+			meta = meta[2];
+		}
 
 		let re_fld = /^([a-z_]+)(!?)=/;
 		let re_val = /"([^"]+)"/;
@@ -510,6 +549,36 @@
 		if (!did_anything) {
 			$(where).append(create_table());
 		}
+
+		if (meta) {
+			$('.meta-fields.show').remove();
+			$('.meta-fields').addClass('show');
+
+			let fld = null;
+			while ((fld = re_fld.exec(meta)) !== null) {
+				let not = fld[2] ? true : false;
+				fld = fld[1];
+				//console.log(fld);
+				meta = meta.substr(fld.length + not*1 + 1);
+				//console.log(meta);
+
+				let val = re_val.exec(meta);
+				//console.log(val);
+				if (!val) {
+					break;
+				}
+
+				meta = $.trim(meta.substr(val[0].length));
+				//console.log(meta);
+				$('[data-sattr="'+fld+'"]').val(val[1]);
+
+				if (meta.indexOf('& ') === 0) {
+					meta = $.trim(meta.substr(2));
+				}
+				//console.log(val);
+				//console.log(meta);
+			}
+		}
 	}
 
 	function init() {
@@ -532,6 +601,9 @@
 			}
 			update_search();
 		});
+
+		$('input[data-sattr]').change(update_search);
+		$('.meta-neg').change(update_search);
 
 		let config = '_static/refine/default.xml';
 		let cs = $('.chkCorpus:checked');

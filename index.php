@@ -41,6 +41,7 @@ $checked = [
 	'lc' => '',
 	'nd' => '',
 	'ha' => '',
+	'hf' => '',
 	'xe' => '',
 	'xs' => '',
 	];
@@ -61,6 +62,9 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 if (!empty($_REQUEST['ha'])) {
 	$checked['ha'] = 'checked';
 }
+if (!empty($_REQUEST['hf'])) {
+	$checked['hf'] = 'checked';
+}
 if (!empty($_REQUEST['xe'])) {
 	$checked['xe'] = 'checked';
 }
@@ -68,54 +72,66 @@ if (!empty($_REQUEST['xs'])) {
 	$checked['xs'] = 'checked';
 }
 
-$query = $_REQUEST['q'];
-$query2 = $_REQUEST['q2'];
+$arr_query = explode('~|~', $_REQUEST['q']);
+$arr_query2 = explode('~|~', $_REQUEST['q2']);
+header('X-Q: '.count($arr_query));
 
-if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
-	if (!empty($_REQUEST['nd'])) {
-		$query = '[word_nd="'.$query.'"]';
+foreach ($arr_query as $hk => $query) {
+	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
+		if (!empty($_REQUEST['nd'])) {
+			$query = '[word_nd="'.$query.'"]';
+		}
+		else if (!empty($_REQUEST['lc'])) {
+			$query = '[word_lc="'.$query.'"]';
+		}
+		else {
+			$query = '[word="'.$query.'"]';
+		}
 	}
-	else if (!empty($_REQUEST['lc'])) {
-		$query = '[word_lc="'.$query.'"]';
+	if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
+		$_REQUEST['ub'] = 0;
 	}
-	else {
-		$query = '[word="'.$query.'"]';
-	}
+	$arr_query[$hk] = $query;
 }
-if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[.*\]~', $query2)) {
-	if (!empty($_REQUEST['nd'])) {
-		$query2 = '[word_nd="'.$query2.'"]';
+foreach ($arr_query2 as $hk => $query2) {
+	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[.*\]~', $query2)) {
+		if (!empty($_REQUEST['nd'])) {
+			$query2 = '[word_nd="'.$query2.'"]';
+		}
+		else if (!empty($_REQUEST['lc'])) {
+			$query2 = '[word_lc="'.$query2.'"]';
+		}
+		else {
+			$query2 = '[word="'.$query2.'"]';
+		}
 	}
-	else if (!empty($_REQUEST['lc'])) {
-		$query2 = '[word_lc="'.$query2.'"]';
+	if (preg_match('~\b(\d+):\[.*?\1\.~', $query2)) {
+		$_REQUEST['ub'] = 0;
 	}
-	else {
-		$query2 = '[word="'.$query2.'"]';
-	}
+	$arr_query2[$hk] = $query2;
 }
 
-if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
-	$_REQUEST['ub'] = 0;
-}
-if (preg_match('~\b(\d+):\[.*?\1\.~', $query2)) {
-	$_REQUEST['ub'] = 0;
-}
-
-$h_query = htmlspecialchars($query);
-$h_query2 = htmlspecialchars($query2);
+$h_query = htmlspecialchars(implode('~|~', $arr_query));
+$h_query2 = htmlspecialchars(implode('~|~', $arr_query2));
 $h_unbound = '1';
-if (empty($_REQUEST['ub'])) {
-	$h_unbound = '';
-	if (!empty($query2)) {
-		$query = '('.$query2.') within (<s/> containing '.$query.')';
+
+foreach ($arr_query as $hk => $query) {
+	$query2 = $arr_query2[$hk];
+	if (empty($_REQUEST['ub'])) {
+		$h_unbound = '';
+		if (!empty($query2)) {
+			$query = '('.$query2.') within (<s/> containing '.$query.')';
+		}
+		else {
+			$query = '('.$query.') within <s/>';
+		}
 	}
-	else {
-		$query = '('.$query.') within <s/>';
+	else if (!empty($query2)) {
+		$query = '('.$query2.') within ('.$query.')';
 	}
+	$arr_query[$hk] = $query;
 }
-else if (!empty($query2)) {
-	$query = '('.$query2.') within ('.$query.')';
-}
+unset($arr_query2);
 
 $title = '';
 if (!empty($_REQUEST['c'])) {
@@ -129,11 +145,11 @@ if (!empty($_REQUEST['c'])) {
 	<meta charset="UTF-8">
 	<title><?=$title;?>VISL Corpora</title>
 
-	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
-	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.0/dist/chart.umd.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/css/bootstrap.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11/font/bootstrap-icons.css">
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4/dist/chart.umd.js"></script>
 
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
 
@@ -144,7 +160,13 @@ if (!empty($_REQUEST['c'])) {
 	<script src="_static/corpus.js?<?=filemtime(__DIR__.'/_static/corpus.js');?>"></script>
 </head>
 <body>
-<div id="logo" class="container-fluid my-3"><a href="/" class="me-5"><img src="https://corp.visl.dk/flags/corpuseye-flat-transparent.gif"></a> <a href="https://corp.visl.dk/cqp_help.html">Help</a> - <a href="https://edu.visl.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://edu.visl.dk/tagset_cg_all.pdf">unabridged</a>) - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a></div>
+<div id="logo" class="container-fluid my-3">
+<a href="/" class="me-5"><img src="https://corp.visl.dk/flags/corpuseye-flat-transparent.gif"></a>
+<a href="https://corp.visl.dk/cqp_help.html">Help</a>
+- <a href="https://edu.visl.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://edu.visl.dk/tagset_cg_all.pdf">unabridged</a>)
+- <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a>
+<button class="btn btn-outline-primary mx-3 btnCustomize">Adjust view <i class="bi bi-wrench-adjustable"></i></button>
+</div>
 
 <?php
 
@@ -187,23 +209,34 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_REQUEST['p'])) {
 }
 else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 	$field = $_REQUEST['f'];
-	$hash = sha256_lc20($query);
-	$hash_freq = '';
-	$hash_combo = '';
-	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
-	if (!is_dir($folder)) {
-		mkdir($folder, 0755, true);
-	}
-	chdir($folder);
+	$arr_hash = [];
+	$arr_hash_freq = [];
+	$arr_hash_combo = [];
+	$arr_folder = [];
+	$arr_s_query = [];
+	foreach ($arr_query as $hk => $query) {
+		$hash = sha256_lc20($query);
+		$hash_freq = '';
+		$hash_combo = '';
+		$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+		if (!is_dir($folder)) {
+			mkdir($folder, 0755, true);
+		}
 
-	$s_query = escapeshellarg($query);
+		$arr_hash[$hk] = $hash;
+		$arr_hash_freq[$hk] = '';
+		$arr_hash_combo[$hk] = '';
+		$arr_folder[$hk] = $folder;
+		$arr_s_query[$hk] = escapeshellarg($query);
+	}
+
 	$h_corps = '';
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		$h_corps .= '<input type="hidden" name="c['.htmlspecialchars($corp).']" value="1">';
 	}
 
-	$has_hist = false;
-	$has_group = false;
+	$has_hist = true;
+	$has_group = [];
 	$corps = [];
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
@@ -212,130 +245,51 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 			'db' => $db,
 			'hist' => false,
 			];
-		if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
-			$corps[$s_corp]['hist'] = true;
-			$has_hist = true;
+		$corps[$s_corp]['hist'] = true;
+		if (!intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
+			$corps[$s_corp]['hist'] = false;
+			$has_hist = false;
 		}
-		$has_group = $GLOBALS['-corplist'][$s_corp]['group_by'] ?? false;
+		$has_group[] = $GLOBALS['-corplist'][$s_corp]['group_by'] ?? [];
 	}
 
-	// Search
-	if ($_REQUEST['s'] === 's') {
-		$sh = <<<XSH
+	if (!empty($has_group)) {
+		$has_group = array_intersect(...$has_group);
+		sort($has_group);
+		$has_group = array_unique($has_group);
+	}
+
+	foreach ($arr_s_query as $hk => $s_query) {
+		$hash = $arr_hash[$hk];
+		$folder = $arr_folder[$hk];
+		chdir($folder);
+
+		// Search
+		if ($_REQUEST['s'] === 's') {
+			$sh = <<<XSH
 #!/bin/bash
 set -e
 cd '$folder'
 
 XSH;
 
-		$exec = false;
-		foreach ($_REQUEST['c'] as $corp => $_) {
-			[$s_corp,$subc] = explode('-', $corp.'-');
-			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
-				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
-			}
-			else {
-				$subc = '';
-			}
-			if (!file_exists("$hash-$corp.sqlite") || !filesize("$hash-$corp.sqlite")) {
-				$exec = true;
-			}
+			$exec = false;
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+				}
+				else {
+					$subc = '';
+				}
+				if (!file_exists("$hash-$corp.sqlite") || !filesize("$hash-$corp.sqlite")) {
+					$exec = true;
+				}
 
-			$sh .= <<<XSH
+				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.sqlite' ]; then
 	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
-fi
-
-XSH;
-	}
-
-	$sh .= <<<XSH
-
-for job in `jobs -p`
-do
-	wait \$job
-done
-
-XSH;
-
-		$hash_sh = substr(sha256_lc20($sh), 0, 8);
-		if ($exec) {
-			file_put_contents("$hash-$hash_sh.sh", $sh);
-			chmod("$hash-$hash_sh.sh", 0700);
-			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
-		}
-	}
-	// Frequency
-	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
-		$offset = $_REQUEST['o'];
-		$by = $_REQUEST['b'];
-		// Turn context conditions into edge conditions
-		if ($by === 'lc') {
-			$offset -= 1;
-			$by = 'le';
-		}
-		else if ($by === 'rc') {
-			$offset += 1;
-			$by = 're';
-		}
-
-		$which = $field;
-
-		$nd = $field;
-		$coll = '';
-		if (!empty($_REQUEST['nd'])) {
-			$checked['nd'] = 'checked';
-			$checked['lc'] = 'checked';
-			$_REQUEST['lc'] = '1';
-			$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/conv-lc-nd'";
-			$nd .= '_nd';
-			$which .= '/i';
-		}
-		else if (!empty($_REQUEST['lc'])) {
-			$checked['lc'] = 'checked';
-			$coll = " | uconv -x any-nfc | uconv -x any-lower";
-			$nd .= '_lc';
-			$which .= '/i';
-		}
-		$s_nd = escapeshellarg($nd);
-
-		$which .= ' '.$offset;
-		if ($by === 're') {
-			$which .= '>0';
-		}
-		$s_which = escapeshellarg($which);
-
-		$hash_freq = substr(sha256_lc20($which.$coll), 0, 8);
-
-		$sh = <<<XSH
-#!/bin/bash
-set -e
-cd '$folder'
-
-XSH;
-
-		$exec = false;
-		$combo = [];
-		foreach ($_REQUEST['c'] as $corp => $_) {
-			[$s_corp,$subc] = explode('-', $corp.'-');
-			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
-				$subc = "{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
-			}
-			else {
-				$subc = '';
-			}
-			$dbname = "$hash-$corp.freq-$hash_freq";
-			if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
-				$exec = true;
-			}
-			$lang = substr($corp, 0, 3);
-			$combo[$lang][] = "$hash-$corp.freq-$hash_freq.sqlite";
-
-			$sh .= <<<XSH
-
-if [ ! -s '$dbname.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $dbname.sqlite $corp $s_nd >$dbname.err 2>&1 &
 fi
 
 XSH;
@@ -350,36 +304,133 @@ done
 
 XSH;
 
-		// If there are multiple corpora, also calculate the combined frequencies and global relative freq
-		$has_combo = false;
-		if (($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg') && count($_REQUEST['c']) > 1) {
-			$hash_combo = substr(sha256_lc20(implode(';', array_keys($_REQUEST['c']))), 0, 8);
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.sh", $sh);
+				chmod("$hash-$hash_sh.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
+			}
+		}
+		// Frequency
+		else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
+			$offset = $_REQUEST['o'];
+			$by = $_REQUEST['b'];
+			// Turn context conditions into edge conditions
+			if ($by === 'lc') {
+				$offset -= 1;
+				$by = 'le';
+			}
+			else if ($by === 'rc') {
+				$offset += 1;
+				$by = 're';
+			}
 
-			foreach ($combo as $lang => $corps) {
-				if (count($corps) <= 1) {
-					continue;
+			$which = $field;
+			$nd = $field;
+			if ($checked['hf'] && substr($field, 0, 2) !== 'h_') {
+				$which = "h_${which}";
+				$nd = "h_${which}";
+			}
+
+			$coll = '';
+			if (!empty($_REQUEST['nd'])) {
+				$checked['nd'] = 'checked';
+				$checked['lc'] = 'checked';
+				$_REQUEST['lc'] = '1';
+				$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/conv-lc-nd'";
+				$nd .= '_nd';
+				$which .= '/i';
+			}
+			else if (!empty($_REQUEST['lc'])) {
+				$checked['lc'] = 'checked';
+				$coll = " | uconv -x any-nfc | uconv -x any-lower";
+				$nd .= '_lc';
+				$which .= '/i';
+			}
+			$s_nd = escapeshellarg($nd);
+
+			$which .= ' '.$offset;
+			if ($by === 're') {
+				$which .= '>0';
+			}
+			$s_which = escapeshellarg($which);
+
+			$hash_freq = substr(sha256_lc20($which.$coll), 0, 8);
+			$arr_hash_freq[$hk] = $hash_freq;
+
+			$sh = <<<XSH
+#!/bin/bash
+set -e
+cd '$folder'
+
+XSH;
+
+			$exec = false;
+			$combo = [];
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
 				}
-				$has_combo = true;
-				$corps = implode(' ', $corps);
-				$corp = $lang.'_0combo_'.$hash_combo;
-				$_REQUEST['c'][$corp] = 1;
+				else {
+					$subc = '';
+				}
 				$dbname = "$hash-$corp.freq-$hash_freq";
 				if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
 					$exec = true;
 				}
+				$lang = substr($corp, 0, 3);
+				$combo[$lang][] = "$hash-$corp.freq-$hash_freq.sqlite";
+
 				$sh .= <<<XSH
+
+if [ ! -s '$dbname.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $dbname.sqlite $corp $s_nd >$dbname.err 2>&1 &
+fi
+
+XSH;
+			}
+
+			$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+
+			// If there are multiple corpora, also calculate the combined frequencies and global relative freq
+			$has_combo = false;
+			if (($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg') && count($_REQUEST['c']) > 1) {
+				$hash_combo = substr(sha256_lc20(implode(';', array_keys($_REQUEST['c']))), 0, 8);
+				$arr_hash_combo[$hk] = $hash_combo;
+
+				foreach ($combo as $lang => $corps) {
+					if (count($corps) <= 1) {
+						continue;
+					}
+					$has_combo = true;
+					$corps = implode(' ', $corps);
+					$corp = $lang.'_0combo_'.$hash_combo;
+					$_REQUEST['c'][$corp] = 1;
+					$dbname = "$hash-$corp.freq-$hash_freq";
+					if (!file_exists("$dbname.sqlite") || !filesize("$dbname.sqlite")) {
+						$exec = true;
+					}
+					$sh .= <<<XSH
 
 if [ ! -s '$dbname.sqlite' ]; then
 	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/combinefreqs' $dbname.sqlite $lang $s_nd $corps >$dbname.err 2>&1 &
 fi
 
 XSH;
+				}
 			}
-		}
 
-		if ($has_combo) {
-			ksort($_REQUEST['c']);
-			$sh .= <<<XSH
+			if ($has_combo) {
+				ksort($_REQUEST['c']);
+				$sh .= <<<XSH
 
 for job in `jobs -p`
 do
@@ -387,47 +438,47 @@ do
 done
 
 XSH;
-		}
+			}
 
-		$hash_sh = substr(sha256_lc20($sh), 0, 8);
-		if ($exec) {
-			file_put_contents("$hash-$hash_sh.sh", $sh);
-			chmod("$hash-$hash_sh.sh", 0700);
-			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.sh", $sh);
+				chmod("$hash-$hash_sh.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
+			}
 		}
-	}
-	// Histogram
-	else if ($_REQUEST['s'] === 'hist') {
-		$sh = <<<XSH
+		// Histogram
+		else if ($_REQUEST['s'] === 'hist') {
+			$sh = <<<XSH
 #!/bin/bash
 set -e
 cd '$folder'
 
 XSH;
 
-		$exec = false;
-		foreach ($_REQUEST['c'] as $corp => $_) {
-			[$s_corp,$subc] = explode('-', $corp.'-');
-			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
-				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
-			}
-			else {
-				$subc = '';
-			}
-			if (!file_exists("$hash-$corp.hist.sqlite") || !filesize("$hash-$corp.hist.sqlite")) {
-				$exec = true;
-			}
+			$exec = false;
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+				}
+				else {
+					$subc = '';
+				}
+				if (!file_exists("$hash-$corp.hist.sqlite") || !filesize("$hash-$corp.hist.sqlite")) {
+					$exec = true;
+				}
 
-			$sh .= <<<XSH
+				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.hist.sqlite' ]; then
 	/usr/bin/time -f '%e' -o $hash-$corp.hist.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/histogram' $hash-$corp.hist.sqlite >$hash-$corp.hist.err 2>&1 &
 fi
 
 XSH;
-	}
+		}
 
-	$sh .= <<<XSH
+		$sh .= <<<XSH
 
 for job in `jobs -p`
 do
@@ -436,47 +487,47 @@ done
 
 XSH;
 
-		$hash_sh = substr(sha256_lc20($sh), 0, 8);
-		if ($exec) {
-			file_put_contents("$hash-$hash_sh.hist.sh", $sh);
-			chmod("$hash-$hash_sh.hist.sh", 0700);
-			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.hist.time ./$hash-$hash_sh.hist.sh >$hash-$hash_sh.hist.err 2>&1 &");
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.hist.sh", $sh);
+				chmod("$hash-$hash_sh.hist.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.hist.time ./$hash-$hash_sh.hist.sh >$hash-$hash_sh.hist.err 2>&1 &");
+			}
 		}
-	}
-	// Group By
-	else if ($_REQUEST['s'] === 'group') {
-		$gs = implode(':', $has_group);
+		// Group By
+		else if ($_REQUEST['s'] === 'group') {
+			$gs = implode(':', $has_group);
 
-		$sh = <<<XSH
+			$sh = <<<XSH
 #!/bin/bash
 set -e
 cd '$folder'
 
 XSH;
 
-		$exec = false;
-		foreach ($_REQUEST['c'] as $corp => $_) {
-			[$s_corp,$subc] = explode('-', $corp.'-');
-			if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
-				$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
-			}
-			else {
-				$subc = '';
-			}
-			if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
-				$exec = true;
-			}
+			$exec = false;
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+				}
+				else {
+					$subc = '';
+				}
+				if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+					$exec = true;
+				}
 
-			$sh .= <<<XSH
+				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.group.sqlite' ]; then
 	/usr/bin/time -f '%e' -o $hash-$corp.group.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group.sqlite '$gs' >$hash-$corp.group.err 2>&1 &
 fi
 
 XSH;
-	}
+		}
 
-	$sh .= <<<XSH
+		$sh .= <<<XSH
 
 for job in `jobs -p`
 do
@@ -485,11 +536,12 @@ done
 
 XSH;
 
-		$hash_sh = substr(sha256_lc20($sh), 0, 8);
-		if ($exec) {
-			file_put_contents("$hash-$hash_sh.group.sh", $sh);
-			chmod("$hash-$hash_sh.group.sh", 0700);
-			shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group.time ./$hash-$hash_sh.group.sh >$hash-$hash_sh.group.err 2>&1 &");
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.group.sh", $sh);
+				chmod("$hash-$hash_sh.group.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group.time ./$hash-$hash_sh.group.sh >$hash-$hash_sh.group.err 2>&1 &");
+			}
 		}
 	}
 
@@ -526,7 +578,7 @@ XSH;
 Frequency <i class="bi bi-sort-down"></i>
 </div>
 <div class="card-body">
-<form method="GET">
+<form method="GET" id="formFreq">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="q2" value="{$h_query2}">
@@ -546,6 +598,10 @@ Frequency <i class="bi bi-sort-down"></i>
 <select class="form-select" name="f" id="freq_field">
 	{$freq_fields}
 </select>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="hf" id="hf" {$checked['hf']}>
+<label class="form-check-label" for="hf">Dependency head field</label>
 </div>
 <div class="my-3">
 <label class="form-label" for="freq_by">By</label>
@@ -615,10 +671,10 @@ XHTML;
 	}
 
 	// Group by
-	if ($has_group) {
+	if (!empty($has_group)) {
 		echo <<<XHTML
 <div class="card bg-lightblue mb-3">
-<form method="GET">
+<form method="GET" id="formGroupBy">
 <input type="hidden" name="l" value="{$h_language}">
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="q2" value="{$h_query2}">
@@ -628,7 +684,7 @@ XHTML;
 Group By <i class="bi bi-bar-chart-steps"></i>
 </div>
 <div class="card-body">
-<div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="group">Group results</button></div>
+<div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="group" id="btnGroupBy">Group results</button></div>
 <div><label class="form-label">By attributes</label></div>
 
 XHTML;
@@ -663,8 +719,7 @@ XHTML;
 <input class="form-check-input" type="checkbox" name="xs" id="xs" {$checked['xs']}>
 <label class="form-check-label" for="xs">Hide sparse ranges</label>
 </div>
-</form>
-</div></div>
+</div></form></div>
 
 XHTML;
 	}
@@ -704,7 +759,22 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button></div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnShowRefine">Show refine <i class="bi bi-funnel"></i></button></div></div>';
+	echo <<<XHTML
+<div class="row align-items-start my-3" id="customize-freq" style="display: none">
+<h5 class="fw-bold fs-5">Toggle columns</h5>
+<div class="col ps-4">
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-grf" checked> Global relative frequency (<span class="color-red">G: freq²∕norm</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-crf" checked> Corpus relative frequency (<span class="color-red">C: freq²∕norm</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-scrf" checked> Sub-corpus relative frequency (<span class="color-red">S: freq²∕norm</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-nf" checked> Global/Corpus normalized frequency (<span class="color-orange">G|C: freq∕corp · 10⁸</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-scnf" checked> Sub-corpus normalized frequency (<span class="color-orange">S: freq∕corp · 10⁸</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-pcnt" checked> Percentage of total hits (<span class="color-green">freq∕conc</span>)</label></div>
+	<div><label class="form-check-label"><input type="checkbox" class="form-check-input arrOptVisible" value="qcol-num" checked> Number of hits (num)</label></div>
+</div>
+</div>
+
+XHTML;
 	echo '<div class="row align-items-start" id="search-holder" style="display: none"></div>';
 	echo '<div class="row align-items-start row-cols-auto">';
 	if ($_REQUEST['s'] === 's') {
@@ -727,6 +797,9 @@ XHTML;
 			}
 			echo '<div class="col qfreqs" id="'.$corp.'"><div class="d-flex">
 			<div class="col qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($cname).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="col text-end qtsv">…</div></div><div class="qbody">…searching…</div></div>';
+			if (strpos($corp, '_0combo_') !== false) {
+				echo '<div class="w-100"></div>';
+			}
 		}
 	}
 	else if ($_REQUEST['s'] === 'hist') {
@@ -757,7 +830,7 @@ XHTML;
 	echo '<div class="row"><div class="col qpages">…</div></div>';
 	echo '</div>';
 	echo '</div></div></div>';
-	echo '<script>g_corps = '.json_encode_vb($_REQUEST['c']).'; g_hash = "'.$hash.'"; g_hash_freq = "'.$hash_freq.'"; g_hash_combo = "'.$hash_combo.'";</script>';
+	echo '<script>g_corps = '.json_encode_vb($_REQUEST['c']).'; g_hash = "'.implode(';', $arr_hash).'"; g_hash_freq = "'.implode(';', $arr_hash_freq).'"; g_hash_combo = "'.implode(';', $arr_hash_combo).'";</script>';
 }
 
 ?>
@@ -818,8 +891,32 @@ else {
 <div id="rs2" class="rs">
 </div>
 
-<div class="text-center">
-<button type="button" id="toggle_sq">Toggle Sub-Query</button>
+<div class="d-flex justify-content-center mb-3">
+	<div class="mx-3"><button class="btn btn-primary" type="button" id="toggle_sq">Toggle Sub-Query</button></div>
+	<div class="mx-3 collapse show meta-fields"><button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target=".meta-fields">Show meta attributes</button></div>
+	<div class="mx-3 collapse meta-fields">
+		<h5>Meta attributes <a href="https://www.sketchengine.eu/documentation/cql-search-structures/" target="_blank"><i class="bi bi-question-square"></i></a></h5>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-author">Author</label></div>
+			<div class="col"><input type="text" class="form-control d-inline-block" id="meta-author" data-sattr="author"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-author-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-title">Title</label></div>
+			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-title" data-sattr="title"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-title-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-year">Year</label></div>
+			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-year" data-sattr="year"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-year-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-translator">Translator</label></div>
+			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-translator" data-sattr="translator"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-translator-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-translated">Translated</label></div>
+			<div class="col"><select class="form-select meta-neg" id="meta-translated" data-sattr="translated"><option value=""></option><option value="1">Yes</option><option value="0">No</option></select></div><div class="col-1"></div>
+		</div>
+	</div>
 </div>
 </div>
 </div>
@@ -892,20 +989,38 @@ else {
 			if (intval($db->prepexec("SELECT count(*) as cnt FROM sqlite_schema WHERE name LIKE 'hist_%'")->fetchAll()[0]['cnt'])) {
 				$icons .= ' <span class="text-success" title="Histogram available"><i class="bi bi-hourglass"></i></span>';
 			}
+			if (!empty($vis['group_by'])) {
+				$icons .= ' <span class="text-success" title="Group By available"><i class="bi bi-bar-chart-steps"></i></span>';
+			}
 			if (!empty($vis['features']['sem'])) {
 				$icons .= ' <span class="text-warning" title="Has semantic classes"><i class="bi bi-patch-plus"></i></span>';
 			}
 			echo '<div class="avoid-break"><div class="form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.']" id="chk_'.$corp.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'">'.htmlspecialchars($vis['name']).' ('.$icons.' <a href="'.$vis['infolink'].'" target="_blank"><i class="bi bi-info-square"></i></a> <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div>';
 			$total_ws += $ws;
 
-			if (!empty($vis['subs'])) foreach ($vis['subs'] as $sk => $sv) {
-				$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
-				$checked = '';
-				if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
-					$checked = ' checked';
+			if (!empty($vis['subs'])) {
+				$had_sub = false;
+				$subs = '';
+				foreach ($vis['subs'] as $sk => $sv) {
+					$ws = intval($db->prepexec("SELECT c_words + c_numbers + c_alnums as cnt FROM counts WHERE c_which = ?", [$sk])->fetchAll()[0]['cnt']);
+					$checked = '';
+					if (!empty($_REQUEST['c'][$corp.'-'.$sk])) {
+						$checked = ' checked';
+						$had_sub = true;
+					}
+					// '└' is U+2514 Box Drawings Light Up and Right
+					$subs .= '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
 				}
-				// '└' is U+2514 Box Drawings Light Up and Right
-				echo '<div>└ <div class="d-inline-block form-check"><input class="form-check-input chkCorpus" type="checkbox" name="c['.$corp.'-'.$sk.']" id="chk_'.$corp.'-'.$sk.'"'.$checked.'><label class="form-check-label" for="chk_'.$corp.'-'.$sk.'">'.htmlspecialchars(strval($sv)).' ('.$icons.' <span class="text-muted">'.format_corpsize($ws).' M</span> )</label></div></div>';
+
+				if (!$had_sub) {
+					echo '<div class="collapse show sublist_'.$corp.'">└ <a href=".sublist_'.$corp.'" role="button" data-bs-toggle="collapse" class="ms-3">Show sub-corpora</a></div>';
+					echo '<span class="collapse sublist_'.$corp.'">';
+					echo $subs;
+					echo '</span>';
+				}
+				else {
+					echo $subs;
+				}
 			}
 			echo '</div>';
 		}
@@ -917,6 +1032,7 @@ else {
 <div class="my-3">
 	<span class="text-danger"><i class="bi bi-lock"></i></span> Requires password,
 	<span class="text-success"><i class="bi bi-hourglass"></i></span> Histogram available,
+	<span class="text-success"><i class="bi bi-bar-chart-steps"></i></span> Group By available,
 	<span class="text-warning"><i class="bi bi-patch-plus"></i></span> Semantic classes,
 	<span class="text-primary"><i class="bi bi-info-square"></i></span> Corpus information link,
 	<span class="text-primary"><i class="bi bi-question-square"></i></span> Help link

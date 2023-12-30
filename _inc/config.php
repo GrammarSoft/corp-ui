@@ -164,9 +164,11 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Wikipedia',
 			'percent_combo' => 20,
 			],
+		/*
 		'dan_youtube' => [
 			'name' => 'Youtube',
 			],
+		//*/
 		'dan_twitter' => [
 			'name' => 'Twitter (2008-2023 Mar)',
 			'percent_combo' => 25,

@@ -8,10 +8,12 @@ require_once __DIR__.'/_inc/lib.php';
 	<meta charset="UTF-8">
 	<title>Sentence Details</title>
 
-	<script src="https://cdn.jsdelivr.net/npm/jquery@3.6/dist/jquery.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/css/bootstrap.min.css">
-	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2/dist/js/bootstrap.bundle.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10/font/bootstrap-icons.css">
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/css/bootstrap.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/js/bootstrap.bundle.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11/font/bootstrap-icons.css">
+
+	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
 </head>
 <body>
 <div class="container-fluid">
@@ -30,8 +32,34 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 			break;
 		}
 
-		$s_query = escapeshellarg('<s id="'.$_REQUEST['id'].'"/> containing []');
-		$line = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query");
+		$ids = range(max(1,$_REQUEST['id']-5), $_REQUEST['id']+5);
+
+		$get = $_GET;
+		$line = '';
+		$before = [];
+		$after = [];
+		$s_query = escapeshellarg('<s id="('.implode('|', $ids).')"/> containing []');
+		$context = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query");
+		foreach (explode("\n", trim($context)) as $c) {
+			if (strpos($c, '<s id="'.$_REQUEST['id'].'"') !== false) {
+				$line = $c;
+			}
+			else {
+				preg_match('~<s id="(\d+)"~', $c, $m);
+				$c = explode("\t", htmlspecialchars($c), 3);
+				array_shift($c);
+				$get['id'] = $m[1];
+				$c[0] = '<span title="'.$c[0].'"><a href="./info.php?'.http_build_query($get).'">'.$m[1].' <i class="bi bi-info-square"></i></a>';
+				$c[1] = str_replace("\t", ' ', $c[1]);
+				$c = implode(' ', $c).'</span>';
+				if ($line) {
+					$after[] = $c;
+				}
+				else {
+					$before[] = $c;
+				}
+			}
+		}
 
 		$pcs = explode("\t", trim($line), 3);
 		$pcs[0] = intval($pcs[0]);
@@ -56,7 +84,11 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 		}
 
 		echo '<h4>'.htmlspecialchars($corp).'</h4>'."\n";
-		echo htmlspecialchars($pcs[1])."<br>";
+		if (!empty($before)) {
+			echo '<h5>Pre context</h5>';
+			echo implode('<br>', $before).'<br><br>';
+		}
+		echo '<b>'.htmlspecialchars($pcs[1])."</b><br>";
 
 		echo '<table class="table table-striped table-hover my-3">';
 		foreach ($fields as $f => $i) {
@@ -81,6 +113,11 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 			echo '</tr>';
 		}
 		echo '</table>';
+
+		if (!empty($after)) {
+			echo '<h5>Post context</h5>';
+			echo implode('<br>', $after);
+		}
 
 		break;
 	}

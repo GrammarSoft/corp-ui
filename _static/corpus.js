@@ -59,6 +59,10 @@
 		popup_info: null,
 		};
 
+	let options = {
+		optVisible: {},
+	};
+
 	let fields = {};
 	'word	lex	extra	pos	morph	func	sem	role	dself	dparent	word_lc	word_nd	lex_lc	lex_nd'.split(/\t/).forEach(function(e, i) {
 		fields[e] = i;
@@ -80,8 +84,79 @@
 		setTimeout(() => a.click(), 100);
 	}
 
+	function haveLocalStorage() {
+		try {
+			let storage = window.localStorage;
+			let x = 'LocalStorageTest';
+			storage.setItem(x, x);
+			storage.removeItem(x);
+		}
+		catch (e) {
+			return false;
+		}
+		return true;
+	}
+
+	function ls_get(key, def) {
+		let v = null;
+		try {
+			v = window.localStorage.getItem(key);
+		}
+		catch (e) {
+		}
+		if (v === null) {
+			if (def !== null && typeof def === 'object') {
+				v = Object.assign({}, def);
+			}
+			else {
+				v = def;
+			}
+		}
+		else {
+			v = JSON.parse(v);
+		}
+		return v;
+	}
+
+	function ls_set(key, val) {
+		try {
+			window.localStorage.setItem(key, JSON.stringify(val));
+		}
+		catch (e) {
+		}
+	}
+
+	function ls_del(key) {
+		window.localStorage.removeItem(key);
+	}
+
+	function u_reverse(str) {
+		return [...str].reverse().join('');
+	}
+
 	function u_length(str) {
 		return [...str].length;
+	}
+
+	function common_prefix(strs) {
+		if (!strs[0] || strs.length ==  1) {
+			return strs[0] || '';
+		}
+
+		let i = 0;
+		while (strs[0][i] && strs.every(w => w[i] === strs[0][i])) {
+			i++;
+		}
+
+		return strs[0].substr(0, i);
+	}
+
+	function common_suffix(strs) {
+		strs = [].concat(strs);
+		for (let i=0 ; i<strs.length ; ++i) {
+			strs[i] = u_reverse(strs[i]);
+		}
+		return u_reverse(common_prefix(strs));
 	}
 
 	function escHTML(t) {
@@ -89,6 +164,57 @@
 			t = t.toString();
 		}
 		return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+	}
+
+	function applyOptions() {
+		for (let k in options.optVisible) {
+			if (options.optVisible[k]) {
+				$('.'+k).show();
+			}
+			else {
+				$('.'+k).hide();
+			}
+		}
+	}
+
+	function loadOptions() {
+		let opts = ls_get('corp-options', options);
+		if (opts.hasOwnProperty('optVisible')) for (let k in opts.optVisible) {
+			$('.arrOptVisible[value="'+k+'"]').prop('checked', opts.optVisible[k]);
+			options['optVisible'][k] = opts.optVisible[k];
+		}
+	}
+
+	function changeOption() {
+		let e = $(this);
+		if (e.hasClass('arrOptVisible')) {
+			options['optVisible'][e.attr('value')] = e.prop('checked');
+		}
+		ls_set('corp-options', options);
+		applyOptions();
+	}
+
+	function chkCompare() {
+		let q = [];
+		let q2 = [];
+		$('.chkCompare:checked').slice(0, 10).each(function() {
+			let t = $(this);
+			q.push(t.attr('data-q'));
+			q2.push(t.attr('data-q2'));
+		});
+
+		$('.chkCompare').attr('disabled', false);
+		if ($('.chkCompare:checked').length >= 10) {
+			$('.chkCompare').attr('disabled', true);
+			$('.chkCompare:checked').attr('disabled', false);
+		}
+
+		if (q.length == 0) {
+			q.push($('#formFreq input[name="q"]').val());
+			q2.push($('#formFreq input[name="q2"]').val());
+		}
+		$('#formGroupBy input[name="q"]').val(q.join('~|~'));
+		$('#formGroupBy input[name="q2"]').val(q2.join('~|~'));
 	}
 
 	function showParent() {
@@ -667,6 +793,12 @@
 		let search1 = query2 ? query1 : search;
 		let search2 = query2 ? search : query2;
 
+		let has_group = false;
+		if ($('#btnGroupBy').length) {
+			has_group = true;
+			$('#btnGroupBy').text('Compare frequencies');
+		}
+
 		if (rv.hasOwnProperty('cs')) {
 			for (let corp in rv.cs) {
 				if (!rv.cs[corp].d) {
@@ -733,47 +865,59 @@
 				// '⁸' is U+2078 Superscript 8
 				html += '<thead><tr><th>Token</th>';
 				if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
-					html += '<th class="color-red text-vertical" title="Global relative frequency">G: freq²∕norm</th>';
+					html += '<th class="text-vertical qcol-grf" title="Global relative frequency"><span class="color-red">G: freq²∕norm</span></th>';
 					if (!combo) {
-						html += '<th class="color-red text-vertical" title="Corpus relative frequency">C: freq²∕norm</th>';
+						html += '<th class="text-vertical qcol-crf" title="Corpus relative frequency"><span class="color-red">C: freq²∕norm</span></th>';
 					}
 					if (corp.indexOf('-') !== -1) {
-						html += '<th class="color-red text-vertical" title="Sub-corpus relative frequency">S: freq²∕norm</th>';
+						html += '<th class="text-vertical qcol-scrf" title="Sub-corpus relative frequency"><span class="color-red">S: freq²∕norm</span></th>';
 					}
 				}
 				if (!combo) {
-					html += '<th class="color-orange text-vertical" title="Corpus normalized frequency">C: freq∕corp · 10⁸</th>';
+					html += '<th class="text-vertical qcol-nf" title="Corpus normalized frequency"><span class="color-orange">C: freq∕corp · 10⁸</span></th>';
 				}
 				else {
-					html += '<th class="color-orange text-vertical" title="Global normalized frequency">G: freq∕corp · 10⁸</th>';
+					html += '<th class="text-vertical qcol-nf" title="Global normalized frequency"><span class="color-orange">G: freq∕corp · 10⁸</span></th>';
 				}
 				if (corp.indexOf('-') !== -1) {
-					html += '<th class="color-orange text-vertical" title="Sub-corpus normalized frequency">S: freq∕corp · 10⁸</th>';
+					html += '<th class="text-vertical qcol-scnf" title="Sub-corpus normalized frequency"><span class="color-orange">S: freq∕corp · 10⁸</span></th>';
 				}
-				html += '<th class="color-green text-vertical" title="Percentage of total hits">freq∕conc</th><th class="text-vertical" title="Number of hits">num</th></tr></thead>';
+				html += '<th class="text-vertical qcol-pcnt" title="Percentage of total hits"><span class="color-green">freq∕conc</span></th><th class="text-vertical qcol-num" title="Number of hits">num</th>';
+				if (has_group) {
+					html += '<th class="text-vertical" title="Add to compare">Compare?</th>';
+				}
+				html += '</tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
 					url.searchParams.set('q', search1.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
 					url.searchParams.set('q2', search2.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
 					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
 					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
-						html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
+						html += '<td class="text-end qcol-grf">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
 						if (!combo) {
-							html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
+							html += '<td class="text-end qcol-crf">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
 						}
 						if (corp.indexOf('-') !== -1) {
-							html += '<td class="text-end">'+escHTML(rv.cs[corp].f[i][4].toFixed(2))+'</td>';
+							html += '<td class="text-end qcol-scrf">'+escHTML(rv.cs[corp].f[i][4].toFixed(2))+'</td>';
 						}
 					}
-					html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].w * 100000000).toFixed(2)+'</td>';
+					html += '<td class="text-end qcol-nf">'+(rv.cs[corp].f[i][1] / rv.cs[corp].w * 100000000).toFixed(2)+'</td>';
 					if (corp.indexOf('-') !== -1) {
-						html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000).toFixed(2)+'</td>';
+						html += '<td class="text-end qcol-scnf">'+(rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000).toFixed(2)+'</td>';
 					}
-					html += '<td class="text-end">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end">'+rv.cs[corp].f[i][1]+'</td></tr>';
+					html += '<td class="text-end qcol-pcnt">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end qcol-num">'+rv.cs[corp].f[i][1]+'</td>';
+					if (has_group) {
+						html += '<td><input type="checkbox" class="form-check-input chkCompare" data-q="'+escHTML(url.searchParams.get('q'))+'" data-q2="'+escHTML(url.searchParams.get('q2'))+'"></td>';
+					}
+					html += '</tr>';
 				}
 				html += '</tbody></table>';
 				c.find('.qbody').html(html);
+				c.find('.chkCompare').off().click(chkCompare);
+				c.find('.chkCompare').slice(0,10).click();
 			}
+
+			applyOptions();
 		}
 
 		if (retry) {
@@ -1134,31 +1278,57 @@
 		$('.qpages').hide();
 		let to_render = {};
 
+		let arr_hash = state.hash.split(';');
+		let arr_q = params.has('q') ? params.get('q').split('~|~') : [];
+		let arr_q2 = params.has('q2') ? params.get('q2').split('~|~') : [];
+
+		let q_prefix = common_prefix(arr_q);
+		let q_suffix = common_suffix(arr_q);
+		let q_show = [];
+		for (let i=0 ; i<arr_q.length ; ++i) {
+			let q = arr_q[i];
+			q = q.substr(0, q.length - q_suffix.length);
+			q = q.substr(q_prefix.length);
+			if (!q) {
+				q = arr_q[i];
+			}
+			q_show.push(q);
+		}
+
+		let display_legend = arr_q.length > 1;
+
 		if (rv.hasOwnProperty('cs')) {
 			for (let corp in rv.cs) {
-				if (!rv.cs[corp].d) {
-					rq.cs.push(corp);
-					retry = true;
-				}
-
 				let c = $('#'+corp);
 				state.ts[corp] = rv.cs[corp];
-				c.find('.qtotal').text(rv.cs[corp].h.length);
+				state.groupgs[corp] = {};
 
-				if (!rv.cs[corp].d) {
-					c.find('.qtotal').text(rv.cs[corp].h.length + '…');
+				let qtotal = 0;
+				let done = true;
+				for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+					qtotal += rv.cs[corp][hk].h.length;
+					if (!rv.cs[corp][hk].d) {
+						rq.cs.push(corp);
+						retry = true;
+						done = false;
+					}
+				}
+				c.find('.qtotal').text(qtotal);
+
+				if (!done) {
+					c.find('.qtotal').text(qtotal + '…');
 				}
 				else {
-					if (rv.cs[corp].h.length === 0) {
+					if (qtotal === 0) {
 						let c = $('#'+corp);
 						c.find('.qrange').text('0');
 						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
 					}
 				}
 
-				if (!rv.cs[corp].h.length) {
+				if (!qtotal) {
 					c.find('.qrange').text('…');
-					if (!rv.cs[corp].d) {
+					if (!done) {
 						c.find('.qbody').text('…still searching…');
 					}
 					else {
@@ -1175,10 +1345,17 @@
 					url.searchParams.set('ub', '1');
 				}
 
-				state.groupgs[corp] = rv.cs[corp].h;
 				to_render[corp] = [];
 				if (corp.indexOf('-') !== -1) {
 					to_render[corp.substr(0, corp.indexOf('-'))+'-subc'] = [];
+				}
+
+				for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+					state.groupgs[corp][hk] = rv.cs[corp][hk].h;
+					to_render[corp][hk] = rv.cs[corp][hk].h;
+					if (corp.indexOf('-') !== -1) {
+						to_render[corp.substr(0, corp.indexOf('-'))+'-subc'][hk] = rv.cs[corp][hk].h;
+					}
 				}
 
 				let tsv = 'Group\tArticles\tSentences\tHits\tCArticles\tCSentences\tCTokens\tCWords\n';
@@ -1187,21 +1364,27 @@
 				let html = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="d-inline-block table table-striped table-hover my-3">';
 				html += '<thead><tr><th>Group</th><th class="text-vertical">Article hits</th><th class="text-vertical">Sentence hits</th><th class="text-vertical">All hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
-				for (let i=0 ; i<rv.cs[corp].h.length ; ++i) {
-					if (rv.cs[corp].h[i][1] <= 0) {
-						continue;
+				for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+					if (display_legend) {
+						html += '<tr><th colspan="9">'+escHTML(q_show[hk])+'</th></tr>';
 					}
-					let attrs = rv.cs[corp].h[i][0].split(' |~| ');
-					for (let a=0 ; a<attrs.length ; ++a) {
-						attrs[a] = gs[a]+'="'+escHTML(attrs[a])+'"';
+					tsv += '# '+arr_q[hk]+'\n';
+					for (let i=0 ; i<rv.cs[corp][hk].h.length ; ++i) {
+						if (rv.cs[corp][hk].h[i][1] <= 0) {
+							continue;
+						}
+						let attrs = rv.cs[corp][hk].h[i][0].split(' |~| ');
+						for (let a=0 ; a<attrs.length ; ++a) {
+							attrs[a] = gs[a]+'="'+escHTML(attrs[a])+'"';
+						}
+						url.searchParams.set('q', '('+arr_q[hk]+') within <s '+attrs.join(' & ')+'/>');
+						if (arr_q2[hk]) {
+							url.searchParams.set('q2', arr_q2[hk]);
+						}
+						rv.cs[corp][hk].h[i][0] = rv.cs[corp][hk].h[i][0].replace(' |~| ', '; ');
+						html += '<tr id="h'+escHTML(rv.cs[corp][hk].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp][hk].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp][hk].h[i][1]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][2]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp][hk].h[i][1]*100.0 / rv.cs[corp][hk].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][2]*100.0 / rv.cs[corp][hk].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][3]*100.0 / rv.cs[corp][hk].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][5]+'</td></tr>';
+						tsv += rv.cs[corp][hk].h[i].join('\t')+'\n';
 					}
-					url.searchParams.set('q', '('+params.get('q')+') within <s '+attrs.join(' & ')+'/>');
-					if (params.has('q2')) {
-						url.searchParams.set('q2', params.get('q2'));
-					}
-					rv.cs[corp].h[i][0] = rv.cs[corp].h[i][0].replace(' |~| ', '; ');
-					html += '<tr id="h'+escHTML(rv.cs[corp].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp].h[i][1]+'</td><td class="text-end">'+rv.cs[corp].h[i][2]+'</td><td class="text-end">'+rv.cs[corp].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp].h[i][1]*100.0 / rv.cs[corp].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][2]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp].h[i][3]*100.0 / rv.cs[corp].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp].h[i][5]+'</td></tr>';
-					tsv += rv.cs[corp].h[i].join('\t')+'\n';
 				}
 				state.tsv = tsv;
 				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
@@ -1210,24 +1393,6 @@
 				c.find('.btnGetTSV').click(function() {
 					saveAs(new Blob([state.tsv], {type: 'text/tab-separated-values'}), 'histogram.tsv');
 				});
-			}
-		}
-
-		let ks = Object.keys(state.groupgs).sort();
-		for (let corp in to_render) {
-			if (corp.indexOf('-subc') !== -1) {
-				let p = corp.substr(0, corp.indexOf('-subc'))+'-';
-				for (let k=0 ; k<ks.length ; ++k) {
-					if (ks[k].indexOf(p) === 0) {
-						to_render[corp].push(state.groupgs[ks[k]]);
-					}
-				}
-				if (to_render[corp].length == 1) {
-					delete to_render[corp];
-				}
-			}
-			else {
-				to_render[corp].push(state.groupgs[corp]);
 			}
 		}
 
@@ -1241,165 +1406,126 @@
 		}
 
 		for (let corp in to_render) {
-			let c = $('#graph-'+corp);
-
-			let gs = [];
-			let g = [];
-			let Y = 0;
+			let g_keys = {};
 
 			// Determine the average analyzed bodies for a group and consider groups with <10% of that as sparse
 			let sparse = 0;
-			for (let k=0 ; k<to_render[corp].length ; ++k) {
+			for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+				let trc = to_render[corp][hk];
 				let psp = 0;
-				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
-					psp += to_render[corp][k][i][f_aggr];
-					to_render[corp][k][i][6] = to_render[corp][k][i][f_hits]*100.0 / to_render[corp][k][i][f_aggr];
+				for (let k=0 ; k<trc.length ; ++k) {
+					g_keys[trc[k][0]] = true;
+					psp += trc[k][f_aggr];
+					trc[k][6] = trc[k][f_hits]*100.0 / trc[k][f_aggr];
 				}
-				sparse += psp/to_render[corp][k].length;
+				sparse += psp/trc.length;
 			}
 			sparse = sparse/10.0;
 
+			g_keys = Object.keys(g_keys).sort();
+
 			// Find max value so all graphs can get the same Y-axis
+			// Also turns arrays into objects indexed by the first column
 			let y_max = 0;
-			for (let k=0 ; k<to_render[corp].length ; ++k) {
-				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
-					if (to_render[corp][k][i][f_aggr] >= sparse) {
-						y_max = Math.max(y_max, to_render[corp][k][i][6]);
-					}
-				}
-			}
+			for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+				let trc = to_render[corp][hk];
 
-			for (let k=0 ; k<to_render[corp].length ; ++k) {
-				for (let i=0 ; i<to_render[corp][k].length ; ++i) {
-					let y = to_render[corp][k][i][0].toString().substr(0, 4);
-					if (g.length >= 365 && Y != y) {
-						if (typeof g[g.length-1] === 'string') {
-							g.pop();
-						}
-						gs.push([].concat(g));
-						g = [];
-					}
-					Y = y;
-
-					if (g.length >= 1000) {
-						if (typeof g[g.length-1] === 'string') {
-							g.pop();
-						}
-						gs.push([].concat(g));
-						g = [];
-					}
-
-					let to_p = to_render[corp][k][i];
-					if (!params.has('xe') && to_render[corp][k][i][1] === 0) {
-						to_p = '- skip -';
-					}
-					if (params.has('xs') && to_render[corp][k][i][f_aggr] < sparse) {
-						to_p = '- sparse -';
-					}
-
-					if (typeof to_p === 'string') {
-						if (g.length && typeof g[g.length-1] !== 'string') {
-							g.push(to_p);
-						}
-					}
-					else {
-						g.push(to_p);
-					}
-				}
-				g.push('- sub-break -');
-			}
-			g.pop();
-			gs.push(g);
-			//console.log(gs);
-
-			let html = '';
-			for (let k=0 ; k<gs.length ; ++k) {
-				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+'</div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div>';
-			}
-			c.find('.qbody').html(html);
-
-			for (let k=0 ; k<gs.length ; ++k) {
-				let labels = [];
-				let bars = [];
-				let c_bars = [];
-				let c_borders = [];
-
-				for (let i=0 ; i<gs[k].length ; ++i) {
-					if (typeof gs[k][i] === 'string') {
-						labels.push(gs[k][i]);
-						bars.push(0);
-						c_bars.push('rgba(32, 32, 32, 0.2)');
-						c_borders.push('rgb(32, 32, 32)');
-						continue;
-					}
-
-					labels.push(gs[k][i][0]);
-					if (gs[k][i][f_aggr] < 1) {
-						bars.push(0);
-						c_bars.push('rgba(64, 64, 64, 0.2)');
-						c_borders.push('rgb(64, 64, 64)');
-					}
-					else {
-						bars.push(gs[k][i][6]);
-						if (gs[k][i][f_aggr] < sparse) {
-							c_bars.push('rgba(255, 159, 64, 0.2)');
-							c_borders.push('rgb(255, 159, 64)');
-						}
-						else {
-							c_bars.push('rgba(54, 162, 235, 0.2)');
-							c_borders.push('rgb(54, 162, 235)');
-						}
-					}
+				let trc_k = {};
+				for (let k=0 ; k<g_keys.length ; ++k) {
+					trc_k[g_keys[k]] = 0.0;
 				}
 
-				let chart = new Chart(document.getElementById('chart-'+corp+'-'+k),
-					{
-						data: {
-							labels: labels,
-							datasets: [
-								{
-									type: 'bar',
-									label: f_label,
-									data: bars,
-									backgroundColor: c_bars,
-									borderColor: c_borders,
-									minBarLength: 5,
-									barPercentage: 1,
-									categoryPercentage: 1,
-								},
-							],
+				let h_y_max = 0;
+				for (let k=0 ; k<trc.length ; ++k) {
+					trc_k[trc[k][0]] = trc[k][6];
+					if (true || trc[k][f_aggr] >= sparse) {
+						h_y_max = Math.max(h_y_max, trc[k][6]);
+					}
+				}
+				y_max += h_y_max;
+
+				to_render[corp][hk] = trc_k;
+			}
+
+			let colors = [
+				['rgba(54, 162, 235, 0.8)', 'rgb(54, 162, 235)'],
+				['rgba(235, 54, 162, 0.8)', 'rgb(235, 54, 162)'],
+				['rgba(162, 54, 235, 0.8)', 'rgb(162, 54, 235)'],
+				['rgba(162, 235, 54, 0.8)', 'rgb(162, 235, 54)'],
+				['rgba(54, 162, 162, 0.8)', 'rgb(54, 162, 162)'],
+				['rgba(54, 54, 235, 0.8)', 'rgb(54, 54, 235)'],
+				['rgba(54, 162, 54, 0.8)', 'rgb(54, 162, 54)'],
+				['rgba(235, 162, 235, 0.8)', 'rgb(235, 162, 235)'],
+				['rgba(162, 162, 235, 0.8)', 'rgb(162, 162, 235)'],
+				['rgba(162, 235, 162, 0.8)', 'rgb(162, 235, 162)'],
+				];
+
+			let datasets = [];
+			for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
+				let data = to_render[corp][hk];
+				let dataset = {
+					type: 'bar',
+					label: q_show[hk],
+					data: data,
+					backgroundColor: colors[hk][0],
+					borderColor: colors[hk][1],
+					minBarLength: 0,
+					barPercentage: 1,
+					categoryPercentage: 1,
+					};
+				datasets.push(dataset);
+			}
+
+			$('#graph-'+corp).html('<div class="my-3" style="max-width: 90vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+'</div><canvas id="chart-'+corp+'" style="width: '+(g_keys.length*5)+'px;"></canvas></div>');
+
+			let ce = document.getElementById('chart-'+corp);
+			let chart = new Chart(ce,
+				{
+					data: {
+						labels: g_keys,
+						datasets: datasets,
+					},
+					options: {
+						responsive: false,
+						maintainAspectRatio: false,
+						interaction: {
+							mode: 'index',
+							intersect: false,
 						},
-						options: {
-							responsive: false,
-							maintainAspectRatio: false,
-							interaction: {
-								mode: 'index',
-								intersect: false,
+						plugins: {
+							legend: {
+								display: display_legend,
 							},
-							plugins: {
-								legend: {
-									display: false,
-								},
-							},
-							scales: {
-								y: {
-									beginAtZero: true,
-									max: y_max,
-								},
-							},
-							onClick: function(e) {
-								let pos = Chart.helpers.getRelativePosition(e, chart);
-								let x = chart.scales.x.getValueForPixel(pos.x);
-								let l = chart.scales.x.getLabelForValue(x);
-								if (!/^\d/.test(l)) {
-									return;
-								}
-								window.location.hash = '#h'+l;
+							title: {
+								display: true,
+								text: f_label,
 							},
 						},
-					});
-				chart.resize(gs[k].length*10, 300);
-			}
+						scales: {
+							x: {
+								stacked: true,
+							},
+							y: {
+								beginAtZero: true,
+								//max: y_max,
+								stacked: true,
+							},
+						},
+						onClick: function(e) {
+							let pos = Chart.helpers.getRelativePosition(e, chart);
+							let x = chart.scales.x.getValueForPixel(pos.x);
+							let l = chart.scales.x.getLabelForValue(x);
+							let y = chart.scales.y.getValueForPixel(pos.y);
+							let h = chart.scales.y.getLabelForValue(y);
+							console.log(e, pos, x, l, y, h);
+							if (!/^\d/.test(l)) {
+								return;
+							}
+							window.location.hash = '#h'+l;
+						},
+					},
+				});
+			chart.resize(Math.max(800, $(ce).closest('.row').width(), g_keys.length*10), 600);
 		}
 
 		if (retry) {
@@ -1438,12 +1564,18 @@
 			let s = $('#search').detach();
 			$('#search-holder').append(s).show();
 			$('.btnShowSearch').remove();
+			$('.btnShowRefine').remove();
 			$('input[name="q"]').focus();
+		});
+		$('.btnShowRefine').click(function() {
+			$('.btnShowSearch').click();
+			setTimeout(function () { $('.btnRefine').click(); }, 100);
 		});
 		$('.btnShowCorpora').click(function() {
 			$('.btnShowCorpora').remove();
 			$('#corpora').show();
 		});
+		$('.btnCustomize').hide();
 
 		$('#refine').hide();
 		state.refine = $('#refine').html();
@@ -1452,6 +1584,8 @@
 			window.refine.init();
 			$('#refine').show().get(0).scrollIntoView(true);
 		});
+
+		$('.arrOptVisible').change(changeOption);
 
 		// Concordances
 		if ($('.qresults').length) {
@@ -1499,6 +1633,11 @@
 			});
 
 			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-warning');
+
+			$('.btnCustomize').click(function() {
+				$('#customize-freq').toggle();
+			});
+			$('.btnCustomize').show();
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleFreq);}, 500);
 		}
@@ -1605,6 +1744,8 @@
 
 		let toastElList = document.querySelectorAll('.toast');
 		let toastList = [...toastElList].map(toastEl => {let t = new bootstrap.Toast(toastEl); t.show();});
+
+		loadOptions();
 	}
 
 	if (document.readyState === 'loading') {
