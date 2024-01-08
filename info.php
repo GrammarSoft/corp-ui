@@ -36,28 +36,33 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 
 		$get = $_GET;
 		$line = '';
+		$line_t = '';
 		$before = [];
 		$after = [];
 		$s_query = escapeshellarg('<s id="('.implode('|', $ids).')"/> containing []');
 		$context = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query");
 		foreach (explode("\n", trim($context)) as $c) {
+			$t = false;
 			if (strpos($c, '<s id="'.$_REQUEST['id'].'"') !== false) {
 				$line = $c;
+				$t = true;
+			}
+
+			preg_match('~<s id="(\d+)"~', $c, $m);
+			$c = explode("\t", htmlspecialchars($c), 3);
+			array_shift($c);
+			$get['id'] = $m[1];
+			$c[0] = '<span title="'.$c[0].'"><a href="./info.php?'.http_build_query($get).'">'.$m[1].' <i class="bi bi-info-square"></i></a>';
+			$c[1] = str_replace("\t", ' ', $c[1]);
+			$c = implode(' ', $c).'</span>';
+			if ($t) {
+				$line_t = $c;
+			}
+			else if ($line) {
+				$after[] = $c;
 			}
 			else {
-				preg_match('~<s id="(\d+)"~', $c, $m);
-				$c = explode("\t", htmlspecialchars($c), 3);
-				array_shift($c);
-				$get['id'] = $m[1];
-				$c[0] = '<span title="'.$c[0].'"><a href="./info.php?'.http_build_query($get).'">'.$m[1].' <i class="bi bi-info-square"></i></a>';
-				$c[1] = str_replace("\t", ' ', $c[1]);
-				$c = implode(' ', $c).'</span>';
-				if ($line) {
-					$after[] = $c;
-				}
-				else {
-					$before[] = $c;
-				}
+				$before[] = $c;
 			}
 		}
 
@@ -84,12 +89,20 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 		}
 
 		echo '<h4>'.htmlspecialchars($corp).'</h4>'."\n";
-		if (!empty($before)) {
-			echo '<h5>Pre context</h5>';
-			echo implode('<br>', $before).'<br><br>';
+		if (!empty($before) || !empty($after)) {
+			echo '<h5>Context</h5>';
 		}
-		echo '<b>'.htmlspecialchars($pcs[1])."</b><br>";
+		if (!empty($before)) {
+			echo implode('<br>', $before).'<br>';
+		}
+		echo '<b>'.$line_t."</b><br>";
 
+		if (!empty($after)) {
+			echo implode('<br>', $after);
+		}
+
+		echo '<h5 class="mt-3">Analysis</h5>';
+		echo '<b>'.htmlspecialchars($pcs[1])."</b><br>";
 		echo '<table class="table table-striped table-hover my-3">';
 		foreach ($fields as $f => $i) {
 			$class = '';
@@ -113,11 +126,6 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['id'])) {
 			echo '</tr>';
 		}
 		echo '</table>';
-
-		if (!empty($after)) {
-			echo '<h5>Post context</h5>';
-			echo implode('<br>', $after);
-		}
 
 		break;
 	}
