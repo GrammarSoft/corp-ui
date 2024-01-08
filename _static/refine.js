@@ -341,7 +341,7 @@
 				}
 			});
 
-			if (joins) {
+			if (joins.length) {
 				search = '('+search+') within <s '+joins.join(' & ')+'/>';
 			}
 		}
