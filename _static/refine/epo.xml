@@ -5,6 +5,7 @@
 <textfield name="Word" attr="word" negatable="true"/>
 <textfield name="Base" attr="lex" negatable="true"/>
 <textfield name="Extra" attr="extra" negatable="true"/>
+<textfield name="Sem" attr="sem" negatable="true"/>
 
 <expandlist name="Part of Speech" negatable="true">
   <multiselect name="Noun" attr="pos" value="N">
@@ -92,9 +93,8 @@
 
 <expandlist name="Function" negatable="true">
   <multiselect name="Subject" >
-     <checkbox attr="func" value="<?SUBJ>*" name="Full Subject"/>
-     <checkbox attr="func" value="F-<?SUBJ>?" name="Provisional Subject"/>
-     <checkbox attr="func" value="S-<?SUBJ>?" name="Situational Subject"/>
+     <checkbox attr="func" value="SUBJ>" name="Full Subject (left)"/>
+     <checkbox attr="func" value="<SUBJ" name="Full Subject (right)"/>
   </multiselect>
   <multiselect name="Object" >
      <checkbox attr="func" value="<?ACC>*.*" name="Accusative Object"/>
@@ -141,6 +141,77 @@
      <checkbox attr="func" value="VOK" name="Vocative"/>
   </multiselect>
 
+</expandlist>
+
+<expandlist name="Semantic Role" negatable="true">
+  <multiselect attr="role" value="AG.*" name="Agent"/>
+  <multiselect attr="role" value="COG" name="Cognizer"/>
+  <multiselect attr="role" value="SP" name="Speaker"/>
+  <multiselect attr="role" value="PAT" name="Patient"/>
+  <multiselect attr="role" value="DON" name="Donor"/>
+  <multiselect attr="role" value="REC" name="Recipient"/>
+  <multiselect attr="role" value="BEN" name="Beneficiary"/>
+  <multiselect attr="role" value="EXP" name="Experiencer"/>
+  <multiselect attr="role" value="TH" name="Theme"/>
+  <multiselect name="other non-adverbial">
+     <checkbox attr="role" value="STI" name="Stimulus"/>
+     <checkbox attr="role" value="RES" name="Result"/>
+     <checkbox attr="role" value="MES" name="Message"/>
+     <checkbox attr="role" value="SOA" name="Fact"/>
+     <checkbox attr="role" value="ROLE" name="Role"/>
+     <checkbox attr="role" value="COM" name="Co-argument"/>
+     <checkbox attr="role" value="POSS" name="Possessor"/>
+     <checkbox attr="role" value="ASS" name="Asset"/>
+     <checkbox attr="role" value="CONT" name="Contents"/>
+     <checkbox attr="role" value="TP" name="Topic"/>
+     <checkbox attr="role" value="COMP" name="Comparison"/>
+  </multiselect>
+  <multiselect name="Space" >
+     <checkbox attr="role" value="LOC" name="Location"/>
+     <checkbox attr="role" value="ORI" name="Origin"/>
+     <checkbox attr="role" value="DES" name="Destination"/>
+     <checkbox attr="role" value="PATH" name="Path"/>
+     <checkbox attr="role" value="LOC-SOC" name="Social Position"/>
+  </multiselect>
+  <multiselect name="Time" >
+     <checkbox attr="role" value="LOC-TMP" name="At ... (Point)"/>
+     <checkbox attr="role" value="ORI-TMP" name="From ... (Start)"/>
+     <checkbox attr="role" value="DES-TMP" name="Until ... (Stop)"/>
+     <checkbox attr="role" value="EXT-TMP" name="During ... (Period)"/>
+     <checkbox attr="role" value="FREQ" name="Frequency"/>
+  </multiselect>
+  <multiselect name="Adverbial" >
+     <checkbox attr="role" value="EXT" name="Amount"/>
+     <checkbox attr="role" value="CAU" name="Cause"/>
+     <checkbox attr="role" value="COMP" name="Comparation"/>
+     <checkbox attr="role" value="CONC" name="Concession"/>
+     <checkbox attr="role" value="COND" name="Condition"/>
+     <checkbox attr="role" value="EFF" name="Effect"/>
+     <checkbox attr="role" value="FIN" name="Finality"/>
+     <checkbox attr="role" value="INS" name="Instrument"/>
+     <checkbox attr="role" value="MNR" name="Manner"/>
+     <checkbox attr="role" value="COM-ADV" name="Accompanier"/>
+     <checkbox attr="role" value="META" name="Meta adverbial"/>
+  </multiselect>
+  <multiselect name="Attributive" >
+     <checkbox attr="role" value="ATR" name="Static attribute"/>
+     <checkbox attr="role" value="ATR-RES" name="Resulting attr."/>
+     <checkbox attr="role" value="MAT" name="Source material"/>
+     <checkbox attr="role" value="POS" name="Possessor"/>
+     <checkbox attr="role" value="CONT" name="Content"/>
+     <checkbox attr="role" value="ID" name="Identity"/>
+  </multiselect>
+  <multiselect name="Verbal" >
+     <checkbox attr="role" value="EV" name="Event/act/process"/>
+     <checkbox attr="role" value="ACT" name="Action"/>
+     <checkbox attr="role" value="PRED" name="Predicator"/>
+  </multiselect>
+  <multiselect name="Others" >
+     <checkbox attr="role" value="FOC" name="Focalizer"/>
+     <checkbox attr="role" value="VOC" name="Vocative"/>
+     <checkbox attr="role" value="DENOM" name="Denomination (list)"/>
+     <checkbox attr="role" value="INC" name="Verb-incorporated particle"/>
+  </multiselect>
 </expandlist>
 
 

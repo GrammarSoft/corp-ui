@@ -333,10 +333,12 @@ $GLOBALS['-corpora'] = [
 			],
 		],
 	'epo' => [
+		/*
 		'epo_elibrejo' => [
 			'name' => 'Esperanto literature',
 			'percent_combo' => 30,
 			],
+		//*/
 		'epo_eventoj' => [
 			'name' => 'Eventoj news letter',
 			'percent_combo' => 10,
@@ -360,11 +362,27 @@ $GLOBALS['-corpora'] = [
 			],
 		'epo_wiki_2010' => [
 			'name' => 'Wikipedia 2010',
+			'percent_combo' => 0,
+			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
+			],
+		'epo_wikipedia' => [
+			'name' => 'Wikipedia 2023',
 			'percent_combo' => 25,
 			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
+			'group_by' => ['title'],
 			],
 		'epo_zamenhof' => [
 			'name' => 'Zamenhof classics',
+			],
+		'epo_literature' => [
+			'name' => 'Original & translated literature',
+			'percent_combo' => 0,
+			'group_by' => ['author', 'title', 'year', 'tra', 'trayear', 'orilang'],
+			],
+		'epo_periodicals' => [
+			'name' => 'Periodicals',
+			'percent_combo' => 0,
+			'group_by' => ['author', 'title', 'year'],
 			],
 		],
 	'spa' => [

@@ -86,8 +86,8 @@
      <checkbox attr="morph" value="nG" name="nG"/>
   </multiselect>
   <multiselect name="Number" mustselect="true">
-     <checkbox attr="morph" value="S" name="S"/>
-     <checkbox attr="morph" value="P" name="P"/>
+     <checkbox attr="morph" value="[123]?S" name="S"/>
+     <checkbox attr="morph" value="[123]?P" name="P"/>
      <checkbox attr="morph" value="nN" name="nN"/>
   </multiselect>
   <multiselect name="Definiteness" mustselect="true">

@@ -87,8 +87,8 @@
      <checkbox attr="morph" value="nG" name="ambiguous"/>
   </multiselect>
   <multiselect name="Number" mustselect="true">
-     <checkbox attr="morph" value="S" name="singular"/>
-     <checkbox attr="morph" value="P" name="plural"/>
+     <checkbox attr="morph" value="[123]?S" name="singular"/>
+     <checkbox attr="morph" value="[123]?P" name="plural"/>
      <checkbox attr="morph" value="nN" name="ambiguous"/>
   </multiselect>
   <multiselect name="Definiteness" mustselect="true">
