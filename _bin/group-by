@@ -125,7 +125,7 @@ $ins_h = $db->prepare("INSERT INTO group_by (".implode(', ', $inscol).", g_artic
 
 foreach ($hist as $k => $v) {
 	//$cnt->execute([$k, $vs[$y]['a'], $vs[$y]['s'], $vs[$y]['h']]);
-	$k = explode("\ue001", $k);
+	$k = explode("\ue001", (string)$k);
 	$ins_h->execute([...$k, $v['a'], $v['s'], $v['h']]);
 }
 
