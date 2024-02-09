@@ -759,7 +759,7 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnShowRefine">Show refine <i class="bi bi-funnel"></i></button></div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnRefine">Show refine <i class="bi bi-funnel"></i></button></div></div>';
 	echo <<<XHTML
 <div class="row align-items-start my-3" id="customize-freq" style="display: none">
 <h5 class="fw-bold fs-5">Toggle columns</h5>
@@ -907,6 +907,10 @@ else {
 		<div class="row">
 			<div class="col-3"><label class="form-label" for="meta-year">Year</label></div>
 			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-year" data-sattr="year"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-year-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-publisher">Publisher</label></div>
+			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-publisher" data-sattr="publisher"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-publisher-neg">¬</label></div>
 		</div>
 		<div class="row">
 			<div class="col-3"><label class="form-label" for="meta-translator">Translator</label></div>

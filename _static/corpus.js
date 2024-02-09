@@ -1559,17 +1559,8 @@
 		$('#btnRelS').prop('disabled', true).addClass('disabled');
 
 		$('.btnShowSearch').click(function() {
-			$('.btnShowCorpora').show();
-			$('#corpora').hide();
-			let s = $('#search').detach();
-			$('#search-holder').append(s).show();
-			$('.btnShowSearch').remove();
-			$('.btnShowRefine').remove();
-			$('input[name="q"]').focus();
-		});
-		$('.btnShowRefine').click(function() {
-			$('.btnShowSearch').click();
-			setTimeout(function () { $('.btnRefine').click(); }, 100);
+			$('#search').get(0).scrollIntoView(true);
+			$('#query').focus();
 		});
 		$('.btnShowCorpora').click(function() {
 			$('.btnShowCorpora').remove();
