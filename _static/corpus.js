@@ -785,7 +785,8 @@
 		else {
 			bits[offset] = bits[offset].replace(new RegExp('\\b'+field+'=".+?"'), hfield+'="{TOKEN}"');
 			if (!(new RegExp('\\b'+field+'=')).test(bits[offset])) {
-				bits[offset] = bits[offset].substr(0, 1) + hfield + '="{TOKEN}" & ' + bits[offset].substr(1);
+				let firstsq = bits[offset].indexOf('[') + 1;
+				bits[offset] = bits[offset].substr(0, firstsq) + hfield + '="{TOKEN}" & ' + bits[offset].substr(firstsq);
 			}
 			search += bits.join(' ');
 		}
@@ -1281,16 +1282,20 @@
 		let arr_hash = state.hash.split(';');
 		let arr_q = params.has('q') ? params.get('q').split('~|~') : [];
 		let arr_q2 = params.has('q2') ? params.get('q2').split('~|~') : [];
-
-		let q_prefix = common_prefix(arr_q);
-		let q_suffix = common_suffix(arr_q);
-		let q_show = [];
+		let arr_qs = [];
 		for (let i=0 ; i<arr_q.length ; ++i) {
-			let q = arr_q[i];
+			arr_qs.push(arr_q[i] + ' / ' + arr_q2[i]);
+		}
+
+		let q_prefix = common_prefix(arr_qs);
+		let q_suffix = common_suffix(arr_qs);
+		let q_show = [];
+		for (let i=0 ; i<arr_qs.length ; ++i) {
+			let q = arr_qs[i];
 			q = q.substr(0, q.length - q_suffix.length);
 			q = q.substr(q_prefix.length);
 			if (!q) {
-				q = arr_q[i];
+				q = arr_qs[i];
 			}
 			q_show.push(q);
 		}
