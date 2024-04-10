@@ -57,6 +57,7 @@
 		groupgs: {},
 		popup: null,
 		popup_info: null,
+		modal_v: null,
 		};
 
 	let options = {
@@ -223,6 +224,17 @@
 		$('.depParent').removeClass('depParent');
 		$(this).addClass('depSelf');
 		$('#t'+p).addClass('depParent');
+	}
+
+	function popupVector() {
+		let words = [];
+		$('.chkVector').each(function() {
+			words.push($(this).attr('data-which').replace('\t', '_'));
+		});
+		words = words.slice(0, 50);
+
+		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id')).attr('data-words', words.join(';'));
+		state.modal_v.show();
 	}
 
 	function popupExport(e, btn) {
@@ -735,6 +747,11 @@
 			};
 
 		let field = params.get('f');
+		let wv = params.has('wv') && (params.get('wv') === 'on');
+		if (wv && field != 'lex' && field != 'h_lex') {
+			field = 'lex';
+			$('#freq_field').val(field);
+		}
 
 		let query1 = params.get('q');
 		let query2 = params.has('q2') ? params.get('q2') : '';
@@ -761,6 +778,13 @@
 				hfield += '_lc';
 			}
 		}
+
+		// If the query is wrapped in "() within X" then only modify the inner part
+		let within = null;
+		if ((within = query.match(/^(\()(.+?)(\) within .*)$/)) !== null) {
+			query = within[2];
+		}
+
 		let bits = query.split(/(?<=\][*+?]?)\s*(?=\[)/);
 		// Turn right edge conditions into left edge conditions
 		if (by === 're') {
@@ -789,6 +813,12 @@
 				bits[offset] = bits[offset].substr(0, firstsq) + hfield + '="{TOKEN}" & ' + bits[offset].substr(firstsq);
 			}
 			search += bits.join(' ');
+		}
+
+		search = search.replace(/ & \]/g, ']');
+
+		if (within) {
+			search = within[1] + search + within[3];
 		}
 
 		let search1 = query2 ? query1 : search;
@@ -846,6 +876,11 @@
 				let button = '<a href="./callback.php?a=freq&amp;cs[]='+Object.keys(state.corps).join('&amp;cs[]=')+'&amp;h='+rq.h+'&amp;hf='+rq.hf+'&amp;hc='+rq.hc+'&amp;t='+rq.t+'&amp;tsv='+corp+'" class="btn btn-outline-success my-3">Download TSV <i class="bi bi-download"></i></a>';
 				c.find('.qtsv').html(button);
 
+				if (wv) {
+					c.find('.qtsv').append('<button class="btn btn-outline-success btnPopupVector">Vector plot <i class="bi bi-pin-map"></i></button>');
+					$('.btnPopupVector').click(popupVector);
+				}
+
 				let combo = false;
 				if (corp.indexOf('_0combo_') !== -1) {
 					combo = true;
@@ -884,14 +919,22 @@
 					html += '<th class="text-vertical qcol-scnf" title="Sub-corpus normalized frequency"><span class="color-orange">S: freq∕corp · 10⁸</span></th>';
 				}
 				html += '<th class="text-vertical qcol-pcnt" title="Percentage of total hits"><span class="color-green">freq∕conc</span></th><th class="text-vertical qcol-num" title="Number of hits">num</th>';
-				if (has_group) {
+				if (wv) {
+					html += '<th class="text-vertical" title="Add to vector plot">Vector?</th>';
+				}
+				else if (has_group) {
 					html += '<th class="text-vertical" title="Add to compare">Compare?</th>';
 				}
 				html += '</tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
-					url.searchParams.set('q', search1.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
-					url.searchParams.set('q2', search2.replace('{TOKEN}', escapeRegExp(rv.cs[corp].f[i][0])));
+					let rpl = escapeRegExp(rv.cs[corp].f[i][0]);
+					if (wv && rv.cs[corp].f[i][0].indexOf('\t') !== -1) {
+						let ts = rv.cs[corp].f[i][0].split('\t');
+						rpl = escapeRegExp(ts[0]) + '" & pos="' + escapeRegExp(ts[1]);
+					}
+					url.searchParams.set('q', search1.replace('{TOKEN}', rpl));
+					url.searchParams.set('q2', search2.replace('{TOKEN}', rpl));
 					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
 					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 						html += '<td class="text-end qcol-grf">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
@@ -907,7 +950,10 @@
 						html += '<td class="text-end qcol-scnf">'+(rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000).toFixed(2)+'</td>';
 					}
 					html += '<td class="text-end qcol-pcnt">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end qcol-num">'+rv.cs[corp].f[i][1]+'</td>';
-					if (has_group) {
+					if (wv) {
+						html += '<td><input type="checkbox" class="form-check-input chkVector" data-which="'+escHTML(rv.cs[corp].f[i][0])+'" checked></td>';
+					}
+					else if (has_group) {
 						html += '<td><input type="checkbox" class="form-check-input chkCompare" data-q="'+escHTML(url.searchParams.get('q'))+'" data-q2="'+escHTML(url.searchParams.get('q2'))+'"></td>';
 					}
 					html += '</tr>';
@@ -1538,6 +1584,133 @@
 		}
 	}
 
+	function handleWordvec() {
+		for (let corp in g_wv) {
+			let vs = g_wv[corp];
+			let e = $('#wv-'+corp);
+			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: 800px; height: 600px;"></canvas></div><div id="data-'+corp+'"></div>');
+
+			let params = (new URL(window.location)).searchParams;
+			let x1 = params.get('x1').split(';');
+			let x2 = params.get('x2').split(';');
+			let y1 = params.get('y1').split(';');
+			let y2 = params.get('y2').split(';');
+			let ws = params.get('ws').split(';');
+
+			let ths = '';
+			for (let v in vs) {
+				ths += '<th>'+escHTML(v.substr(1))+'</th>';
+			}
+			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'</tr></thead><tbody>';
+
+			let labels = [];
+			let data = [];
+			for (let i=0 ; i<ws.length ; ++i) {
+				let w = ws[i];
+
+				let row = '<tr><td>'+escHTML(w)+'</td>';
+				let good = true;
+				for (let k in vs) {
+					if (!vs[k].hasOwnProperty('!'+w)) {
+						row += '<td>~</td>';
+						good = false;
+					}
+					else {
+						row += '<td>'+vs[k]['!'+w]+'</td>';
+					}
+				}
+				row += '</tr>';
+				html += row;
+				if (!good) {
+					continue;
+				}
+
+				let x_a = 0;
+				for (let j=0 ; j<x1.length ; ++j) {
+					x_a += vs['!'+x1[j]]['!'+w];
+				}
+				x_a /= x1.length;
+
+				let x_b = 0;
+				for (let j=0 ; j<x2.length ; ++j) {
+					x_b += vs['!'+x2[j]]['!'+w];
+				}
+				x_b /= x2.length;
+
+				let y_a = 0;
+				for (let j=0 ; j<y1.length ; ++j) {
+					y_a += vs['!'+y1[j]]['!'+w];
+				}
+				y_a /= y1.length;
+
+				let y_b = 0;
+				for (let j=0 ; j<y2.length ; ++j) {
+					y_b += vs['!'+y2[j]]['!'+w];
+				}
+				y_b /= y2.length;
+
+				labels.push(w);
+				data.push({x: x_b - x_a, y: y_b - y_a});
+			}
+
+			html += '</tbody></table>';
+			$('#data-'+corp).html(html);
+
+			console.log(labels, data);
+
+			let ce = document.getElementById('chart-'+corp);
+			let chart = new Chart(ce,
+				{
+					type: 'scatter',
+					data: {
+						labels: labels,
+						datasets: [{
+							label: '',
+							data: data,
+						}],
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						interaction: {
+							mode: 'index',
+							intersect: false,
+						},
+						plugins: {
+							legend: {
+								display: false,
+							},
+						},
+						scales: {
+							x: {
+								type: 'linear',
+								title: {
+									display: true,
+									text: x1.join(';')+' - '+x2.join(';'),
+								}
+							},
+							y: {
+								type: 'linear',
+								title: {
+									display: true,
+									text: y1.join(';')+' - '+y2.join(';'),
+								}
+							},
+						},
+						onClick: function(e) {
+							let pos = Chart.helpers.getRelativePosition(e, chart);
+							let x = chart.scales.x.getValueForPixel(pos.x);
+							let l = chart.scales.x.getLabelForValue(x);
+							let y = chart.scales.y.getValueForPixel(pos.y);
+							let h = chart.scales.y.getLabelForValue(y);
+							console.log(e, pos, x, l, y, h);
+						},
+					},
+				});
+			//chart.resize(Math.max(800, $(ce).closest('.row').width(), g_keys.length*10), 600);
+		}
+	}
+
 	function contentLoaded() {
 		state.corps = g_corps;
 		state.hash = g_hash;
@@ -1688,6 +1861,11 @@
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleGroup);}, 500);
 		}
 
+		// Group by
+		if ($('.qwordvec').length) {
+			setTimeout(handleWordvec, 500);
+		}
+
 		$('#qpagesize').change(function() {
 			let n = parseInt($(this).val());
 			state.pagesize = n;
@@ -1740,6 +1918,26 @@
 
 		let toastElList = document.querySelectorAll('.toast');
 		let toastList = [...toastElList].map(toastEl => {let t = new bootstrap.Toast(toastEl); t.show();});
+
+		state.modal_v = new bootstrap.Modal('#modalVector');
+		$('.btnVectorPlot').click(function() {
+			let corp = $('#modalVector').attr('data-corp');
+			let ws = $('#modalVector').attr('data-words');
+
+			let params = (new URL(window.location)).searchParams;
+			let url = new URL(window.location.origin + window.location.pathname);
+			url.searchParams.set('l', params.get('l'));
+			url.searchParams.set('q', params.get('q'));
+			url.searchParams.set('q2', params.get('q2'));
+			url.searchParams.set('s', 'wv');
+			url.searchParams.set('c['+corp+']', '1');
+			url.searchParams.set('x1', $.trim($('#x1').val()));
+			url.searchParams.set('x2', $.trim($('#x2').val()));
+			url.searchParams.set('y1', $.trim($('#y1').val()));
+			url.searchParams.set('y2', $.trim($('#y2').val()));
+			url.searchParams.set('ws', ws);
+			window.location = url;
+		});
 
 		loadOptions();
 	}

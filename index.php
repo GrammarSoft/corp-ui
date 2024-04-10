@@ -38,10 +38,12 @@ $toasts = [];
 
 $h_query = '';
 $checked = [
+	'dt' => '',
 	'lc' => '',
 	'nd' => '',
 	'ha' => '',
 	'hf' => '',
+	'wv' => '',
 	'xe' => '',
 	'xs' => '',
 	];
@@ -59,6 +61,9 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 	$freq_fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
 }
 
+if (!empty($_REQUEST['dt'])) {
+	$checked['dt'] = 'checked';
+}
 if (!empty($_REQUEST['ha'])) {
 	$checked['ha'] = 'checked';
 }
@@ -67,6 +72,9 @@ if (!empty($_REQUEST['hf'])) {
 }
 if (!empty($_REQUEST['xe'])) {
 	$checked['xe'] = 'checked';
+}
+if (!empty($_REQUEST['wv'])) {
+	$checked['wv'] = 'checked';
 }
 if (!empty($_REQUEST['xs'])) {
 	$checked['xs'] = 'checked';
@@ -78,14 +86,15 @@ header('X-Q: '.count($arr_query));
 
 foreach ($arr_query as $hk => $query) {
 	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
+		$qs = explode(' ', $query);
 		if (!empty($_REQUEST['nd'])) {
-			$query = '[word_nd="'.$query.'"]';
+			$query = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';
 		}
 		else if (!empty($_REQUEST['lc'])) {
-			$query = '[word_lc="'.$query.'"]';
+			$query = '[word_lc="'.implode('"] [word_lc="', $qs).'"]';
 		}
 		else {
-			$query = '[word="'.$query.'"]';
+			$query = '[word="'.implode('"] [word="', $qs).'"]';
 		}
 	}
 	if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
@@ -95,14 +104,15 @@ foreach ($arr_query as $hk => $query) {
 }
 foreach ($arr_query2 as $hk => $query2) {
 	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[.*\]~', $query2)) {
+		$qs = explode(' ', $query2);
 		if (!empty($_REQUEST['nd'])) {
-			$query2 = '[word_nd="'.$query2.'"]';
+			$query2 = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';
 		}
 		else if (!empty($_REQUEST['lc'])) {
-			$query2 = '[word_lc="'.$query2.'"]';
+			$query2 = '[word_lc="'.implode('"] [word_lc="', $qs).'"]';
 		}
 		else {
-			$query2 = '[word="'.$query2.'"]';
+			$query2 = '[word="'.implode('"] [word="', $qs).'"]';
 		}
 	}
 	if (preg_match('~\b(\d+):\[.*?\1\.~', $query2)) {
@@ -237,6 +247,7 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 
 	$has_hist = true;
 	$has_group = [];
+	$has_word2vec = true;
 	$corps = [];
 	foreach ($_REQUEST['c'] as $corp => $_) {
 		[$s_corp,$subc] = explode('-', $corp.'-');
@@ -251,11 +262,11 @@ else if (!empty($_REQUEST['c']) && !empty($_REQUEST['q'])) {
 			$has_hist = false;
 		}
 		$has_group[] = $GLOBALS['-corplist'][$s_corp]['group_by'] ?? [];
+		$has_word2vec = $has_word2vec && !empty($GLOBALS['-corplist'][$s_corp]['word2vec']);
 	}
 
 	if (!empty($has_group)) {
 		$has_group = array_intersect(...$has_group);
-		sort($has_group);
 		$has_group = array_unique($has_group);
 	}
 
@@ -325,6 +336,10 @@ XSH;
 				$by = 're';
 			}
 
+			if ($checked['wv'] && $field != 'lex' && $field != 'h_lex') {
+				$field = 'lex';
+			}
+
 			$which = $field;
 			$nd = $field;
 			if ($checked['hf'] && substr($field, 0, 2) !== 'h_') {
@@ -352,6 +367,17 @@ XSH;
 			$which .= ' '.$offset;
 			if ($by === 're') {
 				$which .= '>0';
+			}
+			if ($checked['wv']) {
+				if ($checked['hf'] || substr($field, 0, 2) == 'h_') {
+					$which .= ' h_pos '.$offset;
+				}
+				else {
+					$which .= ' pos '.$offset;
+				}
+				if ($by === 're') {
+					$which .= '>0';
+				}
 			}
 			$s_which = escapeshellarg($which);
 
@@ -543,6 +569,70 @@ XSH;
 				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group.time ./$hash-$hash_sh.group.sh >$hash-$hash_sh.group.err 2>&1 &");
 			}
 		}
+		// word2vec
+		else if ($_REQUEST['s'] === 'wv') {
+			$xs = escapeshellarg("{$_REQUEST['x1']};{$_REQUEST['x2']};{$_REQUEST['y1']};{$_REQUEST['y2']}");
+			$ws = escapeshellarg($_REQUEST['ws']);
+
+			$sh = <<<XSH
+#!/bin/bash
+set -e
+cd '$folder'
+
+XSH;
+			$hash_q = substr(sha256_lc20("{$xs}:{$ws}"), 0, 8);
+			$exec = false;
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!file_exists("$hash-$hash_q-$s_corp.wv") || !filesize("$hash-$hash_q-$s_corp.wv")) {
+					$exec = true;
+				}
+
+				$sh .= <<<XSH
+
+if [ ! -s '$hash-$hash_q-$s_corp.wv' ]; then
+	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
+fi
+
+XSH;
+		}
+
+		$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.wv.sh", $sh);
+				chmod("$hash-$hash_sh.wv.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.wv.time ./$hash-$hash_sh.wv.sh >$hash-$hash_sh.wv.err 2>&1");
+			}
+
+			$json = [];
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				$data = [];
+				$lines = explode("\n", trim(file_get_contents("$folder/$hash-$hash_q-$s_corp.wv")));
+				$last = '';
+				foreach ($lines as $line) {
+					if ($line[0] !== "\t") {
+						$last = '!'.$line;
+					}
+					else {
+						$line = explode("\t", $line);
+						$data[$last]['!'.$line[1]] = floatval($line[2]);
+					}
+				}
+				$json[$s_corp] = $data;
+			}
+
+			echo '<script>let g_wv = '.json_encode_vb($json).';</script>';
+		}
 	}
 
 	$bys = [
@@ -568,6 +658,17 @@ XSH;
 		}
 		$off_sel .= '<option value="'.$i.'"'.$sel.'>'.$i.'</option>'."\n";
 	}
+
+	$word2vec = '';
+	if ($has_word2vec) {
+		$word2vec = <<<XHTML
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="wv" id="wv" {$checked['wv']}>
+<label class="form-check-label" for="wv">Vector plottable</label>
+</div>
+
+XHTML;
+}
 
 	// Sidebar
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
@@ -625,6 +726,7 @@ Frequency <i class="bi bi-sort-down"></i>
 <input class="form-check-input" type="checkbox" name="nd" id="nd" {$checked['nd']}>
 <label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
+{$word2vec}
 </form>
 </div></div>
 
@@ -664,8 +766,9 @@ Histogram <i class="bi bi-hourglass"></i>
 <input class="form-check-input" type="checkbox" name="xs" id="xs" {$checked['xs']}>
 <label class="form-check-label" for="xs">Expand sparse ranges</label>
 </div>
+</div>
 </form>
-</div></div>
+</div>
 
 XHTML;
 	}
@@ -723,6 +826,34 @@ XHTML;
 
 XHTML;
 	}
+
+	// Distribute
+	echo <<<XHTML
+<!--
+<div class="card bg-lightblue mb-3">
+<form method="GET" id="formDistribute">
+<input type="hidden" name="l" value="{$h_language}">
+<input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
+<input type="hidden" name="ub" value="{$h_unbound}">
+{$h_corps}
+<div class="card-header text-center fw-bold fs-6">
+Distribute <i class="bi bi-bar-chart"></i>
+</div>
+<div class="card-body">
+<div class="text-center"><button class="btn btn-sm btn-success mb-3" type="submit" name="s" value="dist" id="btnDistribute">Distribute results</button></div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="dc" id="dc" {$checked['dc']}>
+<label class="form-check-label" for="dc">Whole corpus instead of contiguous &lt;s&gt; range</label>
+</div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="dt" id="dt" {$checked['dt']}>
+<label class="form-check-label" for="dt">Aggregate tokens instead of sentences</label>
+</div>
+</div></form></div>
+-->
+
+XHTML;
 
 	// Page size & Focus field
 	echo <<<XHTML
@@ -825,6 +956,13 @@ XHTML;
 		foreach ($_REQUEST['c'] as $corp => $_) {
 			echo '<div class="col qgroup" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
 		}
+	}
+	else if ($_REQUEST['s'] === 'wv') {
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			[$s_corp,$subc] = explode('-', $corp.'-');
+			echo '<div class="col qwordvec" id="wv-'.htmlspecialchars($s_corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($s_corp).'</span><div class="qbody"></div></div></div>';
+		}
+		echo '</div>';
 	}
 	echo '</div>';
 	echo '<div class="row"><div class="col qpages">…</div></div>';
@@ -1047,6 +1185,24 @@ else {
 <?php
 }
 ?>
+</div>
+
+<div class="modal fade" id="modalVector" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h1 class="modal-title fs-5">Vector plot setup</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="row"><div class="col-2">X axis</div><div class="col"><input type="text" class="form-control" id="x1" value="kvinde_N"></div><div class="col"><input type="text" class="form-control" id="x2" value="mand_N"></div></div>
+				<div class="row"><div class="col-2">Y axis</div><div class="col"><input type="text" class="form-control" id="y1" value="kvindelig_ADJ"></div><div class="col"><input type="text" class="form-control" id="y2" value="mandlig_ADJ"></div></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-primary btnVectorPlot">Plot</button>
+			</div>
+		</div>
+	</div>
 </div>
 
 <div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">

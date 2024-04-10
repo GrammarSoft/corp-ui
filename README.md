@@ -39,3 +39,4 @@ cd ~/storage/corpora/dan_literature/meta
 * Vector space scatter plots (word2vec)
 * 2D queries as scatter plots (E.g., Q+/- and a semantic class)
 * Sparse show only in table
+* Remember state (selected checkboxes) when going from Group By back to Freq

@@ -173,6 +173,7 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Twitter (2008-2023 Mar)',
 			'percent_combo' => 25,
 			'subs' => array_combine(range(2017, 2023), range(2017, 2023)),
+			'word2vec' => ['kvinde_N', 'mand_N', 'kvindelig_ADJ', 'mandlig_ADJ'],
 			],
 		'dan_literature' => [
 			'name' => 'Literature 1800-1940',
@@ -341,7 +342,7 @@ $GLOBALS['-corpora'] = [
 		//*/
 		'epo_eventoj' => [
 			'name' => 'Eventoj news letter',
-			'percent_combo' => 10,
+			'percent_combo' => 0,
 			],
 		'epo_frazoj' => [
 			'name' => 'TTT 2004',
@@ -349,7 +350,7 @@ $GLOBALS['-corpora'] = [
 			],
 		'epo_monato' => [
 			'name' => 'Monato magazine',
-			'percent_combo' => 10,
+			'percent_combo' => 0,
 			],
 		'epo_uniq_ttt' => [
 			'name' => 'TTT 2009',
@@ -367,7 +368,7 @@ $GLOBALS['-corpora'] = [
 			],
 		'epo_wikipedia' => [
 			'name' => 'Wikipedia 2023',
-			'percent_combo' => 25,
+			'percent_combo' => 20,
 			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
 			'group_by' => ['title'],
 			],
@@ -376,13 +377,23 @@ $GLOBALS['-corpora'] = [
 			],
 		'epo_literature' => [
 			'name' => 'Original & translated literature',
-			'percent_combo' => 0,
+			'percent_combo' => 30,
 			'group_by' => ['author', 'title', 'year', 'tra', 'trayear', 'orilang'],
 			],
 		'epo_periodicals' => [
 			'name' => 'Periodicals',
+			'percent_combo' => 25,
+			'group_by' => ['publisher', 'author', 'title', 'year'],
+			],
+		'epo_ttt' => [
+			'name' => 'Internet',
 			'percent_combo' => 0,
-			'group_by' => ['author', 'title', 'year'],
+			'group_by' => ['publisher'],
+			],
+		'epo_reddit' => [
+			'name' => 'Reddit',
+			'percent_combo' => 0,
+			'group_by' => ['year', 'month', 'day'],
 			],
 		],
 	'spa' => [
@@ -551,6 +562,11 @@ $GLOBALS['-corpora'] = [
 		'por_wiki' => [
 			'name' => 'Wikipedia',
 			'percent_combo' => 10,
+			],
+		'por_literature' => [
+			'name' => 'Portuguese literature',
+			'percent_combo' => 0,
+			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
 			],
 		],
 	'ron' => [

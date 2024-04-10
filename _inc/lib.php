@@ -13,6 +13,7 @@ foreach ($GLOBALS['-corpora'] as $g => $cs) {
 		$GLOBALS['-corplist'][$corp]['infolink'] = ($GLOBALS['-corplist'][$corp]['infolink'] ?? "https://corp.visl.dk/copyright.html#{$corp}");
 		$GLOBALS['-corplist'][$corp]['features'] = ($GLOBALS['-corplist'][$corp]['features'] ?? []);
 		$GLOBALS['-corplist'][$corp]['group_by'] = ($GLOBALS['-corplist'][$corp]['group_by'] ?? null);
+		$GLOBALS['-corplist'][$corp]['word2vec'] = ($GLOBALS['-corplist'][$corp]['word2vec'] ?? null);
 	}
 }
 
