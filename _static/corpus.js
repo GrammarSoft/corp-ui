@@ -454,15 +454,40 @@
 
 		src = $.trim(src.replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%'));
 
-		let meta = null;
-		let re_meta = /^\((.+?)\) within <s (.+?)\/>$/;
-		if ((meta = re_meta.exec(src)) !== null) {
-			src = meta[1];
-			meta = meta[2];
-		}
-
 		let re_fld = /^([a-z_]+)(!?)=/;
 		let re_val = /"([^"]+)"/;
+
+		let meta = null;
+		let re_meta = /^\((.+)\) within <s (.+?)\/>$/;
+		while ((meta = re_meta.exec(src)) !== null) {
+			src = meta[1];
+			meta = meta[2];
+
+			let fld = null;
+			while ((fld = re_fld.exec(meta)) !== null) {
+				let not = fld[2] ? true : false;
+				fld = fld[1];
+				//console.log(fld);
+				meta = meta.substr(fld.length + not*1 + 1);
+				//console.log(meta);
+
+				let val = re_val.exec(meta);
+				//console.log(val);
+				if (!val) {
+					break;
+				}
+
+				meta = $.trim(meta.substr(val[0].length));
+				//console.log(meta);
+				rv.meta.push({k: fld, i: not, v: val[0]});
+
+				if (meta.indexOf('& ') === 0) {
+					meta = $.trim(meta.substr(2));
+				}
+				//console.log(val);
+				//console.log(meta);
+			}
+		}
 
 		if (src.charAt(0) !== '[') {
 			src = '['+src+']';
@@ -508,33 +533,6 @@
 			}
 
 			rv.tokens.push(token);
-		}
-
-		if (meta) {
-			let fld = null;
-			while ((fld = re_fld.exec(meta)) !== null) {
-				let not = fld[2] ? true : false;
-				fld = fld[1];
-				//console.log(fld);
-				meta = meta.substr(fld.length + not*1 + 1);
-				//console.log(meta);
-
-				let val = re_val.exec(meta);
-				//console.log(val);
-				if (!val) {
-					break;
-				}
-
-				meta = $.trim(meta.substr(val[0].length));
-				//console.log(meta);
-				rv.meta.push({k: fld, i: not, v: val[0]});
-
-				if (meta.indexOf('& ') === 0) {
-					meta = $.trim(meta.substr(2));
-				}
-				//console.log(val);
-				//console.log(meta);
-			}
 		}
 
 		//console.log(rv);
