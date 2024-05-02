@@ -36,7 +36,13 @@ cd ~/storage/corpora/dan_literature/meta
 * Per-language help links in top to CG grammar docs
 * Break down Group By hits into per-s histogram
 * View the whole work (for open corpora)
-* Vector space scatter plots (word2vec)
 * 2D queries as scatter plots (E.g., Q+/- and a semantic class)
+  * Multi-value axis via regex match against corpus or vocab
+  * Fields to limit on absolute X/Y value
+  * User-defined cutoff, default 0.1 or 0.05
+  * Clickable numbers leading to query+subquery of the words
+  * Colors by max of all, x, or y
+  * Toggle text
+  * If "Vector plottable", disable relfreq buttons
 * Sparse show only in table
 * Remember state (selected checkboxes) when going from Group By back to Freq

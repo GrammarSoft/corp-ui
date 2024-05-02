@@ -8,9 +8,7 @@ parser.add_argument('xs')
 parser.add_argument('ws')
 args = parser.parse_args()
 
-model = gensim.models.Word2Vec.load(args.model, mmap='r')
-wv = model.wv
-del model
+wv = gensim.models.KeyedVectors.load(args.model, mmap='r')
 
 xs = args.xs.split(';')
 ws = args.ws.split(';')

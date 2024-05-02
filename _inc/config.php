@@ -568,6 +568,12 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 0,
 			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
 			],
+		'por_blogs' => [
+			'name' => 'Portuguese blogs',
+			'percent_combo' => 15,
+			'group_by' => ['publisher', 'year', 'month', 'day', 'hour', 'minute', 'second'],
+			'word2vec' => ['queijo_N'],
+			],
 		],
 	'ron' => [
 		'ron_business' => [

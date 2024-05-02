@@ -160,6 +160,9 @@ if (!empty($_REQUEST['c'])) {
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/js/bootstrap.bundle.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11/font/bootstrap-icons.css">
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4/dist/chart.umd.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3/dist/chartjs-plugin-annotation.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/hammerjs@2"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2/dist/chartjs-plugin-zoom.min.js"></script>
 
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
 
@@ -571,8 +574,13 @@ XSH;
 		}
 		// word2vec
 		else if ($_REQUEST['s'] === 'wv') {
-			$xs = escapeshellarg("{$_REQUEST['x1']};{$_REQUEST['x2']};{$_REQUEST['y1']};{$_REQUEST['y2']}");
+			$xs = escapeshellarg(preg_replace('~;;+~', ';', "{$_REQUEST['x1']};{$_REQUEST['x2']};{$_REQUEST['y1']};{$_REQUEST['y2']}"));
 			$ws = escapeshellarg($_REQUEST['ws']);
+
+			$type = 'cbow';
+			if (!empty($_REQUEST['sg']) && ($_REQUEST['sg'] === 'true' || $_REQUEST['sg'] === 'on')) {
+				$type = 'sg';
+			}
 
 			$sh = <<<XSH
 #!/bin/bash
@@ -580,7 +588,7 @@ set -e
 cd '$folder'
 
 XSH;
-			$hash_q = substr(sha256_lc20("{$xs}:{$ws}"), 0, 8);
+			$hash_q = substr(sha256_lc20("{$xs}:{$ws}:{$type}"), 0, 8);
 			$exec = false;
 			foreach ($_REQUEST['c'] as $corp => $_) {
 				[$s_corp,$subc] = explode('-', $corp.'-');
@@ -591,7 +599,7 @@ XSH;
 				$sh .= <<<XSH
 
 if [ ! -s '$hash-$hash_q-$s_corp.wv' ]; then
-	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
+	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.$type.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
 fi
 
 XSH;
@@ -1195,8 +1203,9 @@ else {
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body">
-				<div class="row"><div class="col-2">X axis</div><div class="col"><input type="text" class="form-control" id="x1" value="kvinde_N"></div><div class="col"><input type="text" class="form-control" id="x2" value="mand_N"></div></div>
-				<div class="row"><div class="col-2">Y axis</div><div class="col"><input type="text" class="form-control" id="y1" value="kvindelig_ADJ"></div><div class="col"><input type="text" class="form-control" id="y2" value="mandlig_ADJ"></div></div>
+				<div class="row"><div class="col-2">X axis</div><div class="col"><input type="text" class="form-control" id="x1" value="_N"></div><div class="col"><input type="text" class="form-control" id="x2" value="_N"></div></div>
+				<div class="row"><div class="col-2">Y axis</div><div class="col"><input type="text" class="form-control" id="y1" value="_ADJ"></div><div class="col"><input type="text" class="form-control" id="y2" value="_ADJ"></div></div>
+				<div class="row"><div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="sg" checked><label class="form-check-label" for="sg">Use skip-gram</label></div></div></div>
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-primary btnVectorPlot">Plot</button>

@@ -58,6 +58,8 @@
 		popup: null,
 		popup_info: null,
 		modal_v: null,
+		url: null,
+		params: null,
 		};
 
 	let options = {
@@ -228,12 +230,27 @@
 
 	function popupVector() {
 		let words = [];
-		$('.chkVector').each(function() {
-			words.push($(this).attr('data-which').replace('\t', '_'));
+		$('.chkVector:checked').each(function() {
+			words.push($(this).attr('data-word').replace('\t', '_'));
 		});
-		words = words.slice(0, 50);
+		words = words.slice(0, 300);
 
-		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id')).attr('data-words', words.join(';'));
+		let nums = [];
+		$('.chkVector:checked').each(function() {
+			nums.push($(this).attr('data-num'));
+		});
+		nums = nums.slice(0, 300);
+
+		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id')).attr('data-words', words.join(';')).attr('data-nums', nums.join(';'));
+		let axes = ls_get('w2v-axes-'+state.params.get('l'), {});
+		for (let ax in axes) {
+			if (typeof axes[ax] === 'boolean') {
+				$('#'+ax).prop('checked', axes[ax]);
+			}
+			else {
+				$('#'+ax).val(axes[ax]);
+			}
+		}
 		state.modal_v.show();
 	}
 
@@ -426,6 +443,141 @@
 			return '<br><span class="fw-light text-muted">'+escHTML(tabs[state.focus_n] ? tabs[state.focus_n] : '-').replace(/ /g, "<br>")+'</span>';
 		}
 		return '';
+	}
+
+	function parse_query(src) {
+		let rv = {
+			tokens: [],
+			quants: [],
+			meta: [],
+		};
+
+		src = $.trim(src.replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%'));
+
+		let meta = null;
+		let re_meta = /^\((.+?)\) within <s (.+?)\/>$/;
+		if ((meta = re_meta.exec(src)) !== null) {
+			src = meta[1];
+			meta = meta[2];
+		}
+
+		let re_fld = /^([a-z_]+)(!?)=/;
+		let re_val = /"([^"]+)"/;
+
+		if (src.charAt(0) !== '[') {
+			src = '['+src+']';
+		}
+
+		while (src.charAt(0) === '[') {
+			let token = [];
+			src = src.substr(1);
+
+			let fld = null;
+			while ((fld = re_fld.exec(src)) !== null) {
+				let not = fld[2] ? true : false;
+				fld = fld[1];
+				//console.log(fld);
+				src = src.substr(fld.length + not*1 + 1);
+				//console.log(src);
+
+				let val = re_val.exec(src);
+				//console.log(val);
+				if (!val) {
+					break;
+				}
+
+				src = $.trim(src.substr(val[0].length));
+				token.push({k: fld, i: not, v: val[0]});
+
+				if (src.indexOf('& ') === 0) {
+					src = $.trim(src.substr(2));
+				}
+				//console.log(val);
+				//console.log(src);
+			}
+
+			if (src.indexOf(']') === 0) {
+				src = $.trim(src.substr(1));
+			}
+			if (src.length && src.charAt(0) != '[') {
+				rv.quants.push(src.charAt(0));
+				src = $.trim(src.substr(1));
+			}
+			else {
+				rv.quants.push('');
+			}
+
+			rv.tokens.push(token);
+		}
+
+		if (meta) {
+			let fld = null;
+			while ((fld = re_fld.exec(meta)) !== null) {
+				let not = fld[2] ? true : false;
+				fld = fld[1];
+				//console.log(fld);
+				meta = meta.substr(fld.length + not*1 + 1);
+				//console.log(meta);
+
+				let val = re_val.exec(meta);
+				//console.log(val);
+				if (!val) {
+					break;
+				}
+
+				meta = $.trim(meta.substr(val[0].length));
+				//console.log(meta);
+				rv.meta.push({k: fld, i: not, v: val[0]});
+
+				if (meta.indexOf('& ') === 0) {
+					meta = $.trim(meta.substr(2));
+				}
+				//console.log(val);
+				//console.log(meta);
+			}
+		}
+
+		//console.log(rv);
+		return rv;
+	}
+
+	function render_query(q) {
+		let rv = '';
+		for (let i=0 ; i<q.tokens.length ; ++i) {
+			let fields = q.tokens[i];
+			rv += '[';
+			for (let j=0 ; j<fields.length ; ++j) {
+				let field = fields[j];
+				rv += field.k;
+				if (field.i) {
+					rv += '!';
+				}
+				rv += '=';
+				rv += field.v;
+				rv += ' & ';
+			}
+			rv = rv.replace(/ & $/, '');
+			rv += '] ';
+		}
+		rv = rv.replace(/ $/, '');
+
+		if (q.meta.length) {
+			rv = '(' + rv + ') within <s ';
+			for (let j=0 ; j<q.meta.length ; ++j) {
+				let field = q.meta[j];
+				rv += field.k;
+				if (field.i) {
+					rv += '!';
+				}
+				rv += '=';
+				rv += field.v;
+				rv += ' & ';
+			}
+			rv = rv.replace(/ & $/, '');
+			rv += '/>';
+		}
+
+		return rv;
 	}
 
 	function handleConc(rv) {
@@ -779,47 +931,40 @@
 			}
 		}
 
-		// If the query is wrapped in "() within X" then only modify the inner part
-		let within = null;
-		if ((within = query.match(/^(\()(.+?)(\) within .*)$/)) !== null) {
-			query = within[2];
-		}
-
-		let bits = query.split(/(?<=\][*+?]?)\s*(?=\[)/);
+		let bits = parse_query(query);
 		// Turn right edge conditions into left edge conditions
 		if (by === 're') {
-			offset += bits.length - 1;
+			offset += bits.tokens.length - 1;
 		}
 		// Create query template to be filled with the found token
-		let search = '';
 		if (offset < 0) {
-			search = '['+hfield+'="{TOKEN}"]';
+			bits.tokens.unshift([{f: hfield, i: false, v: '"{TOKEN}"'}]);
 			for (let i=offset ; i<-1 ; ++i) {
-				search += ' []';
+				bits.tokens.unshift([]);
 			}
-			search += ' '+query;
 		}
-		else if (offset >= bits.length) {
-			search = query;
-			for (let i=bits.length ; i<offset ; ++i) {
-				search += ' []';
+		else if (offset >= bits.tokens.length) {
+			for (let i=bits.tokens.length ; i<offset ; ++i) {
+				bits.tokens.push([]);
 			}
-			search += ' ['+hfield+'="{TOKEN}"]';
+			bits.tokens.push([{f: hfield, i: false, v: '"{TOKEN}"'}]);
 		}
 		else {
-			bits[offset] = bits[offset].replace(new RegExp('\\b'+field+'=".+?"'), hfield+'="{TOKEN}"');
-			if (!(new RegExp('\\b'+field+'=')).test(bits[offset])) {
-				let firstsq = bits[offset].indexOf('[') + 1;
-				bits[offset] = bits[offset].substr(0, firstsq) + hfield + '="{TOKEN}" & ' + bits[offset].substr(firstsq);
+			let found = false;
+			for (let i=0 ; i<bits.tokens[offset].length ; ++i) {
+				if (bits.tokens[offset][i].k === field && !bits.tokens[offset][i].i) {
+					bits.tokens[offset][i].k = hfield;
+					bits.tokens[offset][i].v = '"{TOKEN}"';
+					found = true;
+					break;
+				}
 			}
-			search += bits.join(' ');
+			if (!found) {
+				bits.tokens[offset].push({f: hfield, i: false, v: '"{TOKEN}"'});
+			}
 		}
 
-		search = search.replace(/ & \]/g, ']');
-
-		if (within) {
-			search = within[1] + search + within[3];
-		}
+		let search = render_query(bits);
 
 		let search1 = query2 ? query1 : search;
 		let search2 = query2 ? search : query2;
@@ -951,7 +1096,7 @@
 					}
 					html += '<td class="text-end qcol-pcnt">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end qcol-num">'+rv.cs[corp].f[i][1]+'</td>';
 					if (wv) {
-						html += '<td><input type="checkbox" class="form-check-input chkVector" data-which="'+escHTML(rv.cs[corp].f[i][0])+'" checked></td>';
+						html += '<td><input type="checkbox" class="form-check-input chkVector" data-word="'+escHTML(rv.cs[corp].f[i][0])+'" data-num="'+rv.cs[corp].f[i][1]+'" checked></td>';
 					}
 					else if (has_group) {
 						html += '<td><input type="checkbox" class="form-check-input chkCompare" data-q="'+escHTML(url.searchParams.get('q'))+'" data-q2="'+escHTML(url.searchParams.get('q2'))+'"></td>';
@@ -1584,34 +1729,68 @@
 		}
 	}
 
+	function get(params, k, df) {
+		if (!params.has(k)) {
+			return df;
+		}
+		return params.get(k);
+	}
+
 	function handleWordvec() {
 		for (let corp in g_wv) {
 			let vs = g_wv[corp];
 			let e = $('#wv-'+corp);
-			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: 800px; height: 600px;"></canvas></div><div id="data-'+corp+'"></div>');
+			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: 800px; height: 600px;"></canvas></div><div><a class="btn btn-outline-primary btnZoomReset">Reset zoom</a></div><div id="data-'+corp+'"></div>');
 
 			let params = (new URL(window.location)).searchParams;
-			let x1 = params.get('x1').split(';');
-			let x2 = params.get('x2').split(';');
-			let y1 = params.get('y1').split(';');
-			let y2 = params.get('y2').split(';');
-			let ws = params.get('ws').split(';');
+			let x1 = get(params, 'x1', '').split(';');
+			let x2 = get(params, 'x2', '').split(';');
+			let y1 = get(params, 'y1', '').split(';');
+			let y2 = get(params, 'y2', '').split(';');
+			let ws = get(params, 'ws', '').split(';');
+			let ns = get(params, 'ns', null).split(';');
 
 			let ths = '';
+			if (ns) {
+				ths += '<th>Num</th>';
+			}
 			for (let v in vs) {
 				ths += '<th>'+escHTML(v.substr(1))+'</th>';
 			}
 			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'</tr></thead><tbody>';
 
 			let labels = [];
+			let annots = {};
+			let colors = {
+				vals: [],
+				min: 99,
+				max: -99,
+				bg: [],
+				border: [],
+				};
 			let data = [];
+			let mean = {
+				x: 0,
+				y: 0,
+				};
+			let wmean = {
+				x: 0,
+				y: 0,
+				n: 0,
+				};
+			let xs = [];
+			let ys = [];
+			let wns = [];
 			for (let i=0 ; i<ws.length ; ++i) {
 				let w = ws[i];
 
-				let row = '<tr><td>'+escHTML(w)+'</td>';
+				let row = '<tr id="'+corp+'-'+escHTML(w)+'"><td>'+escHTML(w)+'</td>';
+				if (ns) {
+					row += '<td>'+ns[i]+'</td>';
+				}
 				let good = true;
 				for (let k in vs) {
-					if (!vs[k].hasOwnProperty('!'+w)) {
+					if (!vs[k].hasOwnProperty('!'+w) || vs[k]['!'+w] === 0) {
 						row += '<td>~</td>';
 						good = false;
 					}
@@ -1649,14 +1828,197 @@
 				}
 				y_b /= y2.length;
 
+				let x = x_b - x_a;
+				let y = y_b - y_a;
+				colors.vals.push(Math.max(x_a, x_b, y_a, y_b));
+				colors.min = Math.min(colors.min, x_a, x_b, y_a, y_b);
+				colors.max = Math.max(colors.max, x_a, x_b, y_a, y_b);
 				labels.push(w);
-				data.push({x: x_b - x_a, y: y_b - y_a});
+				data.push({x: x, y: y});
+				mean.x += x;
+				mean.y += y;
+				xs.push(x);
+				ys.push(y);
+				if (ns) {
+					let n = parseInt(ns[i]);
+					wmean.n += n;
+					wmean.x += x * n;
+					wmean.y += y * n;
+					wns.push(n);
+				}
+
+				annots['l'+i] = {
+					type: 'label',
+					xValue: x,
+					yValue: y,
+					position: {x: 'start', y: 'center'},
+					content: [w],
+					};
 			}
+
+			colors.max -= colors.min;
+			for (let j=0 ; j<colors.vals.length ; ++j) {
+				let v = (colors.vals[j] - colors.min) / colors.max;
+				let r = Math.floor(56 + (199 * v)); // 56-255
+				let g = Math.floor(162 + (-63 * v)); // 162-99
+				let b = Math.floor(233 + (-102 * v)); // 233-131
+				colors.bg.push('rgb('+r+', '+g+', '+b+')');
+				colors.border.push('rgb('+r+', '+g+', '+b+')');
+			}
+
+			let means = [];
+			/*
+			mean.x /= data.length;
+			mean.y /= data.length;
+			annots['mean'] = {
+				type: 'label',
+				xValue: mean.x,
+				yValue: mean.y,
+				position: {x: 'start', y: 'center'},
+				content: ['mean'],
+				};
+			means.push(mean);
+			//*/
+			if (ns) {
+				wmean.x /= wmean.n;
+				wmean.y /= wmean.n;
+				annots['wmean'] = {
+					type: 'label',
+					xValue: wmean.x,
+					yValue: wmean.y,
+					position: {x: 'start', y: 'center'},
+					content: ['(mean)'],
+					z: -1,
+					};
+				annots['wmeanx'] = {
+					type: 'line',
+					xMin: wmean.x,
+					xMax: wmean.x,
+					borderColor: 'rgb(255, 99, 131, 0.75)',
+					borderWidth: 1,
+					z: -10,
+					};
+				annots['wmeany'] = {
+					type: 'line',
+					yMin: wmean.y,
+					yMax: wmean.y,
+					borderColor: 'rgb(255, 99, 131, 0.75)',
+					borderWidth: 1,
+					z: -10,
+					};
+				means.push(wmean);
+			}
+
+			let radia = [];
+			let medians = [];
+			if (ns) {
+				let wxys = [];
+				for (let j=0 ; j<wns.length ; ++j) {
+					let w = wns[j] / wmean.n;
+					radia.push(3+50*w);
+					wxys.push([j, w]);
+				}
+				wxys.sort(function(a,b) {return a[1] - b[1];});
+				//console.log(wxys);
+
+				let wmedian = {
+					x: 0,
+					y: 0,
+					};
+				if (wxys.length & 1) {
+					let sum = 0;
+					for (let j=0 ; j<wxys.length ; ++j) {
+						sum += wxys[j][1];
+						if (sum >= 0.5) {
+							wmedian.x = xs[wxys[j][0]];
+							wmedian.y = ys[wxys[j][0]];
+							break;
+						}
+					}
+				}
+				else {
+					let sum = 0;
+					for (let j=0 ; j<wxys.length ; ++j) {
+						sum += wxys[j][1];
+						if (sum >= 0.5) {
+							wmedian.x = xs[wxys[j][0]];
+							wmedian.y = ys[wxys[j][0]];
+							break;
+						}
+					}
+
+					sum = 0;
+					for (let j=wxys.length ; j>0 ; --j) {
+						sum += wxys[j-1][1];
+						if (sum >= 0.5) {
+							wmedian.x += xs[wxys[j-1][0]];
+							wmedian.y += ys[wxys[j-1][0]];
+							break;
+						}
+					}
+
+					wmedian.x /= 2;
+					wmedian.y /= 2;
+				}
+				/*
+				annots['wmedian'] = {
+					type: 'label',
+					xValue: wmedian.x,
+					yValue: wmedian.y,
+					position: {x: 'start', y: 'center'},
+					content: ['median'],
+					z: -1,
+					};
+				//*/
+				annots['wmedianx'] = {
+					type: 'line',
+					xMin: wmedian.x,
+					xMax: wmedian.x,
+					borderColor: 'rgb(254, 158, 66, 0.75)',
+					borderWidth: 1,
+					z: -10,
+					};
+				annots['wmediany'] = {
+					type: 'line',
+					yMin: wmedian.y,
+					yMax: wmedian.y,
+					borderColor: 'rgb(254, 158, 66, 0.75)',
+					borderWidth: 1,
+					z: -10,
+					};
+				medians.push(wmedian);
+			}
+
+			/*
+			xs.sort();
+			ys.sort();
+			let median = {
+				x: 0,
+				y: 0,
+				};
+			if (xs.length & 1) {
+				median.x = (xs[Math.floor(xs.length/2)] + xs[Math.floor(xs.length/2)+1])/2;
+				median.y = (ys[Math.floor(ys.length/2)] + ys[Math.floor(ys.length/2)+1])/2;
+			}
+			else {
+				median.x = xs[xs.length/2];
+				median.y = ys[ys.length/2];
+			}
+			annots['median'] = {
+				type: 'label',
+				xValue: median.x,
+				yValue: median.y,
+				position: {x: 'start', y: 'center'},
+				content: ['median'],
+				};
+			medians.push(median);
+			//*/
+			//console.log(means, medians);
+
+			//console.log(labels, data);
 
 			html += '</tbody></table>';
 			$('#data-'+corp).html(html);
-
-			console.log(labels, data);
 
 			let ce = document.getElementById('chart-'+corp);
 			let chart = new Chart(ce,
@@ -1665,20 +2027,46 @@
 					data: {
 						labels: labels,
 						datasets: [{
-							label: '',
+							label: 'Words',
 							data: data,
+							radius: radia,
+							backgroundColor: colors.bg,
+							borderColor: colors.border,
+						},{
+							label: 'Mean',
+							data: means,
+						},{
+							label: 'Median',
+							data: medians,
 						}],
 					},
 					options: {
 						responsive: true,
 						maintainAspectRatio: false,
 						interaction: {
-							mode: 'index',
+							//mode: 'index',
 							intersect: false,
 						},
 						plugins: {
 							legend: {
 								display: false,
+							},
+							annotation: {
+								annotations: annots,
+							},
+							zoom: {
+								pan: {
+									enabled: true,
+								},
+								zoom: {
+									wheel: {
+										enabled: true,
+									},
+									pinch: {
+										enabled: true,
+									},
+									mode: 'xy',
+								},
 							},
 						},
 						scales: {
@@ -1707,7 +2095,9 @@
 						},
 					},
 				});
-			//chart.resize(Math.max(800, $(ce).closest('.row').width(), g_keys.length*10), 600);
+			e.find('.btnZoomReset').click(function() {
+				chart.resetZoom();
+			});
 		}
 	}
 
@@ -1717,7 +2107,9 @@
 		state.hash_freq = g_hash_freq;
 		state.hash_combo = g_hash_combo;
 
-		let params = (new URL(window.location)).searchParams;
+		state.url = new URL(window.location);
+		state.params = state.url.searchParams;
+		let params = state.params;
 		state.focus = params.has('focus') ? params.get('focus') : Defs.focus;
 		state.focus_n = fields[state.focus];
 		state.offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
@@ -1923,19 +2315,31 @@
 		$('.btnVectorPlot').click(function() {
 			let corp = $('#modalVector').attr('data-corp');
 			let ws = $('#modalVector').attr('data-words');
+			let ns = $('#modalVector').attr('data-nums');
 
-			let params = (new URL(window.location)).searchParams;
+			let lang = state.params.get('l');
+			let axes = {
+				x1: $.trim($('#x1').val()),
+				x2: $.trim($('#x2').val()),
+				y1: $.trim($('#y1').val()),
+				y2: $.trim($('#y2').val()),
+				sg: $('#sg').prop('checked'),
+			};
+			ls_set('w2v-axes-'+lang, axes);
+
 			let url = new URL(window.location.origin + window.location.pathname);
-			url.searchParams.set('l', params.get('l'));
-			url.searchParams.set('q', params.get('q'));
-			url.searchParams.set('q2', params.get('q2'));
+			url.searchParams.set('l', lang);
+			url.searchParams.set('q', state.params.get('q'));
+			url.searchParams.set('q2', state.params.get('q2'));
 			url.searchParams.set('s', 'wv');
 			url.searchParams.set('c['+corp+']', '1');
-			url.searchParams.set('x1', $.trim($('#x1').val()));
-			url.searchParams.set('x2', $.trim($('#x2').val()));
-			url.searchParams.set('y1', $.trim($('#y1').val()));
-			url.searchParams.set('y2', $.trim($('#y2').val()));
+			url.searchParams.set('x1', axes.x1);
+			url.searchParams.set('x2', axes.x2);
+			url.searchParams.set('y1', axes.y1);
+			url.searchParams.set('y2', axes.y2);
+			url.searchParams.set('sg', axes.sg);
 			url.searchParams.set('ws', ws);
+			url.searchParams.set('ns', ns);
 			window.location = url;
 		});
 
@@ -1951,7 +2355,9 @@
 
 	// Export useful functions
 	return {
-		state: state,
+		parse_query: parse_query,
+		render_query: render_query,
 		repaginate: repaginate,
+		state: state,
 		};
 }));

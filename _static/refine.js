@@ -429,24 +429,10 @@
 		}
 
 		let did_anything = false;
-		let src = $.trim(q.replace(/\?:/g, '').replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%').replace(/\(\.\* \)\?/g, '').replace(/\( \.\*\)\?/g, ''));
+		q = corpus.parse_query(q.replace(/\?:/g, '').replace(/\(\.\* \)\?/g, '').replace(/\( \.\*\)\?/g, ''));
 
-		let meta = null;
-		let re_meta = /^\((.+?)\) within <s (.+?)\/>$/;
-		if ((meta = re_meta.exec(src)) !== null) {
-			src = meta[1];
-			meta = meta[2];
-		}
-
-		let re_fld = /^([a-z_]+)(!?)=/;
-		let re_val = /"([^"]+)"/;
-
-		if (src.charAt(0) !== '[') {
-			src = '['+src+']';
-		}
-
-		while (src.charAt(0) === '[') {
-			src = src.substr(1);
+		for (let i=0 ; i<q.tokens.length ; ++i) {
+			let fields = q.tokens[i];
 			let tbl = create_table();
 			$(where).append(tbl);
 			toggle_dependency(tbl);
@@ -456,19 +442,10 @@
 
 			let had_head = false;
 			let had_sibling = false;
-			let fld = null;
-			while ((fld = re_fld.exec(src)) !== null) {
-				let not = fld[2] ? true : false;
-				fld = fld[1];
-				//console.log(fld);
-				src = src.substr(fld.length + not*1 + 1);
-				//console.log(src);
-
-				let val = re_val.exec(src);
-				//console.log(val);
-				if (!val) {
-					break;
-				}
+			for (let j=0 ; j<fields.length ; ++j) {
+				let field = fields[j];
+				let fld = field.k;
+				let not = field.i;
 
 				if (fld.indexOf('h_') == 0) {
 					had_head = true;
@@ -487,13 +464,11 @@
 					$(tbl).find('[name="'+fld+'_c_'+(rn-1)+'"]').prop('checked', true);
 				}
 
-				src = $.trim(src.substr(val[0].length));
-				//console.log(src);
 				if (fld === 'word' || fld === 'lex' || fld == 'h_word' || fld == 'h_lex' || fld == 's_word' || fld == 's_lex') {
-					$(tbl).find('[data-attr="'+fld+'"]').val(val[1]);
+					$(tbl).find('[data-attr="'+fld+'"]').val(field.v.slice(1, -1));
 				}
 				else {
-					let vals = parse_values(val[1], fld);
+					let vals = parse_values(field.v.slice(1, -1), fld);
 					for (let i=0 ; i<vals.length ; ++i) {
 						let dv = $(tbl).find('[data-value="'+vals[i]+'"]').filter('[data-attr="'+fld+'"]');
 
@@ -513,23 +488,13 @@
 						dv.change();
 					}
 					if (vals.length === 0) {
-						$(tbl).find('[data-attr="'+fld+'"]').val(val[1].replace('.*(^| )', '').replace('( |$).*', ''));
+						$(tbl).find('[data-attr="'+fld+'"]').val(field.v.slice(1, -1).replace('.*(^| )', '').replace('( |$).*', ''));
 					}
 				}
-
-				if (src.indexOf('& ') === 0) {
-					src = $.trim(src.substr(2));
-				}
-				//console.log(val);
-				//console.log(src);
 			}
 
-			if (src.indexOf(']') === 0) {
-				src = $.trim(src.substr(1));
-			}
-			if (src.length && src.charAt(0) != '[') {
-				$(tbl).find('[value="'+src.charAt(0)+'"]').prop('checked', true);
-				src = $.trim(src.substr(1));
+			if (q.quants[i]) {
+				$(tbl).find('[value="'+q.quants[i]+'"]').prop('checked', true);
 			}
 
 			ps = $.unique(ps);
@@ -550,33 +515,16 @@
 			$(where).append(create_table());
 		}
 
-		if (meta) {
+		if (q.meta.length) {
 			$('.meta-fields.show').remove();
 			$('.meta-fields').addClass('show');
 
-			let fld = null;
-			while ((fld = re_fld.exec(meta)) !== null) {
-				let not = fld[2] ? true : false;
-				fld = fld[1];
-				//console.log(fld);
-				meta = meta.substr(fld.length + not*1 + 1);
-				//console.log(meta);
+			for (let i=0 ; i<q.meta.length ; ++i) {
+				let field = q.meta[i];
+				let fld = field.k;
+				let not = field.i;
 
-				let val = re_val.exec(meta);
-				//console.log(val);
-				if (!val) {
-					break;
-				}
-
-				meta = $.trim(meta.substr(val[0].length));
-				//console.log(meta);
-				$('[data-sattr="'+fld+'"]').val(val[1]);
-
-				if (meta.indexOf('& ') === 0) {
-					meta = $.trim(meta.substr(2));
-				}
-				//console.log(val);
-				//console.log(meta);
+				$('[data-sattr="'+fld+'"]').val(field.v.slice(1, -1));
 			}
 		}
 	}

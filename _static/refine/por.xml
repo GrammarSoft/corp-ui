@@ -5,6 +5,7 @@
 <textfield name="Word" attr="word" negatable="true"/>
 <textfield name="Base" attr="lex" negatable="true"/>
 <textfield name="Extra" attr="extra" negatable="true"/>
+<textfield name="Sem" attr="sem" negatable="true"/>
 
 <expandlist name="Part of Speech" negatable="true">
   <multiselect name="Noun" attr="pos" value="N">
