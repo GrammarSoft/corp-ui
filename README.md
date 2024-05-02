@@ -45,4 +45,3 @@ cd ~/storage/corpora/dan_literature/meta
   * Toggle text
   * If "Vector plottable", disable relfreq buttons
 * Sparse show only in table
-* Remember state (selected checkboxes) when going from Group By back to Freq

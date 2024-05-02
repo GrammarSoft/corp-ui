@@ -332,6 +332,12 @@ $GLOBALS['-corpora'] = [
 		'eng_beauty_blather' => [
 			'name' => 'Beauty blog',
 			],
+		'eng_blogs' => [
+			'name' => 'English blogs',
+			'percent_combo' => 20,
+			'group_by' => ['article', 'gender', 'age', 'year', 'month', 'day'],
+			'word2vec' => ['house_N'],
+			],
 		],
 	'epo' => [
 		/*

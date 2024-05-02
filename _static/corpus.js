@@ -133,6 +133,35 @@
 		window.localStorage.removeItem(key);
 	}
 
+	function ss_get(key, def) {
+		let v = null;
+		try {
+			v = window.sessionStorage.getItem(key);
+		}
+		catch (e) {
+		}
+		if (v === null) {
+			if (def !== null && typeof def === 'object') {
+				v = Object.assign({}, def);
+			}
+			else {
+				v = def;
+			}
+		}
+		else {
+			v = JSON.parse(v);
+		}
+		return v;
+	}
+
+	function ss_set(key, val) {
+		try {
+			window.sessionStorage.setItem(key, JSON.stringify(val));
+		}
+		catch (e) {
+		}
+	}
+
 	function u_reverse(str) {
 		return [...str].reverse().join('');
 	}
@@ -198,13 +227,16 @@
 	}
 
 	function chkCompare() {
+		let words = [];
 		let q = [];
 		let q2 = [];
 		$('.chkCompare:checked').slice(0, 10).each(function() {
 			let t = $(this);
+			words.push(t.attr('data-word'));
 			q.push(t.attr('data-q'));
 			q2.push(t.attr('data-q2'));
 		});
+		ss_set('compare-checked-' + state.hash + '-' + state.hash_freq, words);
 
 		$('.chkCompare').attr('disabled', false);
 		if ($('.chkCompare:checked').length >= 10) {
@@ -230,15 +262,13 @@
 
 	function popupVector() {
 		let words = [];
-		$('.chkVector:checked').each(function() {
-			words.push($(this).attr('data-word').replace('\t', '_'));
-		});
-		words = words.slice(0, 300);
-
 		let nums = [];
 		$('.chkVector:checked').each(function() {
+			words.push($(this).attr('data-word'));
 			nums.push($(this).attr('data-num'));
 		});
+		words = words.slice(0, 300);
+		ss_set('w2v-checked-' + state.hash + '-' + state.hash_freq, words);
 		nums = nums.slice(0, 300);
 
 		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id')).attr('data-words', words.join(';')).attr('data-nums', nums.join(';'));
@@ -936,7 +966,7 @@
 		}
 		// Create query template to be filled with the found token
 		if (offset < 0) {
-			bits.tokens.unshift([{f: hfield, i: false, v: '"{TOKEN}"'}]);
+			bits.tokens.unshift([{k: hfield, i: false, v: '"{TOKEN}"'}]);
 			for (let i=offset ; i<-1 ; ++i) {
 				bits.tokens.unshift([]);
 			}
@@ -945,7 +975,7 @@
 			for (let i=bits.tokens.length ; i<offset ; ++i) {
 				bits.tokens.push([]);
 			}
-			bits.tokens.push([{f: hfield, i: false, v: '"{TOKEN}"'}]);
+			bits.tokens.push([{k: hfield, i: false, v: '"{TOKEN}"'}]);
 		}
 		else {
 			let found = false;
@@ -958,7 +988,7 @@
 				}
 			}
 			if (!found) {
-				bits.tokens[offset].push({f: hfield, i: false, v: '"{TOKEN}"'});
+				bits.tokens[offset].push({k: hfield, i: false, v: '"{TOKEN}"'});
 			}
 		}
 
@@ -1094,17 +1124,36 @@
 					}
 					html += '<td class="text-end qcol-pcnt">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end qcol-num">'+rv.cs[corp].f[i][1]+'</td>';
 					if (wv) {
-						html += '<td><input type="checkbox" class="form-check-input chkVector" data-word="'+escHTML(rv.cs[corp].f[i][0])+'" data-num="'+rv.cs[corp].f[i][1]+'" checked></td>';
+						html += '<td><input type="checkbox" class="form-check-input chkVector" data-word="'+escHTML(rv.cs[corp].f[i][0].replace(/\t/g, '_'))+'" data-num="'+rv.cs[corp].f[i][1]+'"></td>';
 					}
 					else if (has_group) {
-						html += '<td><input type="checkbox" class="form-check-input chkCompare" data-q="'+escHTML(url.searchParams.get('q'))+'" data-q2="'+escHTML(url.searchParams.get('q2'))+'"></td>';
+						html += '<td><input type="checkbox" class="form-check-input chkCompare" data-word="'+escHTML(rv.cs[corp].f[i][0])+'" data-q="'+escHTML(url.searchParams.get('q'))+'" data-q2="'+escHTML(url.searchParams.get('q2'))+'"></td>';
 					}
 					html += '</tr>';
 				}
 				html += '</tbody></table>';
 				c.find('.qbody').html(html);
+
 				c.find('.chkCompare').off().click(chkCompare);
-				c.find('.chkCompare').slice(0,10).click();
+				let comps = ss_get('compare-checked-' + state.hash + '-' + state.hash_freq, []);
+				if (comps.length) {
+					for (let c=0 ; c<comps.length ; ++c) {
+						$('.chkCompare[data-word="'+comps[c]+'"]').click();
+					}
+				}
+				else {
+					c.find('.chkCompare').slice(0,10).click();
+				}
+
+				let vecs = ss_get('w2v-checked-' + state.hash + '-' + state.hash_freq, []);
+				if (vecs.length) {
+					for (let v=0 ; v<vecs.length ; ++v) {
+						$('.chkVector[data-word="'+vecs[v]+'"]').prop('checked', true);
+					}
+				}
+				else {
+					$('.chkVector').prop('checked', true);
+				}
 			}
 
 			applyOptions();
