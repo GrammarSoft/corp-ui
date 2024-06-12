@@ -33,16 +33,18 @@ if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 
 $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'le');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
+$_REQUEST['ga'] = trim($_REQUEST['ga'] ?? 's');
 
 $toasts = [];
 
 $h_query = '';
 $checked = [
+	'dc' => '',
 	'dt' => '',
 	'lc' => '',
 	'nd' => '',
-	'ha' => '',
 	'hf' => '',
+	'pos' => '',
 	'wv' => '',
 	'xe' => '',
 	'xs' => '',
@@ -64,17 +66,20 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 if (!empty($_REQUEST['dt'])) {
 	$checked['dt'] = 'checked';
 }
-if (!empty($_REQUEST['ha'])) {
-	$checked['ha'] = 'checked';
+if (!empty($_REQUEST['dc'])) {
+	$checked['dc'] = 'checked';
 }
 if (!empty($_REQUEST['hf'])) {
 	$checked['hf'] = 'checked';
 }
-if (!empty($_REQUEST['xe'])) {
-	$checked['xe'] = 'checked';
+if (!empty($_REQUEST['pos'])) {
+	$checked['pos'] = 'checked';
 }
 if (!empty($_REQUEST['wv'])) {
 	$checked['wv'] = 'checked';
+}
+if (!empty($_REQUEST['xe'])) {
+	$checked['xe'] = 'checked';
 }
 if (!empty($_REQUEST['xs'])) {
 	$checked['xs'] = 'checked';
@@ -339,6 +344,9 @@ XSH;
 				$by = 're';
 			}
 
+			if ($checked['pos'] && !preg_match('~^(h_)?(word|lex)(_(nd|lc))?$~', $field)) {
+				$field = 'lex';
+			}
 			if ($checked['wv'] && $field != 'lex' && $field != 'h_lex') {
 				$field = 'lex';
 			}
@@ -371,7 +379,7 @@ XSH;
 			if ($by === 're') {
 				$which .= '>0';
 			}
-			if ($checked['wv']) {
+			if ($checked['pos'] || $checked['wv']) {
 				if ($checked['hf'] || substr($field, 0, 2) == 'h_') {
 					$which .= ' h_pos '.$offset;
 				}
@@ -526,6 +534,17 @@ XSH;
 		// Group By
 		else if ($_REQUEST['s'] === 'group') {
 			$gs = implode(':', $has_group);
+			$hash_gs = 'ALL';
+			if ($_REQUEST['ga'] === 'tt') {
+				$gs = [];
+				for ($i=0 ; $i<10 ; ++$i) {
+					if (preg_match('~^[_a-zA-Z]+$~', $_REQUEST["g{$i}"] ?? '')) {
+						$gs[] = $_REQUEST["g{$i}"];
+					}
+				}
+				$gs = implode(':', $gs);
+				$hash_gs = substr(sha256_lc20($gs), 0, 8);
+			}
 
 			$sh = <<<XSH
 #!/bin/bash
@@ -543,14 +562,14 @@ XSH;
 				else {
 					$subc = '';
 				}
-				if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+				if (!file_exists("$hash-$corp.group-$hash_gs.sqlite") || !filesize("$hash-$corp.group-$hash_gs.sqlite")) {
 					$exec = true;
 				}
 
 				$sh .= <<<XSH
 
-if [ ! -s '$hash-$corp.group.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.group.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group.sqlite '$gs' >$hash-$corp.group.err 2>&1 &
+if [ ! -s '$hash-$corp.group-$hash_gs.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $hash-$corp.group-$hash_gs.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-groupby' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group-$hash_gs.sqlite '$gs' >$hash-$corp.group-$hash_gs.err 2>&1 &
 fi
 
 XSH;
@@ -567,20 +586,15 @@ XSH;
 
 			$hash_sh = substr(sha256_lc20($sh), 0, 8);
 			if ($exec) {
-				file_put_contents("$hash-$hash_sh.group.sh", $sh);
-				chmod("$hash-$hash_sh.group.sh", 0700);
-				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group.time ./$hash-$hash_sh.group.sh >$hash-$hash_sh.group.err 2>&1 &");
+				file_put_contents("$hash-$hash_sh.group-$hash_gs.sh", $sh);
+				chmod("$hash-$hash_sh.group-$hash_gs.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.group-$hash_gs.time ./$hash-$hash_sh.group-$hash_gs.sh >$hash-$hash_sh.group-$hash_gs.err 2>&1 &");
 			}
 		}
-		// word2vec
+		// word2vec, vector
 		else if ($_REQUEST['s'] === 'wv') {
-			$xs = escapeshellarg(preg_replace('~;;+~', ';', "{$_REQUEST['x1']};{$_REQUEST['x2']};{$_REQUEST['y1']};{$_REQUEST['y2']}"));
-			$ws = escapeshellarg($_REQUEST['ws']);
-
-			$type = 'cbow';
-			if (!empty($_REQUEST['sg']) && ($_REQUEST['sg'] === 'true' || $_REQUEST['sg'] === 'on')) {
-				$type = 'sg';
-			}
+			$xs = "{$_REQUEST['x1']}~{$_REQUEST['x2']}~{$_REQUEST['y1']}~{$_REQUEST['y2']}";
+			$ws = escapeshellarg(str_replace(' ', '=', $_REQUEST['ws']));
 
 			$sh = <<<XSH
 #!/bin/bash
@@ -588,18 +602,81 @@ set -e
 cd '$folder'
 
 XSH;
-			$hash_q = substr(sha256_lc20("{$xs}:{$ws}:{$type}"), 0, 8);
+
+			$axes = [];
+			$hash_q = substr(sha256_lc20("{$xs}:{$ws}"), 0, 8);
 			$exec = false;
 			foreach ($_REQUEST['c'] as $corp => $_) {
 				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+				}
+				else {
+					$subc = '';
+				}
 				if (!file_exists("$hash-$hash_q-$s_corp.wv") || !filesize("$hash-$hash_q-$s_corp.wv")) {
 					$exec = true;
 				}
 
+				$axes[$s_corp] = [
+					'x1' => [],
+					'x2' => [],
+					'y1' => [],
+					'y2' => [],
+					];
+				$xs = [];
+				foreach ($axes[$s_corp] as $ax => $_) {
+					$hash_ax = substr(sha256_lc20($_REQUEST[$ax]), 0, 8);
+					$did = false;
+					$read = false;
+
+					if (!file_exists("$hash-$hash_q-$s_corp-$hash_ax.$ax") || !filesize("$hash-$hash_q-$s_corp-$hash_ax.$ax")) {
+						$as = explode(';', $_REQUEST[$ax]);
+						foreach ($as as $w) {
+							$q = '';
+							if (!preg_match('~[.*+?^${}()|\[\]]~', $w)) {
+								$axes[$s_corp][$ax][] = $w;
+								$xs[] = $w;
+								continue;
+							}
+							$did = true;
+							if (preg_match('~^(.+?)_([^_]+)$~', $w, $m)) {
+								$q = '[lex="'.$m[1].'" & pos="'.$m[2].'"]';
+							}
+							else {
+								$q = '[lex="'.$w.'"]';
+							}
+							$s_q = escapeshellarg($q);
+							shell_exec("nice -n20 timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_q 'lex 0 pos 0' 5 $subc >> '$hash-$hash_q-$s_corp-$hash_ax.$ax.tmp'");
+						}
+						if ($did) {
+							shell_exec("cat '$hash-$hash_q-$s_corp-$hash_ax.$ax.tmp' | sort '-t	' -k3 -nr | head -n 100 > '$hash-$hash_q-$s_corp-$hash_ax.$ax'");
+							//unlink("$hash-$hash_q-$s_corp-$hash_ax.$ax.tmp");
+							$read = true;
+						}
+					}
+					else {
+						$read = true;
+					}
+
+					if ($read) {
+						$aws = explode("\n", trim(file_get_contents("$hash-$hash_q-$s_corp-$hash_ax.$ax")));
+						foreach ($aws as $aw) {
+							if (preg_match('~^([^\t]+)\t([^\t]+)~', $aw, $m)) {
+								$m[1] = str_replace(' ', '=', $m[1]);
+								$axes[$s_corp][$ax][] = $m[1].'_'.$m[2];
+								$xs[] = $m[1].'_'.$m[2];
+							}
+						}
+					}
+				}
+
+				$xs = escapeshellarg(str_replace(' ', '=', implode('~', $xs)));
+
 				$sh .= <<<XSH
 
 if [ ! -s '$hash-$hash_q-$s_corp.wv' ]; then
-	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.$type.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
+	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m ssh 'manatee@backends.gramtrans.com' '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.sg.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
 fi
 
 XSH;
@@ -624,16 +701,19 @@ XSH;
 			$json = [];
 			foreach ($_REQUEST['c'] as $corp => $_) {
 				[$s_corp,$subc] = explode('-', $corp.'-');
-				$data = [];
+				$data = [
+					'axes' => $axes[$s_corp],
+					'data' => [],
+					];
 				$lines = explode("\n", trim(file_get_contents("$folder/$hash-$hash_q-$s_corp.wv")));
 				$last = '';
 				foreach ($lines as $line) {
 					if ($line[0] !== "\t") {
-						$last = '!'.$line;
+						$last = $line;
 					}
 					else {
 						$line = explode("\t", $line);
-						$data[$last]['!'.$line[1]] = floatval($line[2]);
+						$data['data'][$last][$line[1]] = floatval($line[2]);
 					}
 				}
 				$json[$s_corp] = $data;
@@ -734,6 +814,10 @@ Frequency <i class="bi bi-sort-down"></i>
 <input class="form-check-input" type="checkbox" name="nd" id="nd" {$checked['nd']}>
 <label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="pos" id="pos" {$checked['pos']}>
+<label class="form-check-label" for="pos">Distinguish part-of-speech</label>
+</div>
 {$word2vec}
 </form>
 </div></div>
@@ -818,9 +902,26 @@ XHTML;
 			echo '</select></div>';
 		}
 		echo <<<XHTML
-<div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="ha" id="ha" {$checked['ha']}>
-<label class="form-check-label" for="ha">Aggregate articles instead of sentences</label>
+<div><label class="form-label" for="ga">Compare hits per</label></div>
+<div class="mb-3">
+<select class="form-select" size="3" name="ga" id="ga">
+
+XHTML;
+		$gas = [
+			's' => 'Sentences',
+			'a' => 'Articles',
+			'w' => '10k words',
+			'tt' => 'Type/token',
+			];
+		foreach ($gas as $ck => $cv) {
+			$sel = '';
+			if ($_REQUEST['ga'] === $ck) {
+				$sel = ' selected';
+			}
+			echo '<option value="'.$ck.'"'.$sel.'>'.$cv.'</option>';
+		}
+		echo <<<XHTML
+</select>
 </div>
 <div class="my-3 form-check">
 <input class="form-check-input" type="checkbox" name="xe" id="xe" {$checked['xe']}>
@@ -1181,7 +1282,6 @@ else {
 ?>
 <div class="my-3">
 	<span class="text-danger"><i class="bi bi-lock"></i></span> Requires password,
-	<span class="text-success"><i class="bi bi-hourglass"></i></span> Histogram available,
 	<span class="text-success"><i class="bi bi-bar-chart-steps"></i></span> Group By available,
 	<span class="text-warning"><i class="bi bi-patch-plus"></i></span> Semantic classes,
 	<span class="text-primary"><i class="bi bi-info-square"></i></span> Corpus information link,
@@ -1205,7 +1305,14 @@ else {
 			<div class="modal-body">
 				<div class="row"><div class="col-2">X axis</div><div class="col"><input type="text" class="form-control" id="x1" value="_N"></div><div class="col"><input type="text" class="form-control" id="x2" value="_N"></div></div>
 				<div class="row"><div class="col-2">Y axis</div><div class="col"><input type="text" class="form-control" id="y1" value="_ADJ"></div><div class="col"><input type="text" class="form-control" id="y2" value="_ADJ"></div></div>
-				<div class="row"><div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="sg" checked><label class="form-check-label" for="sg">Use skip-gram</label></div></div></div>
+
+				<div class="row my-3"><div class="col text-end"><button type="button" class="btn btn-primary btnVectorPlot">Plot</button></div></div>
+
+				<h4 class="my-3">Words to be plotted</h4>
+				<span id="vectorWords"></span>
+				<form id="vectorForm">
+				<div class="row my-3"><div class="col-2">New entry</div><div class="col"><input type="text" class="form-control" id="vectorNew" placeholder="lex_POS"></div><div class="col-1"><button class="btn btn-sm btn-success btnVectorAdd">+</button></div></div>
+				</form>
 			</div>
 			<div class="modal-footer">
 				<button type="button" class="btn btn-primary btnVectorPlot">Plot</button>
@@ -1217,9 +1324,6 @@ else {
 <div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">
 <?=implode("\n", $toasts);?>
 </div>
-
-<script src="https://www.google-analytics.com/urchin.js" type="text/javascript"></script>
-<script type="text/javascript"> _uacct = "UA-87771-8"; urchinTracker(); </script>
 
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4QX6X7X8P8"></script>
 <script>

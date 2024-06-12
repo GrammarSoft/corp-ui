@@ -90,6 +90,7 @@ $GLOBALS['-corpora'] = [
 		'dan_facebook' => [
 			'name' => 'Facebook',
 			],
+		/*
 		'dan_facebook_minority' => [
 			'name' => 'FBmin v.1',
 			'percent_combo' => 0,
@@ -110,11 +111,13 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 0,
 			'infolink' => 'https://corp.visl.dk/copyright.html#dan_facebook',
 			],
+		//*/
 		'dan_facebook_minority_dr_20180710' => [
 			'name' => 'FBmin DR/TV2 v.2',
 			'percent_combo' => 0,
 			'infolink' => 'https://corp.visl.dk/copyright.html#dan_facebook',
 			],
+		/*
 		'dan_facebook_minority_negative' => [
 			'name' => 'FBmin-neg',
 			'percent_combo' => 0,
@@ -125,6 +128,7 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 0,
 			'infolink' => 'https://corp.visl.dk/copyright.html#dan_facebook',
 			],
+		//*/
 		'dan_firma_1' => [
 			'name' => 'Firma_1',
 			],
@@ -138,6 +142,8 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Information 1996-2008',
 			'percent_combo' => 15,
 			'subs' => array_combine(range(1996, 2008), range(1996, 2008)),
+			'group_by' => ['year', 'month', 'day'],
+			'word2vec' => ['kvinde_N', 'mand_N', 'kvindelig_ADJ', 'mandlig_ADJ'],
 			],
 		'dan_leipzig' => [
 			'name' => 'Leipzig internet corpus',
@@ -173,12 +179,13 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Twitter (2008-2023 Mar)',
 			'percent_combo' => 25,
 			'subs' => array_combine(range(2017, 2023), range(2017, 2023)),
+			'group_by' => ['year', 'month', 'day', 'hour', 'minute', 'day', 'tz'],
 			'word2vec' => ['kvinde_N', 'mand_N', 'kvindelig_ADJ', 'mandlig_ADJ'],
 			],
 		'dan_literature' => [
 			'name' => 'Literature 1800-1940',
-			'percent_combo' => 0,
 			'group_by' => ['author', 'title', 'year'],
+			'word2vec' => ['kvinde_N', 'mand_N', 'kvindelig_ADJ', 'mandlig_ADJ'],
 			],
 		],
 	'deu' => [
@@ -225,36 +232,43 @@ $GLOBALS['-corpora'] = [
 				'2017' => '2017',
 				],
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2018' => [
 			'name' => 'Twitter (2018)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2019' => [
 			'name' => 'Twitter (2019)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2020' => [
 			'name' => 'Twitter (2020)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2021' => [
 			'name' => 'Twitter (2021)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2022' => [
 			'name' => 'Twitter (2022 Jan-Aug)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		'deu_twitter_2023' => [
 			'name' => 'Twitter (2023 Jan-Mar)',
 			'percent_combo' => 4.16,
 			'infolink' => 'https://corp.visl.dk/copyright.html#deu_twitter',
+			'word2vec' => ['Auto_N'],
 			],
 		],
 	'eng' => [
@@ -348,19 +362,18 @@ $GLOBALS['-corpora'] = [
 		//*/
 		'epo_eventoj' => [
 			'name' => 'Eventoj news letter',
-			'percent_combo' => 0,
 			],
 		'epo_frazoj' => [
 			'name' => 'TTT 2004',
-			'percent_combo' => 0,
 			],
 		'epo_monato' => [
 			'name' => 'Monato magazine',
-			'percent_combo' => 0,
 			],
 		'epo_uniq_ttt' => [
 			'name' => 'TTT 2009',
 			'percent_combo' => 25,
+			'group_by' => ['publisher'],
+			'word2vec' => ['_N'],
 			],
 		'epo_wiki' => [
 			'name' => 'Wikipedia 2005',
@@ -391,15 +404,14 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 25,
 			'group_by' => ['publisher', 'author', 'title', 'year'],
 			],
-		'epo_ttt' => [
-			'name' => 'Internet',
-			'percent_combo' => 0,
-			'group_by' => ['publisher'],
-			],
 		'epo_reddit' => [
 			'name' => 'Reddit',
-			'percent_combo' => 0,
 			'group_by' => ['year', 'month', 'day'],
+			],
+		'epo_crawl' => [
+			'name' => 'Internet',
+			'group_by' => ['publisher', 'year', 'month', 'day', 'hour', 'minute', 'second'],
+			'word2vec' => ['_N'],
 			],
 		],
 	'spa' => [
@@ -571,7 +583,6 @@ $GLOBALS['-corpora'] = [
 			],
 		'por_literature' => [
 			'name' => 'Portuguese literature',
-			'percent_combo' => 0,
 			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
 			],
 		'por_blogs' => [

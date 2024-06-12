@@ -127,12 +127,7 @@ int main() {
 
 		++total[Total];
 
-		std::array<std::string_view,2> m{line, line};
-		m[0] = m[0].substr(0, m[0].find('\t'));
-		m[1] = m[1].substr(m[0].size()+1);
-		m[1] = m[1].substr(0, m[1].find('\t'));
-		trim(m[0]);
-		trim(m[1]);
+		std::array<std::string_view,4> m{tab(line), tab(line, 1), tab(line, 2)};
 
 		if (m[0].size() == 0 || m[1].size() == 0) {
 			continue;
@@ -185,6 +180,25 @@ int main() {
 			m[1] = memoize(m[1]);
 			std::array<std::string_view,2> lc{conv_lc(m[0]), conv_lc(m[1])};
 			std::array<std::string_view,2> nd{conv_nd(lc[0]), conv_nd(lc[1])};
+
+			++freq[word][m[0]];
+			++freq[lex][m[1]];
+			++freq[word_lc][lc[0]];
+			++freq[lex_lc][lc[1]];
+			++freq[word_nd][nd[0]];
+			++freq[lex_nd][nd[1]];
+
+			std::string pos(m[2]);
+			if (pos.find_first_not_of("QWERTYUIOPLKJHGFDSAZXCVBNM") != std::string::npos) {
+				fprintf(stderr, "Invalid POS: %s\n", pos.data());
+				continue;
+			}
+			m[0] = memoize(std::string(m[0]) + "_" + pos);
+			m[1] = memoize(std::string(m[1]) + "_" + pos);
+			lc[0] = memoize(std::string(lc[0]) + "_" + pos);
+			lc[1] = memoize(std::string(lc[1]) + "_" + pos);
+			nd[0] = memoize(std::string(nd[0]) + "_" + pos);
+			nd[1] = memoize(std::string(nd[1]) + "_" + pos);
 
 			++freq[word][m[0]];
 			++freq[lex][m[1]];

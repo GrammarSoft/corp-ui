@@ -74,16 +74,16 @@ if (preg_match('~^(?:h_)?(word|lex)(_nd|_lc|$)~', $field, $m)) {
 	$db->beginTransaction();
 
 	// Global relfreq
-	$db->query("UPDATE freqs SET f_rel_g = (f_abs * f_abs * {$GLOBALS['-scale']}) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE freqs.f_text = lang.f_text");
+	$db->query("UPDATE freqs SET f_rel_g = (f_abs * f_abs * {$GLOBALS['-scale']}) / (lang.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_lang.freq_total_{$m[1]}{$m[2]}) as lang WHERE REPLACE(freqs.f_text, '\t', '_') = lang.f_text");
 	$db->query("UPDATE freqs SET f_rel_g = (f_abs * f_abs) / $total2 WHERE f_rel_g = 0");
 
 	// Corpus relfreq
-	$db->query("UPDATE freqs SET f_rel_c = (f_abs * f_abs * {$GLOBALS['-scale']}) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+	$db->query("UPDATE freqs SET f_rel_c = (f_abs * f_abs * {$GLOBALS['-scale']}) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_total_{$m[1]}{$m[2]}) as corp WHERE REPLACE(freqs.f_text, '\t', '_') = corp.f_text");
 	$db->query("UPDATE freqs SET f_rel_c = (f_abs * f_abs) / $total2 WHERE f_rel_c = 0");
 
 	// Subcorpus relfreq
 	if ($subc) {
-		$db->query("UPDATE freqs SET f_rel_s = (f_abs * f_abs * {$GLOBALS['-scale']}) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE freqs.f_text = corp.f_text");
+		$db->query("UPDATE freqs SET f_rel_s = (f_abs * f_abs * {$GLOBALS['-scale']}) / (corp.f_rel * $total2) FROM (SELECT f_text, f_rel FROM db_corp.freq_{$subc}_{$m[1]}{$m[2]}) as corp WHERE REPLACE(freqs.f_text, '\t', '_') = corp.f_text");
 		$db->query("UPDATE freqs SET f_rel_s = (f_abs * f_abs) / $total2 WHERE f_rel_s = 0");
 	}
 

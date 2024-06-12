@@ -54,6 +54,18 @@ inline void trim(Str& str) {
 	remove_prefix(str, h);
 }
 
+inline auto tab(std::string_view str, size_t t=0) {
+	for (size_t i=0 ; i<t ; ++i) {
+		auto p = str.find('\t');
+		if (p != std::string_view::npos) {
+			str.remove_prefix(p + 1);
+		}
+	}
+	str = str.substr(0, str.find('\t'));
+	trim(str);
+	return str;
+}
+
 namespace details {
 	inline void _concat(std::string&) {
 	}

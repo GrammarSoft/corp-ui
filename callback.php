@@ -476,9 +476,11 @@ while ($a === 'group') {
 	}
 
 	$gs = [];
+	$h_gs = [];
 	for ($i=0 ; $i<10 ; ++$i) {
 		if (preg_match('~^[_a-zA-Z]+$~', $_REQUEST["g{$i}"] ?? '')) {
 			$gs[] = 'ga_'.$_REQUEST["g{$i}"];
+			$h_gs[] = $_REQUEST["g{$i}"];
 		}
 	}
 	if (empty($gs)) {
@@ -500,6 +502,13 @@ while ($a === 'group') {
 	sort($corps);
 	$corps = array_unique($corps);
 
+	if (($_REQUEST['ga'] ?? '') === 'tt') {
+		$hash_gs = substr(sha256_lc20(implode(':', $h_gs)), 0, 8);
+	}
+	else {
+		$hash_gs = 'ALL';
+	}
+
 	clearstatcache();
 
 	$all_ready = true;
@@ -515,7 +524,7 @@ while ($a === 'group') {
 
 		$dbs = [];
 		foreach ($corps as $corp) {
-			if (!file_exists("$hash-$corp.group.sqlite") || !filesize("$hash-$corp.group.sqlite")) {
+			if (!file_exists("$hash-$corp.group-$hash_gs.sqlite") || !filesize("$hash-$corp.group-$hash_gs.sqlite")) {
 				$rv['info'][] = 'I050: Not ready '.$corp;
 				continue;
 			}
@@ -525,7 +534,7 @@ while ($a === 'group') {
 				break;
 			}
 			$dbs[$corp] = [
-				'group' => new \TDC\PDO\SQLite("$hash-$corp.group.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
+				'group' => new \TDC\PDO\SQLite("$hash-$corp.group-$hash_gs.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 				'corp' => new \TDC\PDO\SQLite("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/meta/group-by.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]),
 				];
 		}
@@ -556,7 +565,7 @@ while ($a === 'group') {
 
 		foreach ($cs as $corp) {
 			$ys = [];
-			$res = $dbs[$corp]['group']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h from counts WHERE c_which != 'total'");
+			$res = $dbs[$corp]['group']->prepexec("SELECT c_which as w, c_articles as a, c_sentences as s, c_hits as h, c_alnums as ws from counts WHERE c_which != 'total'");
 			while ($row = $res->fetch()) {
 				foreach ($row as $k => $v) {
 					$row[$k] = intval($v);
@@ -567,8 +576,8 @@ while ($a === 'group') {
 
 			$s_concat = implode(" || ' |~| ' || ", $gs);
 			$s_gs = implode(', ', $gs);
-			$res_h = $dbs[$corp]['group']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
-			$res_c = $dbs[$corp]['corp']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+			$res_h = $dbs[$corp]['group']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h, SUM(g_alnums) as ws, SUM(g_uniq) as tt FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
+			$res_c = $dbs[$corp]['corp']->prepexec("SELECT {$s_concat} as w, SUM(g_articles) as a, SUM(g_sentences) as s, SUM(g_hits) as h, SUM(g_alnums) as ws, 0 as tt FROM group_by GROUP BY {$s_gs} ORDER BY {$s_gs}");
 			while ($row = $res_h->fetch()) {
 				foreach ($row as $k => $v) {
 					if ($k !== 'w') {

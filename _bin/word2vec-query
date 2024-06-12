@@ -10,8 +10,8 @@ args = parser.parse_args()
 
 wv = gensim.models.KeyedVectors.load(args.model, mmap='r')
 
-xs = args.xs.split(';')
-ws = args.ws.split(';')
+xs = args.xs.split(':')
+ws = args.ws.split(':')
 
 for x in xs:
 	print(x)

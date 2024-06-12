@@ -8,7 +8,7 @@ mkdir -pv ~/storage/corpora/dan_twitter/meta  ~/storage/corpora/dan_twitter/tmp
 cd ~/storage/corpora/dan_twitter/tmp
 
 # Count tokens, absolute frequencies, and histograms. Use -total if there are no lstamp with years
-~/public_html/_bin/decodevert-word-lex ~/storage/registry/dan_twitter | time ~/public_html/_src/build/index-corpus-year-lstamp
+~/public_html/_bin/decodevert-word-lex-pos ~/storage/registry/dan_twitter | time ~/public_html/_src/build/index-corpus-year-lstamp
 cat commands.sql | time sqlite3 stats.sqlite
 
 # Calculate relative frequencies
@@ -35,13 +35,15 @@ cd ~/storage/corpora/dan_literature/meta
 * Highlight parents if searched for
 * Per-language help links in top to CG grammar docs
 * Break down Group By hits into per-s histogram
+* Annotate Group-By bars with unique column values not part of the group-by
+* Group-By type-token relation via lex_POS
+  * FIX sparse calculation
 * View the whole work (for open corpora)
 * 2D queries as scatter plots (E.g., Q+/- and a semantic class)
-  * Multi-value axis via regex match against corpus or vocab
   * Fields to limit on absolute X/Y value
   * User-defined cutoff, default 0.1 or 0.05
-  * Clickable numbers leading to query+subquery of the words
   * Colors by max of all, x, or y
   * Toggle text
-  * If "Vector plottable", disable relfreq buttons
 * Sparse show only in table
+* Use semantic vector model to disambiguate semantics
+* Double-check c_words + c_numbers + c_alnums in stats-combine

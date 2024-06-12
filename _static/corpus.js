@@ -260,18 +260,31 @@
 		$('#t'+p).addClass('depParent');
 	}
 
+	function vectorDel() {
+		$(this).closest('.row').remove();
+	}
+
 	function popupVector() {
 		let words = [];
-		let nums = [];
+		let html = '';
 		$('.chkVector:checked').each(function() {
+			if (words.length >= 300) {
+				return;
+			}
 			words.push($(this).attr('data-word'));
-			nums.push($(this).attr('data-num'));
+			html += '<div class="row my-1"><div class="col"><input type="text" class="form-control word" value="'+escHTML($(this).attr('data-word'))+'"></div><div class="col"><input type="text" class="form-control num" value="'+escHTML($(this).attr('data-num'))+'"></div><div class="col-1"><button class="btn btn-sm btn-danger btnVectorDel">X</button></div></div>';
 		});
-		words = words.slice(0, 300);
 		ss_set('w2v-checked-' + state.hash + '-' + state.hash_freq, words);
-		nums = nums.slice(0, 300);
 
-		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id')).attr('data-words', words.join(';')).attr('data-nums', nums.join(';'));
+		let ws_a = ss_get('w2v-a_words-' + state.hash + '-' + state.hash_freq, []);
+		let ns_a = ss_get('w2v-a_freqs-' + state.hash + '-' + state.hash_freq, []);
+		for (let i=0 ; i<ws_a.length ; ++i) {
+			html += '<div class="row my-1"><div class="col"><input type="text" class="form-control added word" value="'+escHTML(ws_a[i])+'"></div><div class="col"><input type="text" class="form-control added num" value="'+escHTML(ns_a[i])+'"></div><div class="col-1"><button class="btn btn-sm btn-danger btnVectorDel">X</button></div></div>';
+		}
+
+		$('#vectorWords').html(html);
+		$('.btnVectorDel').off().click(vectorDel);
+		$('#modalVector').attr('data-corp', $(this).closest('.qfreqs').attr('id'));
 		let axes = ls_get('w2v-axes-'+state.params.get('l'), {});
 		for (let ax in axes) {
 			if (typeof axes[ax] === 'boolean') {
@@ -927,14 +940,14 @@
 			};
 
 		let field = params.get('f');
-		let wv = params.has('wv') && (params.get('wv') === 'on');
+		let wv = (get(params, 'wv', '') === 'on');
 		if (wv && field != 'lex' && field != 'h_lex') {
 			field = 'lex';
 			$('#freq_field').val(field);
 		}
 
-		let query1 = params.get('q');
-		let query2 = params.has('q2') ? params.get('q2') : '';
+		let query1 = get(params, 'q', '');
+		let query2 = get(params, 'q2', '');
 		let query = query2 ? query2 : query1;
 
 		let by = params.get('b');
@@ -951,10 +964,10 @@
 
 		let hfield = field;
 		if (/^(word|lex)$/.test(hfield)) {
-			if (params.has('nd') && params.get('nd')) {
+			if (get(params, 'nd', false)) {
 				hfield += '_nd';
 			}
-			else if (params.has('lc') && params.get('lc')) {
+			else if (get(params, 'lc', false)) {
 				hfield += '_lc';
 			}
 		}
@@ -1014,7 +1027,7 @@
 				url.searchParams.set('l', params.get('l'));
 				url.searchParams.set('c['+corp+']', '1');
 				url.searchParams.set('s', 's');
-				if (params.has('ub') && params.get('ub')) {
+				if (get(params, 'ub', false)) {
 					url.searchParams.set('ub', '1');
 				}
 
@@ -1502,6 +1515,7 @@
 			s: rv.s,
 			n: rv.n,
 			cs: [],
+			ga: get(params, 'ga', 's'),
 			};
 		let gs = [];
 		for (let i=0 ; i<10 ; ++i) {
@@ -1512,7 +1526,7 @@
 			}
 		}
 
-		let by_art = (params.has('ha') && params.get('ha'));
+		let comp = get(params, 'ga', 's');
 
 		$('.qpages').hide();
 		let to_render = {};
@@ -1530,7 +1544,11 @@
 		let q_show = [];
 		for (let i=0 ; i<arr_qs.length ; ++i) {
 			let q = arr_qs[i];
-			q = q.substr(0, q.length - q_suffix.length);
+			let suf = q.length - q_suffix.length;
+			while (/[-_A-Za-z0-9\w\d]/.test(q[suf])) {
+				++suf;
+			}
+			q = q.substr(0, suf);
 			q = q.substr(q_prefix.length);
 			if (!q) {
 				q = arr_qs[i];
@@ -1601,17 +1619,30 @@
 					}
 				}
 
-				let tsv = 'Group\tArticles\tSentences\tHits\tCArticles\tCSentences\tCTokens\tCWords\n';
+				let tsv = 'Group\tArticles\tSentences\tHits\tWords\tCArticles\tCSentences\tCTokens\tCWords\n';
 
 				c.find('.qrange').text('');
 				let html = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="d-inline-block table table-striped table-hover my-3">';
-				html += '<thead><tr><th>Group</th><th class="text-vertical">Article hits</th><th class="text-vertical">Sentence hits</th><th class="text-vertical">All hits</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th></tr></thead>';
+				html += '<thead><tr><th>Group</th><th class="text-vertical">Article hits</th><th class="text-vertical">Sentence hits</th><th class="text-vertical">All hits</th><th class="text-vertical">Unique lex_POS</th><th class="text-vertical">% Articles</th><th class="text-vertical">% Sentences</th><th class="text-vertical">% Hits/CSentences</th><th class="text-vertical">Hits/CWords/10k</th><th class="text-vertical text-muted">C Articles</th><th class="text-vertical text-muted">C Sentences</th><th class="text-vertical text-muted">C Words</th></tr></thead>';
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let hk = 0 ; hk<arr_hash.length ; ++hk) {
 					if (display_legend) {
-						html += '<tr><th colspan="9">'+escHTML(q_show[hk])+'</th></tr>';
+						html += '<tr><th colspan="12">'+escHTML(q_show[hk])+'</th></tr>';
 					}
 					tsv += '# '+arr_q[hk]+'\n';
+					/*
+						0 => text
+						1 => article hits
+						2 => sentence hits
+						3 => hits (tokens)
+						4 => words (alnum)
+						5 => unique lex_POS
+						6 => corpus articles
+						7 => corpus sentences
+						8 => corpus hits (tokens)
+						9 => corpus words (alnum)
+						10 => corpus uniq lex_POS
+					*/
 					for (let i=0 ; i<rv.cs[corp][hk].h.length ; ++i) {
 						if (rv.cs[corp][hk].h[i][1] <= 0) {
 							continue;
@@ -1625,7 +1656,7 @@
 							url.searchParams.set('q2', arr_q2[hk]);
 						}
 						rv.cs[corp][hk].h[i][0] = rv.cs[corp][hk].h[i][0].replace(' |~| ', '; ');
-						html += '<tr id="h'+escHTML(rv.cs[corp][hk].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp][hk].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp][hk].h[i][1]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][2]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][3]+'</td><td class="text-end">'+(rv.cs[corp][hk].h[i][1]*100.0 / rv.cs[corp][hk].h[i][4]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][2]*100.0 / rv.cs[corp][hk].h[i][5]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][3]*100.0 / rv.cs[corp][hk].h[i][5]).toFixed(2)+'%</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][4]+'</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][5]+'</td></tr>';
+						html += '<tr id="h'+escHTML(rv.cs[corp][hk].h[i][0])+'"><td><a href="'+escHTML(url.toString())+'">'+escHTML(rv.cs[corp][hk].h[i][0])+'</a></td><td class="text-end">'+rv.cs[corp][hk].h[i][1]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][2]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][3]+'</td><td class="text-end">'+rv.cs[corp][hk].h[i][5]+'</td><td class="text-end">'+(rv.cs[corp][hk].h[i][1]*100.0 / rv.cs[corp][hk].h[i][6]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][2]*100.0 / rv.cs[corp][hk].h[i][7]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][3]*100.0 / rv.cs[corp][hk].h[i][7]).toFixed(2)+'%</td><td class="text-end">'+(rv.cs[corp][hk].h[i][3] / (rv.cs[corp][hk].h[i][9]/10000)).toFixed(2)+'</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][6]+'</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][7]+'</td><td class="text-end text-muted">'+rv.cs[corp][hk].h[i][9]+'</td></tr>';
 						tsv += rv.cs[corp][hk].h[i].join('\t')+'\n';
 					}
 				}
@@ -1640,12 +1671,23 @@
 		}
 
 		let f_hits = 3;
-		let f_aggr = 5;
+		let f_aggr = 7;
+		let f_factor = 1;
 		let f_label = '% Hits/CSentences';
-		if (by_art) {
+		if (comp === 'a') {
 			f_hits = 1;
-			f_aggr = 4;
+			f_aggr = 6;
 			f_label = '% Articles/CArticles';
+		}
+		if (comp === 'w') {
+			f_aggr = 9;
+			f_factor = 100;
+			f_label = 'Hits/CWords/10k';
+		}
+		if (comp === 'tt') {
+			f_hits = 5;
+			f_aggr = 3;
+			f_label = 'Type/Token';
 		}
 
 		for (let corp in to_render) {
@@ -1659,7 +1701,12 @@
 				for (let k=0 ; k<trc.length ; ++k) {
 					g_keys[trc[k][0]] = true;
 					psp += trc[k][f_aggr];
-					trc[k][6] = trc[k][f_hits]*100.0 / trc[k][f_aggr];
+					if (comp === 'tt') {
+						trc[k][6] = (Math.log(trc[k][f_aggr]) - Math.log(trc[k][f_hits])) / (Math.log(trc[k][f_aggr])*Math.log(trc[k][f_aggr]));
+					}
+					else {
+						trc[k][6] = (trc[k][f_hits]*100.0 / trc[k][f_aggr]) * f_factor;
+					}
 				}
 				sparse += psp/trc.length;
 			}
@@ -1784,27 +1831,71 @@
 	}
 
 	function handleWordvec() {
+		$('.qpages').text('');
+
 		for (let corp in g_wv) {
-			let vs = g_wv[corp];
+			let vs = g_wv[corp].data;
+			let axes = g_wv[corp].axes;
 			let e = $('#wv-'+corp);
-			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: 800px; height: 600px;"></canvas></div><div><a class="btn btn-outline-primary btnZoomReset">Reset zoom</a></div><div id="data-'+corp+'"></div>');
+
+			let w = Math.max(window.innerWidth - 300, 800);
+			let h = Math.max(window.innerHeight - 100, 600);
+
+			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: '+w+'px; height: '+h+'px;"></canvas></div><div><a class="btn btn-outline-primary btnZoomReset">Reset zoom</a></div><div id="data-'+corp+'"></div>');
 
 			let params = (new URL(window.location)).searchParams;
-			let x1 = get(params, 'x1', '').split(';');
-			let x2 = get(params, 'x2', '').split(';');
-			let y1 = get(params, 'y1', '').split(';');
-			let y2 = get(params, 'y2', '').split(';');
-			let ws = get(params, 'ws', '').split(';');
-			let ns = get(params, 'ns', null).split(';');
+			let x1 = get(params, 'x1', '').replace(/ /g, '=').split(';');
+			let x2 = get(params, 'x2', '').replace(/ /g, '=').split(';');
+			let y1 = get(params, 'y1', '').replace(/ /g, '=').split(';');
+			let y2 = get(params, 'y2', '').replace(/ /g, '=').split(';');
+			let ws = get(params, 'ws', '').replace(/ /g, '=').split('~');
+			let ns = get(params, 'ns', null).split('~');
+
+			let url_x = new URL(window.location.origin + window.location.pathname);
+			url_x.searchParams.set('l', params.get('l'));
+			url_x.searchParams.set('c['+corp+']', '1');
+			url_x.searchParams.set('s', 's');
+			let url_y = new URL(url_x);
+
+			let ls = {};
+			let ps = {};
+			[x1, x2].forEach(function(arr) {
+				for (let i=0 ; i<arr.length ; ++i) {
+					let m = arr[i].match(/^(.+?)_([^_]+)$/);
+					if (m) {
+						ls[m[1]] = true;
+						ps[m[2]] = true;
+					}
+					else {
+						ls[arr[i]] = true;
+						ps['.*'] = true;
+					}
+				}
+			});
+			url_x.searchParams.set('q', '[lex="'+Object.keys(ls).join('|')+'" & pos="'+Object.keys(ps).join('|')+'"]');
+
+			ls = {};
+			ps = {};
+			[y1, y2].forEach(function(arr) {
+				for (let i=0 ; i<arr.length ; ++i) {
+					let m = arr[i].match(/^(.+?)_([^_]+)$/);
+					if (m) {
+						ls[m[1]] = true;
+						ps[m[2]] = true;
+					}
+					else {
+						ls[arr[i]] = true;
+						ps['.*'] = true;
+					}
+				}
+			});
+			url_y.searchParams.set('q', '[lex="'+Object.keys(ls).join('|')+'" & pos="'+Object.keys(ps).join('|')+'"]');
 
 			let ths = '';
 			if (ns) {
 				ths += '<th>Num</th>';
 			}
-			for (let v in vs) {
-				ths += '<th>'+escHTML(v.substr(1))+'</th>';
-			}
-			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'</tr></thead><tbody>';
+			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'<th>X</th><th>Y</th></tr></thead><tbody>';
 
 			let labels = [];
 			let annots = {};
@@ -1827,6 +1918,8 @@
 				};
 			let xs = [];
 			let ys = [];
+			let wxs = [];
+			let wys = [];
 			let wns = [];
 			for (let i=0 ; i<ws.length ; ++i) {
 				let w = ws[i];
@@ -1837,46 +1930,50 @@
 				}
 				let good = true;
 				for (let k in vs) {
-					if (!vs[k].hasOwnProperty('!'+w) || vs[k]['!'+w] === 0) {
-						row += '<td>~</td>';
+					if (!vs[k].hasOwnProperty(w) || vs[k][w] === 0) {
 						good = false;
 					}
-					else {
-						row += '<td>'+vs[k]['!'+w]+'</td>';
-					}
 				}
-				row += '</tr>';
-				html += row;
 				if (!good) {
+					row += '<td>~</td><td>~</td></tr>';
+					html += row;
 					continue;
 				}
 
 				let x_a = 0;
-				for (let j=0 ; j<x1.length ; ++j) {
-					x_a += vs['!'+x1[j]]['!'+w];
+				for (let j=0 ; j<axes.x1.length ; ++j) {
+					x_a += vs[axes.x1[j]][w];
 				}
-				x_a /= x1.length;
+				x_a /= axes.x1.length;
 
 				let x_b = 0;
-				for (let j=0 ; j<x2.length ; ++j) {
-					x_b += vs['!'+x2[j]]['!'+w];
+				for (let j=0 ; j<axes.x2.length ; ++j) {
+					x_b += vs[axes.x2[j]][w];
 				}
-				x_b /= x2.length;
+				x_b /= axes.x2.length;
 
 				let y_a = 0;
-				for (let j=0 ; j<y1.length ; ++j) {
-					y_a += vs['!'+y1[j]]['!'+w];
+				for (let j=0 ; j<axes.y1.length ; ++j) {
+					y_a += vs[axes.y1[j]][w];
 				}
-				y_a /= y1.length;
+				y_a /= axes.y1.length;
 
 				let y_b = 0;
-				for (let j=0 ; j<y2.length ; ++j) {
-					y_b += vs['!'+y2[j]]['!'+w];
+				for (let j=0 ; j<axes.y2.length ; ++j) {
+					y_b += vs[axes.y2[j]][w];
 				}
-				y_b /= y2.length;
+				y_b /= axes.y2.length;
 
 				let x = x_b - x_a;
 				let y = y_b - y_a;
+
+				let m = w.match(/^(.+?)_([^_]+)$/);
+				url_x.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
+				url_y.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
+
+				row += '<td><a href="'+escHTML(url_x.toString())+'">'+(Math.round(x*10000)/10000)+'</a></td><td><a href="'+escHTML(url_y.toString())+'">'+(Math.round(y*10000)/10000)+'</a></td></tr>';
+				html += row;
+
 				colors.vals.push(Math.max(x_a, x_b, y_a, y_b));
 				colors.min = Math.min(colors.min, x_a, x_b, y_a, y_b);
 				colors.max = Math.max(colors.max, x_a, x_b, y_a, y_b);
@@ -1891,6 +1988,8 @@
 					wmean.n += n;
 					wmean.x += x * n;
 					wmean.y += y * n;
+					wxs.push([n, x]);
+					wys.push([n, y]);
 					wns.push(n);
 				}
 
@@ -1899,7 +1998,7 @@
 					xValue: x,
 					yValue: y,
 					position: {x: 'start', y: 'center'},
-					content: [w],
+					content: [w.replace(/_[A-Z]+$/, '').replace(/=/g, '_')],
 					};
 			}
 
@@ -1913,20 +2012,17 @@
 				colors.border.push('rgb('+r+', '+g+', '+b+')');
 			}
 
+			let radia = [];
 			let means = [];
-			/*
-			mean.x /= data.length;
-			mean.y /= data.length;
-			annots['mean'] = {
-				type: 'label',
-				xValue: mean.x,
-				yValue: mean.y,
-				position: {x: 'start', y: 'center'},
-				content: ['mean'],
-				};
-			means.push(mean);
-			//*/
+			let medians = [];
 			if (ns) {
+				for (let j=0 ; j<wns.length ; ++j) {
+					let w = wns[j] / wmean.n;
+					radia.push(3+50*w);
+				}
+				wxs.sort(function(a,b) {return a[1] - b[1];});
+				wys.sort(function(a,b) {return a[1] - b[1];});
+
 				wmean.x /= wmean.n;
 				wmean.y /= wmean.n;
 				annots['wmean'] = {
@@ -1934,7 +2030,7 @@
 					xValue: wmean.x,
 					yValue: wmean.y,
 					position: {x: 'start', y: 'center'},
-					content: ['(mean)'],
+					content: ['', '', '(w-mean)'],
 					z: -1,
 					};
 				annots['wmeanx'] = {
@@ -1953,53 +2049,69 @@
 					borderWidth: 1,
 					z: -10,
 					};
-				means.push(wmean);
-			}
+				data.push(wmean);
+				radia.push(3);
+				colors.bg.push('rgb(127, 127, 127)');
+				colors.border.push('rgb(255, 255, 255)');
 
-			let radia = [];
-			let medians = [];
-			if (ns) {
-				let wxys = [];
-				for (let j=0 ; j<wns.length ; ++j) {
-					let w = wns[j] / wmean.n;
-					radia.push(3+50*w);
-					wxys.push([j, w]);
-				}
-				wxys.sort(function(a,b) {return a[1] - b[1];});
-				//console.log(wxys);
+				html += '<tr><td>(w mean)</td><td>~</td><td>'+(Math.round(wmean.x*10000)/10000)+'</td><td>'+(Math.round(wmean.y*10000)/10000)+'</td></tr>';
 
 				let wmedian = {
 					x: 0,
 					y: 0,
 					};
-				if (wxys.length & 1) {
+				if (wxs.length & 1) {
 					let sum = 0;
-					for (let j=0 ; j<wxys.length ; ++j) {
-						sum += wxys[j][1];
-						if (sum >= 0.5) {
-							wmedian.x = xs[wxys[j][0]];
-							wmedian.y = ys[wxys[j][0]];
+					for (let j=0 ; j<wxs.length ; ++j) {
+						sum += wxs[j][0];
+						if (sum >= wmean.n/2) {
+							wmedian.x = wxs[j][1];
+							break;
+						}
+					}
+
+					sum = 0;
+					for (let j=0 ; j<wys.length ; ++j) {
+						sum += wys[j][0];
+						if (sum >= wmean.n/2) {
+							wmedian.y = wys[j][1];
 							break;
 						}
 					}
 				}
 				else {
 					let sum = 0;
-					for (let j=0 ; j<wxys.length ; ++j) {
-						sum += wxys[j][1];
-						if (sum >= 0.5) {
-							wmedian.x = xs[wxys[j][0]];
-							wmedian.y = ys[wxys[j][0]];
+					for (let j=0 ; j<wxs.length ; ++j) {
+						sum += wxs[j][0];
+						if (sum >= wmean.n/2) {
+							wmedian.x = wxs[j][1];
 							break;
 						}
 					}
 
 					sum = 0;
-					for (let j=wxys.length ; j>0 ; --j) {
-						sum += wxys[j-1][1];
-						if (sum >= 0.5) {
-							wmedian.x += xs[wxys[j-1][0]];
-							wmedian.y += ys[wxys[j-1][0]];
+					for (let j=wxs.length ; j>0 ; --j) {
+						sum += wxs[j-1][0];
+						if (sum >= wmean.n/2) {
+							wmedian.x += wxs[j-1][1];
+							break;
+						}
+					}
+
+					sum = 0;
+					for (let j=0 ; j<wys.length ; ++j) {
+						sum += wys[j][0];
+						if (sum >= wmean.n/2) {
+							wmedian.y = wys[j][1];
+							break;
+						}
+					}
+
+					sum = 0;
+					for (let j=wys.length ; j>0 ; --j) {
+						sum += wys[j-1][0];
+						if (sum >= wmean.n/2) {
+							wmedian.y += wys[j-1][1];
 							break;
 						}
 					}
@@ -2007,16 +2119,14 @@
 					wmedian.x /= 2;
 					wmedian.y /= 2;
 				}
-				/*
 				annots['wmedian'] = {
 					type: 'label',
 					xValue: wmedian.x,
 					yValue: wmedian.y,
 					position: {x: 'start', y: 'center'},
-					content: ['median'],
+					content: ['', '', '(w-median)'],
 					z: -1,
 					};
-				//*/
 				annots['wmedianx'] = {
 					type: 'line',
 					xMin: wmedian.x,
@@ -2033,38 +2143,22 @@
 					borderWidth: 1,
 					z: -10,
 					};
-				medians.push(wmedian);
-			}
+				data.push(wmedian);
+				radia.push(3);
+				colors.bg.push('rgb(127, 127, 127)');
+				colors.border.push('rgb(255, 255, 255)');
 
-			/*
-			xs.sort();
-			ys.sort();
-			let median = {
-				x: 0,
-				y: 0,
-				};
-			if (xs.length & 1) {
-				median.x = (xs[Math.floor(xs.length/2)] + xs[Math.floor(xs.length/2)+1])/2;
-				median.y = (ys[Math.floor(ys.length/2)] + ys[Math.floor(ys.length/2)+1])/2;
+				html += '<tr><td>(w median)</td><td>~</td><td>'+(Math.round(wmedian.x*10000)/10000)+'</td><td>'+(Math.round(wmedian.y*10000)/10000)+'</td></tr>';
 			}
-			else {
-				median.x = xs[xs.length/2];
-				median.y = ys[ys.length/2];
-			}
-			annots['median'] = {
-				type: 'label',
-				xValue: median.x,
-				yValue: median.y,
-				position: {x: 'start', y: 'center'},
-				content: ['median'],
-				};
-			medians.push(median);
-			//*/
-			//console.log(means, medians);
-
-			//console.log(labels, data);
 
 			html += '</tbody></table>';
+			['x1', 'x2', 'y1', 'y2'].forEach(function(e) {
+				html += '<table class="table table-striped"><thead><tr><th>'+e.toUpperCase()+'</th></tr></thead><tbody>';
+				for (let ei = 0 ; ei<axes[e].length ; ++ei) {
+					html += '<tr><td>'+escHTML(axes[e][ei].replace(/=/g, ' '))+'</td></tr>';
+				}
+				html += '</tbody></table>';
+			});
 			$('#data-'+corp).html(html);
 
 			let ce = document.getElementById('chart-'+corp);
@@ -2074,21 +2168,16 @@
 					data: {
 						labels: labels,
 						datasets: [{
-							label: 'Words',
+							label: '',
 							data: data,
 							radius: radia,
 							backgroundColor: colors.bg,
 							borderColor: colors.border,
-						},{
-							label: 'Mean',
-							data: means,
-						},{
-							label: 'Median',
-							data: medians,
 						}],
 					},
 					options: {
 						responsive: true,
+						aspectRatio: 1,
 						maintainAspectRatio: false,
 						interaction: {
 							//mode: 'index',
@@ -2173,7 +2262,7 @@
 			state.named.push(n[1]);
 		}
 
-		$('#btnRelS').prop('disabled', true).addClass('disabled');
+		$('#btnRelS').prop('disabled', true).addClass('disabled').attr('gs-enable', false);
 
 		$('.btnShowSearch').click(function() {
 			$('#search').get(0).scrollIntoView(true);
@@ -2212,7 +2301,7 @@
 				rq.rs.push(id);
 				rq.ts.push(id);
 				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+					$('#btnRelS').prop('disabled', false).removeClass('disabled').attr('gs-enable', true);
 				}
 			});
 
@@ -2236,7 +2325,7 @@
 				let id = $(this).attr('id');
 				rq.cs.push(id);
 				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
 				}
 			});
 
@@ -2265,7 +2354,7 @@
 				let id = $(this).attr('id');
 				rq.cs.push(id);
 				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
 				}
 			});
 
@@ -2281,6 +2370,7 @@
 				s: state.offset,
 				n: state.pagesize,
 				cs: [],
+				ga: get(params, 'ga', 's'),
 				};
 			for (let i=0 ; i<10 ; ++i) {
 				let g = 'g'+i;
@@ -2293,7 +2383,7 @@
 				let id = $(this).attr('id');
 				rq.cs.push(id);
 				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled');
+					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
 				}
 			});
 
@@ -2315,9 +2405,12 @@
 
 		$('#freq_field').change(function() {
 			let f = $(this).val();
-			$('.btnRel').prop('disabled', true);
+			$('#pos,.btnRel').prop('disabled', true);
 			if (/^(h_)?(word|lex)/.test(f)) {
-				$('.btnRel').prop('disabled', false);
+				$('#pos,.btnRel').prop('disabled', false);
+			}
+			else {
+				$('#pos').prop('checked', false);
 			}
 		}).change();
 
@@ -2359,10 +2452,57 @@
 		let toastList = [...toastElList].map(toastEl => {let t = new bootstrap.Toast(toastEl); t.show();});
 
 		state.modal_v = new bootstrap.Modal('#modalVector');
+		$('.btnVectorAdd').click(function() {
+			$('#vectorNew').removeClass('is-invalid');
+			let w = $.trim($('#vectorNew').val());
+			if (!w) {
+				return false;
+			}
+			if (!/^(.+?)_([A-Z]+)$/.test(w)) {
+				$('#vectorNew').addClass('is-invalid');
+				return false;
+			}
+			$('#vectorWords').append('<div class="row my-1"><div class="col"><input type="text" class="form-control added word" value="'+escHTML(w)+'"></div><div class="col"><input type="text" class="form-control added num" value="1"></div><div class="col-1"><button class="btn btn-sm btn-danger btnVectorDel">X</button></div></div>');
+			$('.btnVectorDel').off().click(vectorDel);
+			$('#vectorNew').val('').focus();
+		});
+		$('#vectorForm').submit(function(e) {
+			e.preventDefault();
+			$('.btnVectorAdd').click();
+			return false;
+		});
 		$('.btnVectorPlot').click(function() {
 			let corp = $('#modalVector').attr('data-corp');
-			let ws = $('#modalVector').attr('data-words');
-			let ns = $('#modalVector').attr('data-nums');
+			let ws = [];
+			let ns = [];
+			let ws_a = [];
+			let ns_a = [];
+			$('#vectorWords').find('.word').each(function() {
+				if (ws.length >= 300) {
+					return false;
+				}
+				let w = $.trim($(this).val());
+				ws.push(w);
+				if ($(this).hasClass('added')) {
+					ws_a.push(w);
+				}
+			});
+			ws = ws.join('~');
+			$('#vectorWords').find('.num').each(function() {
+				if (ns.length >= 300) {
+					return false;
+				}
+				let n = parseInt($(this).val());
+				n = (n > 0) ? n : 1;
+				ns.push(n);
+				if ($(this).hasClass('added')) {
+					ns_a.push(n);
+				}
+			});
+			ns = ns.join('~');
+
+			ss_set('w2v-a_words-' + state.hash + '-' + state.hash_freq, ws_a);
+			ss_set('w2v-a_freqs-' + state.hash + '-' + state.hash_freq, ns_a);
 
 			let lang = state.params.get('l');
 			let axes = {
@@ -2370,7 +2510,6 @@
 				x2: $.trim($('#x2').val()),
 				y1: $.trim($('#y1').val()),
 				y2: $.trim($('#y2').val()),
-				sg: $('#sg').prop('checked'),
 			};
 			ls_set('w2v-axes-'+lang, axes);
 
@@ -2384,7 +2523,6 @@
 			url.searchParams.set('x2', axes.x2);
 			url.searchParams.set('y1', axes.y1);
 			url.searchParams.set('y2', axes.y2);
-			url.searchParams.set('sg', axes.sg);
 			url.searchParams.set('ws', ws);
 			url.searchParams.set('ns', ns);
 			window.location = url;
