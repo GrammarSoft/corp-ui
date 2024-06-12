@@ -181,6 +181,7 @@ if (!empty($_REQUEST['c'])) {
 <div id="logo" class="container-fluid my-3">
 <a href="/" class="me-5"><img src="https://corp.visl.dk/flags/corpuseye-flat-transparent.gif"></a>
 <a href="https://corp.visl.dk/cqp_help.html">Help</a>
+- <a href="https://corp.visl.dk/Corpuseye_IKS.pdf">Use cases</a> (Powerpoint)
 - <a href="https://edu.visl.dk/tagset_cg_general.pdf">Taglist</a> (<a href="https://edu.visl.dk/tagset_cg_all.pdf">unabridged</a>)
 - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a>
 <button class="btn btn-outline-primary mx-3 btnCustomize">Adjust view <i class="bi bi-wrench-adjustable"></i></button>
