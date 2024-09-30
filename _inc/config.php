@@ -1,6 +1,6 @@
 <?php
 
-putenv('PYTHONPATH=/usr/local/manatee/lib/python3.10/site-packages');
+putenv('PYTHONPATH=/usr/local/manatee/lib/python3.12/site-packages');
 putenv('PATH='.getenv('PATH').':/usr/local/manatee/bin');
 
 $GLOBALS['-fields'] = [
@@ -492,6 +492,12 @@ $GLOBALS['-corpora'] = [
 		'nor_wiki' => [
 			'name' => 'Wikipedia',
 			'percent_combo' => 50,
+			],
+		'nor_literature' => [
+			'name' => 'Classical literature (ca. 1840-1920',
+			'percent_combo' => 0,
+			'group_by' => ['author', 'title', 'year','gender'],
+			'word2vec' => ['kvinde_N', 'mand_N', 'kvindelig_ADJ', 'mandlig_ADJ'],
 			],
 		],
 	'por' => [
