@@ -275,6 +275,7 @@ while ($a === 'freq') {
 
 	$hash = $_REQUEST['h'];
 	$hash_freq = $_REQUEST['hf'];
+	$cut = intval($_REQUEST['cut'] ?? 0);
 	$hash_combo = trim($_REQUEST['hc'] ?? '');
 	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
 	if (!is_dir($folder)) {
@@ -374,24 +375,24 @@ while ($a === 'freq') {
 
 		$res = null;
 		if ($type === 'abc') {
-			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_text ASC, f_abs DESC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs WHERE f_abs >= {$cut} ORDER BY f_text ASC, f_abs DESC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else if ($type === 'relg') {
-			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_g DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs WHERE f_abs >= {$cut} ORDER BY f_rel_g DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else if ($type === 'relc') {
-			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_c DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs WHERE f_abs >= {$cut} ORDER BY f_rel_c DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else if ($type === 'rels') {
-			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_s DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs WHERE f_abs >= {$cut} ORDER BY f_rel_s DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else /* if ($type === 'freq') */ {
 			if ($br) {
 				// '→' is U+2192 Rightwards Arrow
-				$res = $dbs[$corp]['freq']->prepexec("SELECT f_bracket || ' → ' || GROUP_CONCAT(f_text, ';') as f_text, SUM(f_abs) as f_abs, SUM(f_rel_g) as f_rel_g, SUM(f_rel_c) as f_rel_c, SUM(f_rel_s) as f_rel_s FROM (SELECT * FROM freqs ORDER BY f_abs DESC) GROUP BY f_bracket ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+				$res = $dbs[$corp]['freq']->prepexec("SELECT f_bracket || ' → ' || GROUP_CONCAT(f_text, ';') as f_text, SUM(f_abs) as f_abs, SUM(f_rel_g) as f_rel_g, SUM(f_rel_c) as f_rel_c, SUM(f_rel_s) as f_rel_s FROM (SELECT * FROM freqs WHERE f_abs >= {$cut} ORDER BY f_abs DESC) GROUP BY f_bracket ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 			}
 			else {
-				$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+				$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs WHERE f_abs >= {$cut} ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 			}
 		}
 		while ($row = $res->fetch()) {

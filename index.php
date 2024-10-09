@@ -39,6 +39,7 @@ if (!array_key_exists($_REQUEST['br_f'], $GLOBALS['-fields'])) {
 $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'le');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 $_REQUEST['ga'] = trim($_REQUEST['ga'] ?? 's');
+$_REQUEST['cut'] = intval($_REQUEST['cut'] ?? 0);
 
 $_REQUEST['br_q'] = trim($_REQUEST['br_q'] ?? '');
 $h_br_q = htmlspecialchars($_REQUEST['br_q']);
@@ -884,6 +885,11 @@ Frequency <i class="bi bi-sort-down"></i>
 <select class="form-select" name="o" id="freq_offset">
 	{$off_sel}
 </select>
+</div>
+<div class="my-3">
+<label class="form-label" for="freq_cutoff">Absolute cutoff</label>
+<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="Removes entries with less-than this amount of absolute hits"><i class="bi bi-question-square"></i></a>
+<input class="form-control" name="cut" id="freq_cutoff" value="{$_REQUEST['cut']}">
 </div>
 <div class="my-3 form-check">
 	<input class="form-check-input" type="checkbox" name="lc" id="lc" {$checked['lc']}>

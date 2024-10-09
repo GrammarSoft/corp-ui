@@ -512,6 +512,7 @@
 			let rq = {
 				a: 'freq',
 				t: url.searchParams.get('s'),
+				cut: get(url.searchParams, 'cut', 0),
 				h: state.hash,
 				hf: state.hash_freq,
 				hc: state.hash_combo,
@@ -1070,6 +1071,7 @@
 			a: 'freq',
 			t: params.get('s'),
 			br: get(params, 'br', 0),
+			cut: get(params, 'cut', 0),
 			h: state.hash,
 			hf: state.hash_freq,
 			hc: state.hash_combo,
@@ -2479,6 +2481,7 @@
 				a: 'freq',
 				t: params.get('s'),
 				br: get(params, 'br', 0),
+				cut: get(params, 'cut', 0),
 				h: state.hash,
 				hf: state.hash_freq,
 				hc: state.hash_combo,

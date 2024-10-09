@@ -47,6 +47,5 @@ cd ~/storage/corpora/dan_literature/meta
 * Use semantic vector model to disambiguate semantics
 * Double-check c_words + c_numbers + c_alnums in stats-combine
 * Check multi-corpus bracketing
-* Relative freq should have an optional live absolute cutoff
 * N-grams should be clickable - this will need query results as tab-separated
 * Multi-word expressions are hard to search for without CQP-speak - maybe have a per-corpus/language list of them
