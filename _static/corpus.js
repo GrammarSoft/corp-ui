@@ -87,6 +87,10 @@
 		setTimeout(() => a.click(), 100);
 	}
 
+	function clamp(val, min, max) {
+		return Math.min(max, Math.max(val, min));
+	}
+
 	function haveLocalStorage() {
 		try {
 			let storage = window.localStorage;
@@ -2040,14 +2044,12 @@
 			if (ns) {
 				ths += '<th>Num</th>';
 			}
-			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'<th>X</th><th>Y</th></tr></thead><tbody>';
+			let html = '<table class="table table-striped"><thead><tr><th>Word</th>'+ths+'<th>X</th><th>Y</th><th>LRUP</th></tr></thead><tbody>';
 
 			let labels = [];
 			let annots = {};
 			let colors = {
 				vals: [],
-				min: 99,
-				max: -99,
 				bg: [],
 				border: [],
 				};
@@ -2066,6 +2068,7 @@
 			let wxs = [];
 			let wys = [];
 			let wns = [];
+
 			for (let i=0 ; i<ws.length ; ++i) {
 				let w = ws[i];
 
@@ -2080,7 +2083,7 @@
 					}
 				}
 				if (!good) {
-					row += '<td>~</td><td>~</td></tr>';
+					row += '<td>~</td><td>~</td><td>~</td></tr>';
 					html += row;
 					continue;
 				}
@@ -2112,16 +2115,7 @@
 				let x = x_b - x_a;
 				let y = y_b - y_a;
 
-				let m = w.match(/^(.+?)_([^_]+)$/);
-				url_x.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
-				url_y.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
-
-				row += '<td><a href="'+escHTML(url_x.toString())+'">'+(Math.round(x*10000)/10000)+'</a></td><td><a href="'+escHTML(url_y.toString())+'">'+(Math.round(y*10000)/10000)+'</a></td></tr>';
-				html += row;
-
-				colors.vals.push(Math.max(x_a, x_b, y_a, y_b));
-				colors.min = Math.min(colors.min, x_a, x_b, y_a, y_b);
-				colors.max = Math.max(colors.max, x_a, x_b, y_a, y_b);
+				colors.vals.push([Math.max(x_a, x_b), Math.max(y_a, y_b)]);
 				labels.push(w);
 				data.push({x: x, y: y});
 				mean.x += x;
@@ -2145,21 +2139,23 @@
 					position: {x: 'start', y: 'center'},
 					content: [w.replace(/_[A-Z]+$/, '').replace(/=/g, '_')],
 					};
+
+				let m = w.match(/^(.+?)_([^_]+)$/);
+				url_x.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
+				url_y.searchParams.set('q2', '[lex="'+m[1]+'" & pos="'+m[2]+'"]');
+
+				row += '<td><a href="'+escHTML(url_x.toString())+'">'+(Math.round(x*10000)/10000)+'</a></td><td><a href="'+escHTML(url_y.toString())+'">'+(Math.round(y*10000)/10000)+'</a></td><td><i class="bi bi-arrow-left-circle-fill" title="'+x_a+'" style="color: rgb('+(Math.floor(clamp(x_a, 0, 0.4) * 2.5 * 255))+', 0, 0)"><i class="bi bi-arrow-right-circle-fill" title="'+x_b+'" style="color: rgb('+(Math.floor(clamp(x_b, 0, 0.4) * 2.5 * 255))+', 0, 0)"></i><i class="bi bi-arrow-up-circle-fill" title="'+y_a+'" style="color: rgb(0, '+(Math.floor(clamp(y_a, 0, 0.4) * 2.5 * 255))+', 0)"><i class="bi bi-arrow-down-circle-fill" title="'+y_b+'" style="color: rgb(0, '+(Math.floor(clamp(y_b, 0, 0.4) * 2.5 * 255))+', 0)"></td></tr>';
+				html += row;
 			}
 
-			colors.max -= colors.min;
 			for (let j=0 ; j<colors.vals.length ; ++j) {
-				let v = (colors.vals[j] - colors.min) / colors.max;
-				let r = Math.floor(56 + (199 * v)); // 56-255
-				let g = Math.floor(162 + (-63 * v)); // 162-99
-				let b = Math.floor(233 + (-102 * v)); // 233-131
-				colors.bg.push('rgb('+r+', '+g+', '+b+')');
-				colors.border.push('rgb('+r+', '+g+', '+b+')');
+				let r = Math.floor(clamp(colors.vals[j][0], 0, 0.4) * 2.5 * 255);
+				let g = Math.floor(clamp(colors.vals[j][1], 0, 0.4) * 2.5 * 255);
+				colors.bg.push('rgb('+r+', '+g+', 0)');
+				colors.border.push('rgb('+r+', '+g+', 0)');
 			}
 
 			let radia = [];
-			let means = [];
-			let medians = [];
 			if (ns) {
 				for (let j=0 ; j<wns.length ; ++j) {
 					let w = wns[j] / wmean.n;
@@ -2199,7 +2195,7 @@
 				colors.bg.push('rgb(127, 127, 127)');
 				colors.border.push('rgb(255, 255, 255)');
 
-				html += '<tr><td>(w mean)</td><td>~</td><td>'+(Math.round(wmean.x*10000)/10000)+'</td><td>'+(Math.round(wmean.y*10000)/10000)+'</td></tr>';
+				html += '<tr><td>(w mean)</td><td>~</td><td>'+(Math.round(wmean.x*10000)/10000)+'</td><td>'+(Math.round(wmean.y*10000)/10000)+'</td><td>~</td></tr>';
 
 				let wmedian = {
 					x: 0,
@@ -2293,7 +2289,7 @@
 				colors.bg.push('rgb(127, 127, 127)');
 				colors.border.push('rgb(255, 255, 255)');
 
-				html += '<tr><td>(w median)</td><td>~</td><td>'+(Math.round(wmedian.x*10000)/10000)+'</td><td>'+(Math.round(wmedian.y*10000)/10000)+'</td></tr>';
+				html += '<tr><td>(w median)</td><td>~</td><td>'+(Math.round(wmedian.x*10000)/10000)+'</td><td>'+(Math.round(wmedian.y*10000)/10000)+'</td><td>~</td></tr>';
 			}
 
 			html += '</tbody></table>';

@@ -430,15 +430,15 @@ XSH;
 				$checked['nd'] = 'checked';
 				$checked['lc'] = 'checked';
 				$_REQUEST['lc'] = '1';
-				$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/conv-lc-nd'";
+				$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/collapse' nd";
 				$nd .= '_nd';
-				$which .= '/i';
+				//$which .= '/i';
 			}
 			else if (!empty($_REQUEST['lc'])) {
 				$checked['lc'] = 'checked';
-				$coll = " | uconv -x any-nfc | uconv -x any-lower";
+				$coll = " | '{$GLOBALS['WEB_ROOT']}/_bin/collapse' lc";
 				$nd .= '_lc';
-				$which .= '/i';
+				//$which .= '/i';
 			}
 			$s_nd = escapeshellarg($nd);
 

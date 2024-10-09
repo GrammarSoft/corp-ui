@@ -1,0 +1,93 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$coll = [];
+$mode = ($argv[1] ?? 'lc');
+
+$any2nfc = Transliterator::create('any-nfc');
+$any2name = Transliterator::create('any-name');
+$name2any = Transliterator::create('name-any');
+$any2lower = Transliterator::create('any-lower');
+$any2latin = Transliterator::create('any-latin');
+$latin2ascii = Transliterator::create('latin-ascii');
+$remove = Transliterator::create('[:Modifier_Symbol:] remove; [\u0100-\u7fff] remove;');
+
+while ($line = fgets(STDIN)) {
+	$f = explode("\t", trim($line));
+	$rel = intval(array_pop($f));
+	$abs = intval(array_pop($f));
+	$line = implode("\t", $f);
+
+	$org = $line;
+	if ($mode == 'nd') {
+		$line = $any2nfc->transliterate($line);
+
+		// Converts all characters to their name, because that's easier to normalize
+		$line = $any2name->transliterate($line);
+		$line = str_replace(' DOTLESS ', ' ', $line); // Dotless i (ı) and any other potential dotless variant
+		$line = preg_replace('~ WITH [^}]+~', '', $line); // Diacritics are all WITH something, so just remove the WITH part
+
+		$out = $name2any->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "name2any(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+
+		$out = $any2lower->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "any2lower(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+
+		$out = $any2latin->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "any2latin(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+
+		$out = $latin2ascii->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "latin2ascii(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+
+		$out = $remove->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "remove(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+	}
+	else {
+		$out = $any2lower->transliterate($line);
+		if ($out === false) {
+			fprintf(STDERR, "any2lower(%s) => false!\n", $line);
+			$out = $line;
+		}
+		$line = $out;
+	}
+
+	$coll[$line][$org] = [$abs, $rel];
+}
+
+foreach ($coll as $k => $vs) {
+	$mk = '';
+	$mv = 0;
+	$abs = 0;
+	$rel = 0;
+	foreach ($vs as $kv => $v) {
+		if ($v[0] > $mv) {
+			$mk = $kv;
+			$mv = $v[0];
+		}
+		$abs += $v[0];
+		$rel += $v[1];
+	}
+	echo "$mk\t$abs\t$rel\n";
+}
