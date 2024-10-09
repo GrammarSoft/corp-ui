@@ -27,24 +27,76 @@ $db->exec("CREATE TABLE meta (
 ) WITHOUT ROWID");
 $db->exec("CREATE TABLE freqs (
 	f_text TEXT NOT NULL,
+	f_bracket TEXT NOT NULL,
 	f_abs INTEGER NOT NULL,
 	f_rel_g REAL NOT NULL DEFAULT 0.0,
 	f_rel_c REAL NOT NULL DEFAULT 0.0,
 	f_rel_s REAL NOT NULL DEFAULT 0.0,
-	PRIMARY KEY (f_text)
+	PRIMARY KEY (f_text, f_bracket)
 )");
 
 $db->beginTransaction();
-$ins = $db->prepare("INSERT INTO freqs (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
+$ins = $db->prepare("INSERT INTO freqs (f_text, f_bracket, f_abs) VALUES (?, ?, ?) ON CONFLICT(f_text, f_bracket) DO UPDATE SET f_abs = f_abs + ?");
+
+$brs = explode(';', $argv[4]);
+$br_any = false;
+foreach ($brs as $k => $br) {
+	$br = trim($br);
+	if ($br === '') {
+		$br_any = true;
+		unset($brs[$k]);
+		continue;
+	}
+
+	if (strpos($br, '~') === false) {
+		$br = "~$br~";
+	}
+	else if (strpos($br, '@') === false) {
+		$br = "@$br@";
+	}
+	else if (strpos($br, '#') === false) {
+		$br = "#$br#";
+	}
+	else if (strpos($br, '=') === false) {
+		$br = "=$br=";
+	}
+	else if (strpos($br, '/') === false) {
+		$br = "/$br/";
+	}
+	else {
+		unset($brs[$k]);
+		continue;
+	}
+	$brs[$k] = $br;
+}
 
 $total = 0;
 for ($i=1 ; $line = fgets(STDIN) ; ++$i) {
 	$f = explode("\t", trim($line));
 	$rel = intval(array_pop($f));
 	$abs = intval(array_pop($f));
+	$bracket = '';
+	$b_n = 9999999;
+	if (!empty($brs)) {
+		$tags = explode(' ', array_pop($f));
+		foreach ($tags as $n => $tag) {
+			foreach ($brs as $br) {
+				if (preg_match($br, $tag)) {
+					$bracket = substr($br, 1, -1);
+					break 2;
+				}
+			}
+		}
+		if (empty($bracket)) {
+			if (!$br_any) {
+				continue;
+			}
+			$bracket = '.*';
+		}
+	}
 	$total += $abs;
 	$f = implode("\t", $f);
-	$ins->execute([$f, $abs, $abs]);
+	$ins->execute([$f, $bracket, $abs, $abs]);
 
 	if ($i % 10000 == 0) {
 		$db->commit();

@@ -226,6 +226,30 @@
 		applyOptions();
 	}
 
+	function toggleButtons() {
+		$('#pos,#btnAbc,.btnRel').prop('disabled', true).addClass('disabled');
+		$('#btnAbc').prop('disabled', false).removeClass('disabled');
+
+		if (/^(h_)?(word|lex)/.test($('#freq_field').val())) {
+			$('#pos,#btnAbc,.btnRel').prop('disabled', false).removeClass('disabled');
+		}
+		else {
+			$('#pos').prop('checked', false);
+		}
+
+		$('#btnRelS').prop('disabled', true).addClass('disabled');
+		$('.qcorpus').each(function() {
+			let id = $(this).attr('id');
+			if (id.indexOf('-') !== -1) {
+				$('#btnRelS').prop('disabled', false).removeClass('disabled');
+				return;
+			}
+		});
+		if ($('#br').prop('checked')) {
+			$('#btnAbc,.btnRel').prop('disabled', true).addClass('disabled');
+		}
+	}
+
 	function chkCompare() {
 		let words = [];
 		let q = [];
@@ -457,6 +481,27 @@
 
 			$('.qbody > table').addClass('opacity-25');
 			$.getJSON('./callback.php', rq).done(handleConc);
+		}
+
+		if ($('.qngrams').length) {
+			let rq = {
+				a: 'ngrams',
+				h: state.hash,
+				f: get(url.searchParams, 'f', 'word'),
+				s: state.offset,
+				n: state.pagesize,
+				rs: [],
+				ts: [],
+				};
+
+			$('.qngrams').each(function() {
+				let id = $(this).attr('id');
+				rq.rs.push(id);
+				rq.ts.push(id);
+			});
+
+			$('.qbody > table').addClass('opacity-25');
+			$.getJSON('./callback.php', rq).done(handleNgrams);
 		}
 
 		if ($('.qfreqs').length) {
@@ -924,6 +969,95 @@
 		}
 	}
 
+	function handleNgrams(rv) {
+		state.last_rv = rv;
+		let retry = false;
+		let rq = {
+			a: 'ngrams',
+			h: state.hash,
+			f: rv.f,
+			s: rv.s,
+			n: rv.n,
+			rs: [],
+			ts: [],
+			};
+
+		if (rv.hasOwnProperty('ts')) {
+			for (let corp in rv.ts) {
+				if (!rv.ts[corp].d) {
+					rq.ts.push(corp);
+					retry = true;
+				}
+
+				let c = $('#'+corp);
+				state.ts[corp] = rv.ts[corp];
+				c.find('.qtotal').text(rv.ts[corp].n);
+				state.max_n = Math.max(rv.ts[corp].n, state.max_n);
+
+				if (!rv.ts[corp].d) {
+					c.find('.qtotal').text(rv.ts[corp].n + '…');
+				}
+				else {
+					if (rv.ts[corp].n === 0) {
+						let c = $('#'+corp);
+						c.find('.qrange').text('0');
+						c.find('.qbody').html('<span class="fw-bold">No hits found.</span>');
+					}
+				}
+			}
+		}
+
+		if (state.prev_max_n < state.max_n) {
+			repaginate();
+			state.prev_max_n = state.max_n;
+		}
+
+		if (rv.hasOwnProperty('rs')) {
+			for (let corp in rv.rs) {
+				if (!rv.rs[corp].length && (rv.s < state.ts[corp].n || !state.ts[corp].n)) {
+					if (!state.ts[corp].n && state.ts[corp].d) {
+						continue;
+					}
+					rq.rs.push(corp);
+					retry = true;
+					continue;
+				}
+				state.rs[corp] = rv.rs[corp];
+
+				let c = $('#'+corp);
+				if (!rv.rs[corp].length) {
+					c.find('.qrange').text('…');
+					c.find('.qbody').html('<span class="fw-bold">No more hits.</span>');
+					continue;
+				}
+
+				let tsv = 'Text\tCount\n';
+
+				c.find('.qrange').text(rv.rs[corp][0].i+' to '+(rv.rs[corp][rv.rs[corp].length-1].i));
+				let html = '';
+				html += '';
+				html += '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button><table class="table table-striped table-hover my-3">';
+				html += '<thead><tr class="text-begin"><th>Text</th><th class="text-end">Count</th></tr></thead>';
+				html += '<tbody class="font-monospace text-nowrap text-break">';
+				for (let i=0 ; i<rv.rs[corp].length ; ++i) {
+					html += '<tr id="'+corp+'-'+rv.rs[corp][i].i+'"><td>'+escHTML(rv.rs[corp][i].t)+'</td><td class="text-end">'+rv.rs[corp][i].c+'</td></tr>';
+					tsv += rv.rs[corp][i].t + '\t' + rv.rs[corp][i].c + '\n';
+				}
+				state.tsv = tsv;
+				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
+				c.find('.qbody').html(html);
+
+				c.find('.btnGetTSV').click(function() {
+					saveAs(new Blob([state.tsv], {type: 'text/tab-separated-values'}), 'ngrams.tsv');
+				});
+			}
+		}
+
+		if (retry) {
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleNgrams);}, 1000);
+		}
+	}
+
 	function handleFreq(rv) {
 		let url = new URL(window.location);
 		let params = url.searchParams;
@@ -931,6 +1065,7 @@
 		let rq = {
 			a: 'freq',
 			t: params.get('s'),
+			br: get(params, 'br', 0),
 			h: state.hash,
 			hf: state.hash_freq,
 			hc: state.hash_combo,
@@ -970,6 +1105,9 @@
 			else if (get(params, 'lc', false)) {
 				hfield += '_lc';
 			}
+		}
+		if (rq.br) {
+			hfield = get(params, 'br_f', 'word');
 		}
 
 		let bits = parse_query(query);
@@ -1085,6 +1223,7 @@
 				// '·' is U+00B7 Middle Dot
 				// '²' is U+00B2 Superscript 2
 				// '⁸' is U+2078 Superscript 8
+				// '→' is U+2192 Rightwards Arrow
 				html += '<thead><tr><th>Token</th>';
 				if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 					html += '<th class="text-vertical qcol-grf" title="Global relative frequency"><span class="color-red">G: freq²∕norm</span></th>';
@@ -1118,6 +1257,10 @@
 					if (wv && rv.cs[corp].f[i][0].indexOf('\t') !== -1) {
 						let ts = rv.cs[corp].f[i][0].split('\t');
 						rpl = escapeRegExp(ts[0]) + '" & pos="' + escapeRegExp(ts[1]);
+					}
+					if (rq.br) {
+						let m = rv.cs[corp].f[i][0].match(/^(.*) →/);
+						rpl = '.*(?:^| )'+m[1]+'(?: |$).*';
 					}
 					url.searchParams.set('q', search1.replace('{TOKEN}', rpl));
 					url.searchParams.set('q2', search2.replace('{TOKEN}', rpl));
@@ -1647,6 +1790,8 @@
 						if (rv.cs[corp][hk].h[i][1] <= 0) {
 							continue;
 						}
+						rv.cs[corp][hk].h[i][0] = rv.cs[corp][hk].h[i][0].toString();
+
 						let attrs = rv.cs[corp][hk].h[i][0].split(' |~| ');
 						for (let a=0 ; a<attrs.length ; ++a) {
 							attrs[a] = gs[a]+'="'+escHTML(attrs[a])+'"';
@@ -2262,8 +2407,6 @@
 			state.named.push(n[1]);
 		}
 
-		$('#btnRelS').prop('disabled', true).addClass('disabled').attr('gs-enable', false);
-
 		$('.btnShowSearch').click(function() {
 			$('#search').get(0).scrollIntoView(true);
 			$('#query').focus();
@@ -2284,6 +2427,14 @@
 
 		$('.arrOptVisible').change(changeOption);
 
+		$('#br').change(function() {
+			$('.bracket').removeClass('show');
+			if ($(this).prop('checked')) {
+				$('.bracket').addClass('show');
+			}
+			toggleButtons();
+		}).change();
+
 		// Concordances
 		if ($('.qresults').length) {
 			let rq = {
@@ -2300,12 +2451,30 @@
 				let id = $(this).attr('id');
 				rq.rs.push(id);
 				rq.ts.push(id);
-				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled').attr('gs-enable', true);
-				}
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleConc);}, 500);
+		}
+
+		// N-grams
+		if ($('.qngrams').length) {
+			let rq = {
+				a: 'ngrams',
+				h: state.hash,
+				f: get(params, 'f', 'word'),
+				s: state.offset,
+				n: state.pagesize,
+				rs: [],
+				ts: [],
+				};
+
+			$('.qngrams').each(function() {
+				let id = $(this).attr('id');
+				rq.rs.push(id);
+				rq.ts.push(id);
+			});
+
+			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleNgrams);}, 500);
 		}
 
 		// Frequencies
@@ -2313,6 +2482,7 @@
 			let rq = {
 				a: 'freq',
 				t: params.get('s'),
+				br: get(params, 'br', 0),
 				h: state.hash,
 				hf: state.hash_freq,
 				hc: state.hash_combo,
@@ -2324,9 +2494,6 @@
 			$('.qfreqs').each(function() {
 				let id = $(this).attr('id');
 				rq.cs.push(id);
-				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
-				}
 			});
 
 			$('button[name="s"][value="'+rq.t+'"]').addClass('btn-warning');
@@ -2353,9 +2520,6 @@
 			$('.qhist').each(function() {
 				let id = $(this).attr('id');
 				rq.cs.push(id);
-				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
-				}
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleHist);}, 500);
@@ -2382,9 +2546,6 @@
 			$('.qgroup').each(function() {
 				let id = $(this).attr('id');
 				rq.cs.push(id);
-				if (id.indexOf('-') !== -1) {
-					$('#btnRelS').prop('disabled', false).removeClass('disabled').prop('gs-enable', true);
-				}
 			});
 
 			setTimeout(function () {$.getJSON('./callback.php', rq).done(handleGroup);}, 500);
@@ -2403,16 +2564,7 @@
 			loadOffset(state.offset, true);
 		});
 
-		$('#freq_field').change(function() {
-			let f = $(this).val();
-			$('#pos,.btnRel').prop('disabled', true);
-			if (/^(h_)?(word|lex)/.test(f)) {
-				$('#pos,.btnRel').prop('disabled', false);
-			}
-			else {
-				$('#pos').prop('checked', false);
-			}
-		}).change();
+		$('#freq_field').change(toggleButtons);
 
 		$('#qfocus').val(state.focus).change(function() {
 			state.focus = $(this).val();

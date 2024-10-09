@@ -27,23 +27,24 @@ $db->exec("CREATE TABLE meta (
 ) WITHOUT ROWID");
 $db->exec("CREATE TABLE freqs (
 	f_text TEXT NOT NULL,
+	f_bracket TEXT NOT NULL,
 	f_abs INTEGER NOT NULL,
 	f_rel_g REAL NOT NULL DEFAULT 0.0,
 	f_rel_c REAL NOT NULL DEFAULT 0.0,
 	f_rel_s REAL NOT NULL DEFAULT 0.0,
-	PRIMARY KEY (f_text)
+	PRIMARY KEY (f_text, f_bracket)
 )");
 
-$ins = $db->prepare("INSERT INTO freqs (f_text, f_abs) VALUES (?, ?) ON CONFLICT(f_text) DO UPDATE SET f_abs = f_abs + ?");
+$ins = $db->prepare("INSERT INTO freqs (f_text, f_bracket, f_abs) VALUES (?, ?, ?) ON CONFLICT(f_text, f_bracket) DO UPDATE SET f_abs = f_abs + ?");
 
 $total = 0;
 for ($i=4 ; $i<$argc ; ++$i) {
 	$db->query("ATTACH '{$argv[$i]}' AS db_corp");
 	$db->beginTransaction();
-	$stm = $db->prepexec("SELECT f_text, f_abs FROM db_corp.freqs");
+	$stm = $db->prepexec("SELECT f_text, f_bracket, f_abs FROM db_corp.freqs");
 	while ($row = $stm->fetch()) {
 		$total += $row['f_abs'];
-		$ins->execute([$row['f_text'], $row['f_abs'], $row['f_abs']]);
+		$ins->execute([$row['f_text'], $row['f_bracket'], $row['f_abs'], $row['f_abs']]);
 	}
 	$db->commit();
 	$db->query("DETACH db_corp");

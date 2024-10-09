@@ -31,9 +31,17 @@ if (!array_key_exists($_REQUEST['f'], $GLOBALS['-fields'])) {
 	$_REQUEST['f'] = 'word';
 }
 
+$_REQUEST['br_f'] = trim($_REQUEST['br_f'] ?? 'word');
+if (!array_key_exists($_REQUEST['br_f'], $GLOBALS['-fields'])) {
+	$_REQUEST['br_f'] = 'word';
+}
+
 $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'le');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 $_REQUEST['ga'] = trim($_REQUEST['ga'] ?? 's');
+
+$_REQUEST['br_q'] = trim($_REQUEST['br_q'] ?? '');
+$h_br_q = htmlspecialchars($_REQUEST['br_q']);
 
 $toasts = [];
 
@@ -46,12 +54,14 @@ $checked = [
 	'hf' => '',
 	'pos' => '',
 	'wv' => '',
+	'br' => '',
 	'xe' => '',
 	'xs' => '',
 	];
 
 $fields = '';
 $freq_fields = '';
+$br_freq_fields = '';
 foreach ($GLOBALS['-fields'] as $k => $v) {
 	$sel = '';
 	if ($k === $_REQUEST['f']) {
@@ -61,6 +71,12 @@ foreach ($GLOBALS['-fields'] as $k => $v) {
 		$fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
 	}
 	$freq_fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
+
+	$sel = '';
+	if ($k === $_REQUEST['br_f']) {
+		$sel = ' selected';
+	}
+	$br_freq_fields .= '<option value="'.$k.'"'.$sel.'>'.htmlspecialchars($v).'</option>'."\n";
 }
 
 if (!empty($_REQUEST['dt'])) {
@@ -77,6 +93,9 @@ if (!empty($_REQUEST['pos'])) {
 }
 if (!empty($_REQUEST['wv'])) {
 	$checked['wv'] = 'checked';
+}
+if (!empty($_REQUEST['br'])) {
+	$checked['br'] = 'checked';
 }
 if (!empty($_REQUEST['xe'])) {
 	$checked['xe'] = 'checked';
@@ -331,6 +350,53 @@ XSH;
 				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.time ./$hash-$hash_sh.sh >$hash-$hash_sh.err 2>&1 &");
 			}
 		}
+		// N-grams
+		else if ($_REQUEST['s'] === 'ngrams') {
+			$sh = <<<XSH
+#!/bin/bash
+set -e
+cd '$folder'
+
+XSH;
+
+			$exec = false;
+			foreach ($_REQUEST['c'] as $corp => $_) {
+				[$s_corp,$subc] = explode('-', $corp.'-');
+				if (!empty($subc) && preg_match('~^[a-z0-9]+$~', $subc) && file_exists("{$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc")) {
+					$subc = "-u {$GLOBALS['CORP_ROOT']}/corpora/{$s_corp}/subc/{$subc}.subc";
+				}
+				else {
+					$subc = '';
+				}
+				if (!file_exists("$hash-$corp.ngrams-$field.sqlite") || !filesize("$hash-$corp.ngrams-$field.sqlite")) {
+					$exec = true;
+				}
+
+				$sh .= <<<XSH
+
+if [ ! -s '$hash-$corp.ngrams-$field.sqlite' ]; then
+	/usr/bin/time -f '%e' -o $hash-$corp.ngrams-$field.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -a $field -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2ngrams' $hash-$corp.ngrams-$field.sqlite >$hash-$corp.ngrams-$field.err 2>&1 &
+fi
+
+XSH;
+		}
+
+		$sh .= <<<XSH
+
+for job in `jobs -p`
+do
+	wait \$job
+done
+
+XSH;
+
+			$hash_sh = substr(sha256_lc20($sh), 0, 8);
+			if ($exec) {
+				file_put_contents("$hash-$hash_sh.ngrams.sh", $sh);
+				chmod("$hash-$hash_sh.ngrams.sh", 0700);
+				shell_exec("nice -n20 /usr/bin/time -f '%e' -o $hash-$hash_sh.ngrams.time ./$hash-$hash_sh.ngrams.sh >$hash-$hash_sh.ngrams.err 2>&1 &");
+			}
+		}
 		// Frequency
 		else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
 			$offset = $_REQUEST['o'];
@@ -355,8 +421,8 @@ XSH;
 			$which = $field;
 			$nd = $field;
 			if ($checked['hf'] && substr($field, 0, 2) !== 'h_') {
-				$which = "h_${which}";
-				$nd = "h_${which}";
+				$which = "h_{$which}";
+				$nd = "h_{$which}";
 			}
 
 			$coll = '';
@@ -391,9 +457,16 @@ XSH;
 					$which .= '>0';
 				}
 			}
+			if ($checked['br']) {
+				$which .= ' '.$_REQUEST['br_f'].' '.$offset;
+				if ($by === 're') {
+					$which .= '>0';
+				}
+			}
 			$s_which = escapeshellarg($which);
+			$s_br_q = escapeshellarg($_REQUEST['br_q']);
 
-			$hash_freq = substr(sha256_lc20($which.$coll), 0, 8);
+			$hash_freq = substr(sha256_lc20($which.';'.$coll.';'.$_REQUEST['br_q']), 0, 8);
 			$arr_hash_freq[$hk] = $hash_freq;
 
 			$sh = <<<XSH
@@ -423,7 +496,7 @@ XSH;
 				$sh .= <<<XSH
 
 if [ ! -s '$dbname.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $dbname.sqlite $corp $s_nd >$dbname.err 2>&1 &
+	/usr/bin/time -f '%e' -o $dbname.time timeout -k 7m 5m freqs '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_which 0 $subc $coll | '{$GLOBALS['WEB_ROOT']}/_bin/freq2sqlite' $dbname.sqlite $corp $s_nd $s_br_q >$dbname.err 2>&1 &
 fi
 
 XSH;
@@ -553,6 +626,11 @@ set -e
 cd '$folder'
 
 XSH;
+			$s_br = '';
+			$s_br_q = escapeshellarg($_REQUEST['br_q']);
+			if ($checked['br']) {
+				$s_br = '-r '.escapeshellarg($_REQUEST['br_f']);
+			}
 
 			$exec = false;
 			foreach ($_REQUEST['c'] as $corp => $_) {
@@ -570,7 +648,7 @@ XSH;
 				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.group-$hash_gs.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.group-$hash_gs.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-groupby' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group-$hash_gs.sqlite '$gs' >$hash-$corp.group-$hash_gs.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.group-$hash_gs.time timeout -k 7m 5m '{$GLOBALS['WEB_ROOT']}/_bin/corpquery-groupby' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query $s_br -c 0 $subc | grep -v '===NONE===' | '{$GLOBALS['WEB_ROOT']}/_bin/group-by' $hash-$corp.group-$hash_gs.sqlite '$gs' $s_br_q >$hash-$corp.group-$hash_gs.err 2>&1 &
 fi
 
 XSH;
@@ -757,11 +835,11 @@ XSH;
 </div>
 
 XHTML;
-}
+	}
 
 	// Sidebar
 	echo '<div class="container-fluid my-3"><div class="row flex-nowrap align-items-start"><div class="col sidebar">';
-	// Frequency
+	// Frequency & N-grams
 	echo <<<XHTML
 <div class="card bg-lightblue mb-3">
 <div class="card-header text-center fw-bold fs-6">
@@ -775,11 +853,11 @@ Frequency <i class="bi bi-sort-down"></i>
 <input type="hidden" name="ub" value="{$h_unbound}">
 {$h_corps}
 <div class="text-center">
-<button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="abc" title="Sort alphabetically">Sort</button>
-<button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
+<button class="btn btn-sm btn-success mb-1" id="btnAbc" type="submit" name="s" value="abc" title="Sort alphabetically">Sort</button>
+<button class="btn btn-sm btn-success mb-1" id="btnFreq" type="submit" name="s" value="freq" title="Sort by absolute frequency">Freq</button>
 <br>
-<button class="btn btn-sm btn-success btnRel" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
-<button class="btn btn-sm btn-success btnRel" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
+<button class="btn btn-sm btn-success btnRel" id="btnRelG" type="submit" name="s" value="relg" title="Sort by relative frequency (global)" disabled>Rel G</button>
+<button class="btn btn-sm btn-success btnRel" id="btnRelC" type="submit" name="s" value="relc" title="Sort by relative frequency (corpus)" disabled>Rel C</button>
 <button class="btn btn-sm btn-success btnRel" id="btnRelS" type="submit" name="s" value="rels" title="Sort by relative frequency (sub-corpus)" disabled>Rel S</button>
 </div>
 <div class="my-3">
@@ -808,18 +886,59 @@ Frequency <i class="bi bi-sort-down"></i>
 </select>
 </div>
 <div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="lc" id="lc" {$checked['lc']}>
-<label class="form-check-label" for="lc">Collapse case</label>
+	<input class="form-check-input" type="checkbox" name="lc" id="lc" {$checked['lc']}>
+	<label class="form-check-label" for="lc">Collapse case</label>
 </div>
 <div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="nd" id="nd" {$checked['nd']}>
-<label class="form-check-label" for="nd">Collapse diacritics</label>
+	<input class="form-check-input" type="checkbox" name="nd" id="nd" {$checked['nd']}>
+	<label class="form-check-label" for="nd">Collapse diacritics</label>
 </div>
 <div class="my-3 form-check">
-<input class="form-check-input" type="checkbox" name="pos" id="pos" {$checked['pos']}>
-<label class="form-check-label" for="pos">Distinguish part-of-speech</label>
+	<input class="form-check-input" type="checkbox" name="pos" id="pos" {$checked['pos']}>
+	<label class="form-check-label" for="pos">Distinguish part-of-speech</label>
 </div>
 {$word2vec}
+<div class="my-3 form-check">
+	<input class="form-check-input" type="checkbox" name="br" id="br" {$checked['br']}>
+	<label class="form-check-label" for="br">Lump results</label>
+	<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="Lump results by matching regexes against all tags in a field. Only the first tag that matches counts - a result is exclusive to one regex. Separate the regexes by semicolon."><i class="bi bi-question-square"></i></a>
+</div>
+<div class="collapse bracket">
+	<div class="my-3">
+		<label class="form-label" for="br_freq_field">Field</label>
+		<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="The field to lump matches by"><i class="bi bi-question-square"></i></a>
+		<select class="form-select" name="br_f" id="br_freq_field">
+			{$br_freq_fields}
+		</select>
+	</div>
+	<div class="my-3">
+		<input class="form-control" type="text" name="br_q" value="{$h_br_q}">
+	</div>
+</div>
+</form>
+</div></div>
+
+<div class="card bg-lightblue mb-3">
+<div class="card-header text-center fw-bold fs-6">
+N-grams <i class="bi bi-list-ol"></i>
+</div>
+<div class="card-body">
+<form method="GET" id="ngrams">
+<input type="hidden" name="l" value="{$h_language}">
+<input type="hidden" name="q" value="{$h_query}">
+<input type="hidden" name="q2" value="{$h_query2}">
+<input type="hidden" name="ub" value="{$h_unbound}">
+{$h_corps}
+<div class="text-center">
+<button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="ngrams">N-grams</button>
+</div>
+<div class="my-3">
+<label class="form-label" for="freq_field">Field</label>
+<a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="The field to show"><i class="bi bi-question-square"></i></a>
+<select class="form-select" name="f" id="freq_field">
+	{$freq_fields}
+</select>
+</div>
 </form>
 </div></div>
 
@@ -875,6 +994,9 @@ XHTML;
 <input type="hidden" name="q" value="{$h_query}">
 <input type="hidden" name="q2" value="{$h_query2}">
 <input type="hidden" name="ub" value="{$h_unbound}">
+<input type="hidden" name="br" value="{$checked['br']}">
+<input type="hidden" name="br_f" value="{$_REQUEST['br_f']}">
+<input type="hidden" name="br_q" value="{$h_br_q}">
 {$h_corps}
 <div class="card-header text-center fw-bold fs-6">
 Group By <i class="bi bi-bar-chart-steps"></i>
@@ -972,7 +1094,7 @@ XHTML;
 Other <i class="bi bi-sliders"></i>
 </div>
 <div class="card-body">
-<div class="mb-3"><label for="qpagesize" class="form-label">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option></select></div>
+<div class="mb-3"><label for="qpagesize" class="form-label">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="1000">1000</option><option value="2000">2000</option><option value="3000">3000</option><option value="4000">4000</option><option value="5000">5000</option></select></div>
 XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="my-3"><label class="form-label" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
@@ -1020,7 +1142,12 @@ XHTML;
 	echo '<div class="row align-items-start row-cols-auto">';
 	if ($_REQUEST['s'] === 's') {
 		foreach ($_REQUEST['c'] as $corp => $_) {
-			echo '<div class="col qresults" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
+			echo '<div class="col qresults qcorpus" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
+		}
+	}
+	else if ($_REQUEST['s'] === 'ngrams') {
+		foreach ($_REQUEST['c'] as $corp => $_) {
+			echo '<div class="col qngrams qcorpus" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="qbody">…searching…</div></div>';
 		}
 	}
 	else if ($_REQUEST['s'] === 'abc' || $_REQUEST['s'] === 'freq' || $_REQUEST['s'] === 'relg' || $_REQUEST['s'] === 'relc' || $_REQUEST['s'] === 'rels') {
@@ -1036,7 +1163,7 @@ XHTML;
 				$toasts[] = '<div class="toast align-items-center text-bg-warning bg-opacity-50" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true" data-bs-delay="5000"><div class="d-flex"><div class="toast-body">Corpus '.$corp.' has no sub-corpus for <i>Rel S</i>.</div><button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button></div></div>';
 				continue;
 			}
-			echo '<div class="col qfreqs" id="'.$corp.'"><div class="d-flex">
+			echo '<div class="col qfreqs qcorpus" id="'.$corp.'"><div class="d-flex">
 			<div class="col qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($cname).'</span><br><span class="qrange">…</span> of <span class="qtotal">…</span></div><div class="col text-end qtsv">…</div></div><div class="qbody">…searching…</div></div>';
 			if (strpos($corp, '_0combo_') !== false) {
 				echo '<div class="w-100"></div>';
@@ -1052,7 +1179,7 @@ XHTML;
 		echo '</div>';
 		echo '<div class="row">';
 		foreach ($_REQUEST['c'] as $corp => $_) {
-			echo '<div class="col qhist" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
+			echo '<div class="col qhist qcorpus" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
 		}
 	}
 	else if ($_REQUEST['s'] === 'group') {
@@ -1064,7 +1191,7 @@ XHTML;
 		echo '</div>';
 		echo '<div class="row">';
 		foreach ($_REQUEST['c'] as $corp => $_) {
-			echo '<div class="col qgroup" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
+			echo '<div class="col qgroup qcorpus" id="'.htmlspecialchars($corp).'"><div class="qhead text-center fs-5"><span class="qcname fw-bold fs-4">'.htmlspecialchars($corp).'</span><div class="qbody">…searching…</div></div></div>';
 		}
 	}
 	else if ($_REQUEST['s'] === 'wv') {

@@ -38,7 +38,7 @@ while ($a === 'conc') {
 	$rv['c'] = $context;
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;
-	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 5000);
 	$rv['n'] = $pagesize;
 
 	$corps = [];
@@ -47,7 +47,7 @@ while ($a === 'conc') {
 	$cs = [];
 	if (!empty($_REQUEST['rs']) && is_array($_REQUEST['rs'])) {
 		$rs = filter_corpora_v($_REQUEST['rs']);
-		$corps = array_merge($corps, $ts);
+		$corps = array_merge($corps, $rs);
 	}
 	if (!empty($_REQUEST['ts']) && is_array($_REQUEST['ts'])) {
 		$ts = filter_corpora_v($_REQUEST['ts']);
@@ -184,6 +184,77 @@ while ($a === 'conc') {
 	break;
 }
 
+while ($a === 'ngrams') {
+	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
+		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	$hash = $_REQUEST['h'];
+	$folder = $GLOBALS['CORP_ROOT'].'/cache/'.substr($hash, 0, 2).'/'.substr($hash, 2, 2);
+	if (!is_dir($folder)) {
+		$rv['errors'][] = 'E020: Invalid hash '.$_REQUEST['h'];
+		break;
+	}
+	chdir($folder);
+
+	$field = trim($_REQUEST['f'] ?? 'word');
+	if (!array_key_exists($field, $GLOBALS['-fields'])) {
+		$field = 'word';
+	}
+	$rv['f'] = $field;
+	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
+	$rv['s'] = $offset;
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 5000);
+	$rv['n'] = $pagesize;
+
+	$corps = [];
+	$rs = [];
+	$ts = [];
+	if (!empty($_REQUEST['rs']) && is_array($_REQUEST['rs'])) {
+		$rs = filter_corpora_v($_REQUEST['rs']);
+		$corps = array_merge($corps, $rs);
+	}
+	if (!empty($_REQUEST['ts']) && is_array($_REQUEST['ts'])) {
+		$ts = filter_corpora_v($_REQUEST['ts']);
+		$corps = array_merge($corps, $ts);
+	}
+	sort($corps);
+	$corps = array_unique($corps);
+
+	clearstatcache();
+	$dbs = [];
+	foreach ($corps as $corp) {
+		if (!file_exists("$hash-$corp.ngrams-$field.sqlite") || !filesize("$hash-$corp.ngrams-$field.sqlite")) {
+			$rv['info'][] = 'Not ready '.$corp;
+			continue;
+		}
+		$dbs[$corp] = new \TDC\PDO\SQLite("$hash-$corp.ngrams-$field.sqlite", [\PDO::SQLITE_ATTR_OPEN_FLAGS => \PDO::SQLITE_OPEN_READONLY]);
+	}
+
+	foreach ($rs as $corp) {
+		$hits = $dbs[$corp]->prepexec("SELECT hit_id as i, hit_text as t, hit_count as c FROM hits WHERE hit_id >= ? AND hit_id < ? ORDER BY hit_id ASC", [$offset, $offset+$pagesize])->fetchAll();
+		$rv['rs'][$corp] = $hits;
+	}
+
+	foreach ($ts as $corp) {
+		if (!array_key_exists($corp, $dbs)) {
+			$rv['info'][] = 'I020: Not loaded '.$corp;
+			continue;
+		}
+
+		$cnt = [
+			'n' => intval($dbs[$corp]->prepexec("SELECT max(hit_id) as cnt FROM hits")->fetchAll()[0]['cnt'] ?? 0),
+			'd' => 1,
+			];
+		if (!file_exists("$hash-$corp.ngrams-$field.time") || !filesize("$hash-$corp.ngrams-$field.time")) {
+			$cnt['d'] = 0;
+		}
+		$rv['ts'][$corp] = $cnt;
+	}
+
+	break;
+}
+
 while ($a === 'freq') {
 	if (empty($_REQUEST['h']) || !preg_match('~^[a-z0-9]{20}$~', $_REQUEST['h'])) {
 		$rv['errors'][] = 'E010: Invalid hash '.$_REQUEST['h'];
@@ -215,8 +286,9 @@ while ($a === 'freq') {
 	$type = $_REQUEST['t'];
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;
-	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 5000);
 	$rv['n'] = $pagesize;
+	$br = trim($_REQUEST['br'] ?? '');
 
 	if (!empty($_REQUEST['tsv'])) {
 		$offset = 0;
@@ -314,9 +386,18 @@ while ($a === 'freq') {
 			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_rel_s DESC, f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
 		}
 		else /* if ($type === 'freq') */ {
-			$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			if ($br) {
+				// '→' is U+2192 Rightwards Arrow
+				$res = $dbs[$corp]['freq']->prepexec("SELECT f_bracket || ' → ' || GROUP_CONCAT(f_text, ';') as f_text, SUM(f_abs) as f_abs, SUM(f_rel_g) as f_rel_g, SUM(f_rel_c) as f_rel_c, SUM(f_rel_s) as f_rel_s FROM (SELECT * FROM freqs ORDER BY f_abs DESC) GROUP BY f_bracket ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			}
+			else {
+				$res = $dbs[$corp]['freq']->prepexec("SELECT f_text, f_abs, f_rel_g, f_rel_c, f_rel_s FROM freqs ORDER BY f_abs DESC, f_text ASC LIMIT {$pagesize} OFFSET {$offset}-1");
+			}
 		}
 		while ($row = $res->fetch()) {
+			if ($br && mb_strlen($row['f_text']) > 64) {
+				$row['f_text'] = mb_substr($row['f_text'], 0, 63).'…';
+			}
 			$rv['cs'][$corp]['f'][] = [$row['f_text'], intval($row['f_abs']), floatval($row['f_rel_g']), floatval($row['f_rel_c']), floatval($row['f_rel_s'])];
 		}
 	}
@@ -366,7 +447,7 @@ while ($a === 'hist') {
 	$group = $_REQUEST['g'];
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;
-	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 5000);
 	$rv['n'] = $pagesize;
 
 	$corps = [];
@@ -490,7 +571,7 @@ while ($a === 'group') {
 
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;
-	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 500);
+	$pagesize = min(max(intval($_REQUEST['n'] ?? 50), 50), 5000);
 	$rv['n'] = $pagesize;
 
 	$corps = [];

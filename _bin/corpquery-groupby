@@ -44,6 +44,9 @@ def print_result(kw_beg, kw_end, refattr, corp, attrs, structs, lrCtxSize, attrd
         w = corp.get_attr('lex').textat(pos)
         p = corp.get_attr('pos').textat(pos)
         binary_stdout.write(("\t%s_%s" % (w.next(), p.next())).encode('utf8'))
+        if refattr:
+            r = corp.get_attr(refattr).textat(pos)
+            binary_stdout.write(("\t%s" % (r.next())).encode('utf8'))
     binary_stdout.write(b"\n")
 
 def corp_query(corp, query, refattr, ctxSize, hardcut, attrs, structs,

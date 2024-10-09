@@ -27,7 +27,6 @@ cd ~/storage/corpora/dan_literature/meta
 ```
 
 ## TODO
-* (Frequencies should include POS) - No, restrict it in the search and compare manually instead
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
 * Adjustable context size
@@ -47,3 +46,4 @@ cd ~/storage/corpora/dan_literature/meta
 * Sparse show only in table
 * Use semantic vector model to disambiguate semantics
 * Double-check c_words + c_numbers + c_alnums in stats-combine
+* Check multi-corpus bracketing

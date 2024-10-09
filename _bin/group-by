@@ -36,6 +36,38 @@ $s_attrs = explode(':', $attrs);
 sort($s_attrs);
 $intattr = array_fill_keys($s_attrs, true);
 
+$brs = explode(';', trim($argv[3]));
+$br_any = false;
+foreach ($brs as $k => $br) {
+	$br = trim($br);
+	if ($br === '') {
+		$br_any = true;
+		unset($brs[$k]);
+		continue;
+	}
+
+	if (strpos($br, '~') === false) {
+		$br = "~$br~";
+	}
+	else if (strpos($br, '@') === false) {
+		$br = "@$br@";
+	}
+	else if (strpos($br, '#') === false) {
+		$br = "#$br#";
+	}
+	else if (strpos($br, '=') === false) {
+		$br = "=$br=";
+	}
+	else if (strpos($br, '/') === false) {
+		$br = "/$br/";
+	}
+	else {
+		unset($brs[$k]);
+		continue;
+	}
+	$brs[$k] = $br;
+}
+
 $last = [
 // On the off-chance there is a sentence without an attribute first, don't record it
 	];
@@ -57,12 +89,6 @@ while ($line = fgets(STDIN)) {
 				$m[1] = trim($m[1]);
 				if (!is_numeric($m[1])) {
 					$intattr[$attr] = false;
-				}
-				if ($attr === 'year') {
-					if ($m[1] === 'x') {
-						$m[1] = 9999;
-					}
-					$m[1] = intval($m[1]);
 				}
 				$last[$attr] = $m[1];
 			}
