@@ -1263,7 +1263,9 @@ else {
 <td></td>
 </tr>
 <tr>
-<td class="center"><button type="button" onclick="refine.toggle_dependency(this);">Dep Head</button> &nbsp; <span class="btnSibling hidden"><button type="button" onclick="refine.toggle_sibling(this);">Sibling</button> &nbsp; </span><button type="button" onclick="refine.delete_table(this);">Delete</button></td>
+<td class="center"><button type="button" onclick="refine.toggle_dependency(this);">Dep Head</button> &nbsp;
+<!-- <span class="btnSibling hidden"><button type="button" onclick="refine.toggle_sibling(this);">Sibling</button> &nbsp; </span> -->
+<button type="button" onclick="refine.delete_table(this);">Delete</button></td>
 </tr>
 </table>
 

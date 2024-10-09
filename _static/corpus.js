@@ -1087,6 +1087,8 @@
 			$('#freq_field').val(field);
 		}
 
+		let dpos = (get(params, 'pos', '') === 'on');
+
 		let query1 = get(params, 'q', '');
 		let query2 = get(params, 'q2', '');
 		let query = query2 ? query2 : query1;
@@ -1260,7 +1262,7 @@
 				html += '<tbody class="font-monospace text-nowrap text-break">';
 				for (let i=0 ; i<rv.cs[corp].f.length ; ++i) {
 					let rpl = escapeRegExp(rv.cs[corp].f[i][0]);
-					if (wv && rv.cs[corp].f[i][0].indexOf('\t') !== -1) {
+					if ((wv || dpos) && rv.cs[corp].f[i][0].indexOf('\t') !== -1) {
 						let ts = rv.cs[corp].f[i][0].split('\t');
 						rpl = escapeRegExp(ts[0]) + '" & pos="' + escapeRegExp(ts[1]);
 					}
