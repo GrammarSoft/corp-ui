@@ -51,6 +51,7 @@
 		prev_max_n: 0,
 		offset: Defs.offset,
 		named: [],
+		siblings: false,
 		last_rv: null,
 		depc: 0,
 		histgs: {},
@@ -648,7 +649,9 @@
 				rv += ' & ';
 			}
 			rv = rv.replace(/ & $/, '');
-			rv += '] ';
+			rv += ']';
+			rv += q.quants[i];
+			rv += ' ';
 		}
 		rv = rv.replace(/ $/, '');
 
@@ -907,6 +910,11 @@
 								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
 									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									txt = txt.substr(tabs[0].length).trim();
+								}
+								else if (state.siblings && named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
+									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
+									named.shift();
 								}
 								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
 									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
@@ -2405,6 +2413,12 @@
 		let n = null;
 		while ((n = rx.exec(q)) !== null) {
 			state.named.push(n[1]);
+		}
+		if (/\bs_[a-z_]+!?="/.test(q)) {
+			state.siblings = true;
+			for (let i=1 ; i<100 ; ++i) {
+				state.named.push(i);
+			}
 		}
 
 		$('.btnShowSearch').click(function() {

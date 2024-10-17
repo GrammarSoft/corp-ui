@@ -47,10 +47,16 @@ tr:target, td:target, th:target {
 }
 
 .depSelf {
-	text-decoration: underline overline blue;
+	text-decoration: underline overline #6495ed;
 }
 .depParent {
-	text-decoration: underline overline orange;
+	text-decoration: underline overline #ff8c00;
+}
+.depHead {
+	color: #6495ed;
+}
+.depSibling {
+	color: #ff8c00;
 }
 
 .columns {

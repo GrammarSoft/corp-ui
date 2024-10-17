@@ -103,7 +103,9 @@
 		}
 		else {
 			dp.addClass('hidden').text('');
-			tbl.find('.inbox').removeClass('hidden');
+			if (tbl.find('.depbox').hasClass('hidden')) {
+				tbl.find('.inbox').removeClass('hidden');
+			}
 		}
 		update_search();
 	}
@@ -121,14 +123,13 @@
 
 			dp.find('td').first().html(html);
 			dp.find('td').first().find('input').change(update_search);
-			tbl.find('.btnSibling').removeClass('hidden');
 		}
 		else {
 			dp.addClass('hidden');
 			dp.html('<td></td>');
-			tbl.find('.sibbox').addClass('hidden').text('');
-			tbl.find('.btnSibling').addClass('hidden');
-			tbl.find('.inbox').removeClass('hidden');
+			if (tbl.find('.sibbox').hasClass('hidden')) {
+				tbl.find('.inbox').removeClass('hidden');
+			}
 		}
 		update_search();
 	}

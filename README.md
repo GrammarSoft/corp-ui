@@ -30,18 +30,16 @@ cd ~/storage/corpora/dan_literature/meta
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
 * Adjustable context size
-* Implement sibling search
-* Highlight parents if searched for
+* Highlight parents and siblings if searched for
 * Per-language help links in top to CG grammar docs
 * Break down Group By hits into per-s histogram
 * Annotate Group-By bars with unique column values not part of the group-by
 * Group-By type-token relation via lex_POS
-  * FIX sparse calculation
+  * Fix sparse calculation
 * View the whole work (for open corpora)
 * 2D queries as scatter plots (E.g., Q+/- and a semantic class)
   * Fields to limit on absolute X/Y value
   * User-defined cutoff, default 0.1 or 0.05
-  * Colors by max of all, x, or y
   * Toggle text
 * Sparse show only in table
 * Use semantic vector model to disambiguate semantics

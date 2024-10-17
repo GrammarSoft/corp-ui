@@ -40,6 +40,7 @@ $_REQUEST['b'] = trim($_REQUEST['b'] ?? 'le');
 $_REQUEST['o'] = max(min(intval($_REQUEST['o'] ?? 0), 4), -4);
 $_REQUEST['ga'] = trim($_REQUEST['ga'] ?? 's');
 $_REQUEST['cut'] = intval($_REQUEST['cut'] ?? 0);
+$_REQUEST['ub'] = $_REQUEST['ub'] ?? '';
 
 $_REQUEST['br_q'] = trim($_REQUEST['br_q'] ?? '');
 $h_br_q = htmlspecialchars($_REQUEST['br_q']);
@@ -123,7 +124,7 @@ foreach ($arr_query as $hk => $query) {
 		}
 	}
 	if (preg_match('~\b(\d+):\[.*?\1\.~', $query)) {
-		$_REQUEST['ub'] = 0;
+		$_REQUEST['ub'] = 2;
 	}
 	$arr_query[$hk] = $query;
 }
@@ -141,7 +142,7 @@ foreach ($arr_query2 as $hk => $query2) {
 		}
 	}
 	if (preg_match('~\b(\d+):\[.*?\1\.~', $query2)) {
-		$_REQUEST['ub'] = 0;
+		$_REQUEST['ub'] = 2;
 	}
 	$arr_query2[$hk] = $query2;
 }
@@ -152,6 +153,14 @@ $h_unbound = '1';
 
 foreach ($arr_query as $hk => $query) {
 	$query2 = $arr_query2[$hk];
+	if (preg_match('~\bs_[a-z_]+!?="~', $query)) {
+		$query = siblingify($query);
+		$_REQUEST['ub'] = 2;
+	}
+	if (preg_match('~\bs_[a-z_]+!?="~', $query2)) {
+		$query2 = siblingify($query2, 50);
+		$_REQUEST['ub'] = 2;
+	}
 	if (empty($_REQUEST['ub'])) {
 		$h_unbound = '';
 		if (!empty($query2)) {
@@ -1266,7 +1275,7 @@ else {
 </tr>
 <tr>
 <td class="center"><button type="button" onclick="refine.toggle_dependency(this);">Dep Head</button> &nbsp;
-<!-- <span class="btnSibling hidden"><button type="button" onclick="refine.toggle_sibling(this);">Sibling</button> &nbsp; </span> -->
+<span class="btnSibling"><button type="button" onclick="refine.toggle_sibling(this);">Sibling</button> &nbsp; </span>
 <button type="button" onclick="refine.delete_table(this);">Delete</button></td>
 </tr>
 </table>
@@ -1344,7 +1353,7 @@ else {
 </div>
 <div class="col">
 	<div class="form-check">
-		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(empty($_REQUEST['ub']) ? '' : 'checked');?>>
+		<input class="form-check-input" type="checkbox" name="ub" id="unbound" <?=(($_REQUEST['ub'] !== 'on') ? '' : 'checked');?>>
 		<label class="form-check-label" for="unbound">Don't wrap <code>(…) within &lt;s/&gt;</code></label>
 	</div>
 	<button type="button" class="btn btn-white-success btn-outline-success btnShowCorpora mt-3" style="display: none">Show corpora <i class="bi bi-body-text"></i></button>
