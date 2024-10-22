@@ -36,7 +36,7 @@ $s_attrs = explode(':', $attrs);
 sort($s_attrs);
 $intattr = array_fill_keys($s_attrs, true);
 
-$brs = explode(';', trim($argv[3]));
+$brs = explode(';', trim($argv[3] ?? ''));
 $br_any = false;
 foreach ($brs as $k => $br) {
 	$br = trim($br);

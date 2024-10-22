@@ -5,6 +5,7 @@
 <textfield name="Word" attr="word" negatable="true"/>
 <textfield name="Base" attr="lex" negatable="true"/>
 <textfield name="Extra" attr="extra" negatable="true"/>
+<textfield name="Sem" attr="sem" negatable="true"/>
 
 <expandlist name="Part of Speech" negatable="true">
   <multiselect name="Noun" attr="pos" value="N">
@@ -53,6 +54,8 @@
      <checkbox name="Preposition" attr="pos" value="PRP"/>
      <checkbox name="Numeral" attr="pos" value="NUM"/>
      <checkbox name="Article" attr="pos" value="ART"/>
+     <checkbox name="Interjection" attr="pos" value="IN"/>
+     <checkbox name="Punctuation" attr="pos" value="PU"/>
   </multiselect>
 
 </expandlist>

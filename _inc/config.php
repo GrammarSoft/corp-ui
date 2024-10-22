@@ -486,7 +486,7 @@ $GLOBALS['-corpora'] = [
 		'ita_literature' => [
 			'name' => 'Literature 1840-1930',
 			'group_by' => ['author', 'title', 'year', 'gender'],
-			'word2vec' => ['donna_N';'ragazza_N', 'uomo_N';'ragazzo_N', 'povero_ADJ', 'ricco_ADJ'],
+			'word2vec' => ['donna_N;ragazza_N', 'uomo_N;ragazzo_N', 'povero_ADJ', 'ricco_ADJ'],
 			],
 		],
 	'nor' => [
