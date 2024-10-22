@@ -483,6 +483,11 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Wikipedia',
 			'percent_combo' => 50,
 			],
+		'ita_literature' => [
+			'name' => 'Literature 1840-1930',
+			'group_by' => ['author', 'title', 'year', 'gender'],
+			'word2vec' => ['donna_N';'ragazza_N', 'uomo_N';'ragazzo_N', 'povero_ADJ', 'ricco_ADJ'],
+			],
 		],
 	'nor' => [
 		'nor_leipzig' => [
