@@ -595,6 +595,7 @@ $GLOBALS['-corpora'] = [
 		'por_literature' => [
 			'name' => 'Portuguese literature',
 			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
+			'word2vec' => ['queijo_N'],
 			],
 		'por_blogs' => [
 			'name' => 'Portuguese blogs',
