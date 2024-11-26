@@ -46,12 +46,16 @@
 		focus: Defs.focus,
 		focus_n: Defs.focus_n,
 		context: Defs.context,
+		context_chars: Defs.context_chars,
 		pagesize: Defs.pagesize,
 		max_n: 0,
 		prev_max_n: 0,
 		offset: Defs.offset,
-		named: [],
-		siblings: false,
+		query: null,
+		heads: {},
+		siblings: {},
+		has_head: false,
+		has_sib: false,
 		last_rv: null,
 		depc: 0,
 		histgs: {},
@@ -86,6 +90,10 @@
 
 		setTimeout(() => URL.revokeObjectURL(a.href), 40000);
 		setTimeout(() => a.click(), 100);
+	}
+
+	function clone(v) {
+		return structuredClone(v);
 	}
 
 	function clamp(val, min, max) {
@@ -462,6 +470,18 @@
 			if (state.pagesize === Defs.pagesize) {
 				url.searchParams.delete('pagesize');
 			}
+			url.searchParams.set('context', state.context);
+			if (state.context === Defs.context) {
+				url.searchParams.delete('context');
+			}
+			url.searchParams.set('context-chars', state.context_chars);
+			if (state.context_chars === Defs.context_chars) {
+				url.searchParams.delete('context-chars');
+			}
+			url.searchParams.set('context-span', $('#qcontextspan').prop('checked') ? 'on' : '');
+			if (!$('#qcontextspan').prop('checked')) {
+				url.searchParams.delete('context-span');
+			}
 			window.history.pushState({}, '', url);
 		}
 
@@ -782,6 +802,19 @@
 					let row = $('#'+corp+'-'+cntx.i);
 					let p = parseInt(row.attr('data-p'));
 					let txt = row.find('.text-center').text();
+					let txts = txt.split('\t');
+					for (let t=0 ; t<txts.length ; ++t) {
+						let m = null;
+						if ((m = /^(\d+)\ue001(.+?)\ue002([A-Z]+)$/.exec(txts[t])) !== null) {
+							txts[t] = {n: parseInt(m[1]), w: m[2], p: m[3]};
+						}
+						else if ((m = /^(.+?)\ue002([A-Z]+)$/.exec(txts[t])) !== null) {
+							txts[t] = {n: 0, w: m[1], p: m[2]};
+						}
+						else {
+							console.log(`INVALID HIT ${i}: ${txts[t]}`);
+						}
+					}
 					let s_tag = '';
 					let s_article = '';
 					let s_id = '';
@@ -806,6 +839,37 @@
 						}
 						else {
 							++n;
+							ts[j] = ts[j].split('\t');
+						}
+					}
+
+					for (let j=0,n = cntx.b ; j<ts.length ; ++j) {
+						if (typeof ts[j] === 'string' && /^<s[ >]/.test(ts[j])) {
+							// Nothing
+						}
+						else if (typeof ts[j] === 'string' && /^<\/s>/.test(ts[j])) {
+							// Nothing
+						}
+						else {
+							if (n == p) {
+								for (let t=0 ; t<txts.length ; ++t) {
+									let found = true;
+									let ti = t;
+									for (let tj=j ; ti<txts.length && tj<ts.length; ++ti, ++tj) {
+										if (txts[ti].w != ts[tj][fields['word']] || txts[ti].p != ts[tj][fields['pos']]) {
+											//console.log(txts[ti], ts[tj]);
+											found = false;
+											break;
+										}
+									}
+									if (found) {
+										txts = txts.slice(t);
+										//console.log(txts);
+										break;
+									}
+								}
+							}
+							++n;
 						}
 					}
 
@@ -820,10 +884,9 @@
 						};
 					let n = cntx.b;
 					let good = (s_id === '');
-					let named = Array.from(state.named);
 					let last_one = 0;
 					for (let j=0 ; j<ts.length ; ++j) {
-						if (/^<s[ >]/.test(ts[j])) {
+						if (typeof ts[j] === 'string' && /^<s[ >]/.test(ts[j])) {
 							if (ts[j].indexOf(' tweet="'+s_article+'"') !== -1) {
 								//console.log([cntx.i, j, n, s_tag]);
 								good = true;
@@ -835,13 +898,16 @@
 							else {
 								good = (s_id === '');
 							}
+							if ($('#qcontextspan').prop('checked')) {
+								good = true;
+							}
 						}
-						else if (/^<\/s>/.test(ts[j])) {
+						else if (typeof ts[j] === 'string' && /^<\/s>/.test(ts[j])) {
 							// Nothing
 						}
 						else {
 							if (good) {
-								let tabs = ts[j].split(/\t/);
+								let tabs = ts[j];
 								while (tabs.length < num_fields) {
 									tabs.push('');
 								}
@@ -860,16 +926,19 @@
 								if (!tabs[fields['lex_nd']].length) {
 									tabs[fields['lex_nd']] = tabs[fields['word_nd']];
 								}
+								let dself = parseInt(tabs[fields['dself']]);
+								let dparent = parseInt(tabs[fields['dparent']]);
 
 								if (!last_one) {
-									last_one = state.depc - parseInt(tabs[fields['dself']]) + 1;
+									last_one = state.depc - dself + 1;
 								}
-								if (parseInt(tabs[fields['dself']]) == 1) {
+								if (dself == 1) {
 									last_one = state.depc;
 								}
 								++state.depc;
 
 								let ins = tabs[0].replace(/[ \s\t]/g, '_');
+								let attrs = [];
 								let title = '<div class="text-center">';
 								for (let f in fields) {
 									if (/_(lc|nd)$/.test(f) || f === 'dself' || f === 'dparent') {
@@ -895,34 +964,31 @@
 									}
 									title += escHTML(tabs[fields[f]]);
 									title += '</span><br>';
+									attrs.push('data-field-'+f+'="'+escHTML(tabs[fields[f]])+'"');
 								}
 								if (fields.hasOwnProperty('dself') && fields.hasOwnProperty('dparent') && tabs[fields['dself']] && tabs[fields['dparent']]) {
 									title += '<span>'+tabs[fields['dself']]+' → '+tabs[fields['dparent']]+'</span>';
 								}
 								title += '</div>';
 								title = escHTML(title);
+								attrs = attrs.join(' ');
 
 								if (n < p) {
-									parts.p.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.p.push('<span '+attrs+' data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + dparent)+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.pz.push(u_length(tabs[0]));
 									parts.ptz += u_length(tabs[0]) + 1;
 								}
-								else if (txt.length && txt.indexOf(tabs[0]) == 0) {
-									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
-									txt = txt.substr(tabs[0].length).trim();
-								}
-								else if (state.siblings && named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
-									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
-									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
-									named.shift();
-								}
-								else if (named.length && txt.length && txt.indexOf('<'+named[0]+': '+tabs[0]+' >') == 0) {
-									parts.m.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+named[0]+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
-									txt = txt.substr(('<'+named[0]+': '+tabs[0]+' >').length).trim();
-									named.shift();
+								else if (txts.length) {
+									if (!txts[0].n || state.has_sib) {
+										parts.m.push('<span '+attrs+' data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + dparent)+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									}
+									else {
+										parts.m.push('<span '+attrs+' data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + dparent)+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'"><span class="fw-light">'+txts[0].n+':</span>'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									}
+									txts.shift();
 								}
 								else {
-									parts.s.push('<span data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + parseInt(tabs[fields['dparent']]))+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
+									parts.s.push('<span '+attrs+' data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="bottom" title="'+title+'" data-parent="'+(last_one + dparent)+'" class="d-inline-block align-top text-center showParent" id="t'+state.depc+'">'+escHTML(ins)+appendIfNot0(tabs)+'</span>');
 									parts.sz.push(u_length(tabs[0]));
 									parts.stz += u_length(tabs[0]) + 1;
 								}
@@ -936,16 +1002,16 @@
 						info += ' <a href="https://edu.visl.dk/social/?t='+s_article+'" target="_tweet"><i class="bi bi-link-45deg"></i></a>';
 					}
 					let html = '<td><a class="popup-export" target="corp_export" href="./export.php?c['+escHTML(corp)+']=1&amp;ids='+s_id+'" data-id="'+s_id+'"><i class="bi bi-box-arrow-up-right"></i></a> '+info+'</td><td class="text-end">';
-					while (parts.p.length > 1 && parts.ptz > Defs.context_chars) {
+					while (parts.p.length > 1 && parts.ptz > state.context_chars) {
 						parts.ptz -= parts.pz[0] + 1;
 						parts.p.shift();
 						parts.pz.shift();
 					}
 					html += parts.p.join(' ');
-					html += '</td><td class="text-start"><span class="fw-bold me-1">';
+					html += '</td><td class="text-start"><span class="fw-bold me-1 qmatch">';
 					html += parts.m.join(' ');
 					html += '</span> ';
-					while (parts.s.length > 1 && parts.stz > Defs.context_chars) {
+					while (parts.s.length > 1 && parts.stz > state.context_chars) {
 						parts.stz -= parts.sz[parts.s.length-1] + 1;
 						parts.s.pop();
 						parts.sz.pop();
@@ -965,6 +1031,42 @@
 					rq.cs[corp][parseInt($(this).text())] = 1;
 				});
 				$('#'+corp).find('.showParent').off().click(showParent).focus(showParent).mouseover(showParent);
+
+				if (state.has_head || state.has_sib) {
+					$('#'+corp).find('.qmatch').each(function() {
+						let id = parseInt($(this).find('span').first().attr('id').substr(1));
+						for (let i=0 ; i<999 ; ++i) {
+							if (state.heads.hasOwnProperty(i)) {
+								let dhead = $('#t'+(id+i)).attr('data-parent');
+								$('#t'+dhead).addClass('depHead');
+							}
+							if (state.siblings.hasOwnProperty(i)) {
+								let sib = state.siblings[i];
+								let dhead = $('#t'+(id+i)).attr('data-parent');
+								$('span[data-parent="'+dhead+'"]').each(function() {
+									let s = $(this);
+									if (s.attr('id') === '#t'+(id+i)) {
+										return;
+									}
+									let good = true;
+									for (let j=0 ; j<sib.length ; ++j) {
+										let k = sib[j].k.slice(2);
+										let f = s.attr('data-field-'+k);
+										let v = sib[j].v.slice(1, -1);
+										if (!(new RegExp(v)).test(f)) {
+											good = false;
+											//console.log(`Sib fail: ${v} != ${f}`);
+											break;
+										}
+									}
+									if (good) {
+										s.addClass('depSibling');
+									}
+								});
+							}
+						}
+					});
+				}
 			}
 		}
 
@@ -1089,6 +1191,9 @@
 			};
 
 		let field = params.get('f');
+		if (get(params, 'hf', false) && field.indexOf('h_') !== 0) {
+			field = 'h_' + field;
+		}
 		let wv = (get(params, 'wv', '') === 'on');
 		if (wv && field != 'lex' && field != 'h_lex') {
 			field = 'lex';
@@ -2399,25 +2504,36 @@
 		state.url = new URL(window.location);
 		state.params = state.url.searchParams;
 		let params = state.params;
-		state.focus = params.has('focus') ? params.get('focus') : Defs.focus;
+		state.focus = get(params, 'focus', Defs.focus);
 		state.focus_n = fields[state.focus];
-		state.offset = params.has('offset') ? parseInt(params.get('offset')) : Defs.offset;
-		state.pagesize = params.has('pagesize') ? parseInt(params.get('pagesize')) : Defs.pagesize;
+		state.offset = parseInt(get(params, 'offset', Defs.offset));
+		state.pagesize = parseInt(get(params, 'pagesize', Defs.pagesize));
 
 		if (params.has('g')) {
 			$('#qhistgroup').val(params.get('g'));
 		}
 
-		let rx = /\b(\d+):\[/g;
-		let q = params.get('q');
-		let n = null;
-		while ((n = rx.exec(q)) !== null) {
-			state.named.push(n[1]);
-		}
-		if (/\bs_[a-z_]+!?="/.test(q)) {
-			state.siblings = true;
-			for (let i=1 ; i<100 ; ++i) {
-				state.named.push(i);
+		let q = get(params, 'q', '');
+		let q2 = get(params, 'q2', '');
+		q = q2 ? q2 : q;
+		state.query = parse_query(q);
+
+		state.heads = {};
+		state.siblings = {};
+		for (let i=0 ; i<state.query.tokens.length ; ++i) {
+			let t = state.query.tokens[i];
+			for (let j=0 ; j<t.length ; ++j) {
+				if (/^h_/.test(t[j].k)) {
+					state.heads[i] = true;
+					state.has_head = true;
+				}
+				if (/^s_/.test(t[j].k)) {
+					if (!state.hasOwnProperty(i)) {
+						state.siblings[i] = [];
+					}
+					state.siblings[i].push(t[j]);
+					state.has_sib = true;
+				}
 			}
 		}
 
@@ -2577,7 +2693,18 @@
 			state.offset = Math.floor(state.offset/n)*n + 1;
 			repaginate();
 			loadOffset(state.offset, true);
-		});
+		}).val(get(params, 'pagesize', 50));
+
+		$('#qcontextsize').change(function() {
+			let n = parseInt($(this).val());
+			state.context_chars = n;
+			state.context = Math.floor(state.context_chars/7) + 10;
+			loadOffset(state.offset, true);
+		}).val(get(params, 'context-chars', 60));
+
+		$('#qcontextspan').change(function() {
+			loadOffset(state.offset, true);
+		}).prop('checked', get(params, 'context-span', '') == 'on');
 
 		$('#freq_field').change(toggleButtons);
 

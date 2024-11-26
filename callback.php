@@ -34,7 +34,7 @@ while ($a === 'conc') {
 	}
 	chdir($folder);
 
-	$context = min(max(intval($_REQUEST['c'] ?? 7), 0), 15);
+	$context = min(max(intval($_REQUEST['c'] ?? 18), 0), $GLOBALS['-context-max']);
 	$rv['c'] = $context;
 	$offset = max(intval($_REQUEST['s'] ?? 0), 0);
 	$rv['s'] = $offset;

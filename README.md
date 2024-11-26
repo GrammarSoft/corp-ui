@@ -29,7 +29,7 @@ cd ~/storage/corpora/dan_literature/meta
 ## TODO
 * Share corpus search without password
 * If no corpora are selected, pick the largest unprotected ones
-* Adjustable context size
+* User-option to show "media corpus"-like contexts with multiple sentences or paragraphs
 * Highlight parents and siblings if searched for
 * Per-language help links in top to CG grammar docs
 * Break down Group By hits into per-s histogram
@@ -47,3 +47,4 @@ cd ~/storage/corpora/dan_literature/meta
 * Check multi-corpus bracketing
 * N-grams should be clickable - this will need query results as tab-separated
 * Multi-word expressions are hard to search for without CQP-speak - maybe have a per-corpus/language list of them
+* When coming from group-by or histogram, freq and ngrams should be disabled, with a message

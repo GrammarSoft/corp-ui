@@ -30,19 +30,52 @@ $db->exec("CREATE TABLE hits (
 $db->beginTransaction();
 $ins = $db->prepare("INSERT INTO hits (hit_id, hit_pos, hit_text) VALUES (?, ?, ?)");
 
+$last = null;
+
 for ($i=1,$n=0 ; $line = fgets(STDIN) ; ++$i) {
 	if (!preg_match('~^#(\d+) < (.+?) >\s*$~', $line, $m)) {
 		fprintf(STDERR, "No match: %s", $line);
 		continue;
 	}
-	++$n;
-	$ins->execute([$n, intval($m[1]), $m[2]]);
 
-	if ($i % 10000 == 0) {
-		$db->commit();
-		$db->beginTransaction();
+	$m[2] = preg_replace('~<(\d+): (.+?) /([A-Z]+) > \t?~', "$1\u{e001}$2\u{e002}$3\t", $m[2]);
+	$m[2] = preg_replace('~<(\d+): (.+?) /([A-Z]+) >$~', "$1\u{e001}$2\u{e002}$3", $m[2]);
+	$m[2] = preg_replace('~ /([A-Z]+) \t~', "\u{e002}$1\t", $m[2]);
+	$m[2] = preg_replace('~ /([A-Z]+) ~', "\u{e002}$1\t", $m[2]);
+	$m[2] = preg_replace('~ /([A-Z]+)$~', "\u{e002}$1", $m[2]);
+
+	$off = intval($m[1]);
+	$len = substr_count($m[2], "\t");
+
+	if (empty($last)) {
+		$last = [$off, $m[2], $len];
+	}
+	else {
+		if ($off >= $last[0] && $off + $len <= $last[0] + $last[2]) {
+			//fprintf(STDERR, "Skipping %u (%u) => %u (%u) ... this is subset of last\n", $off, $len, $last[0], $last[2]);
+			continue;
+		}
+		else if ($off <= $last[0] && $off + $len >= $last[0] + $last[2]) {
+			//fprintf(STDERR, "Skipping %u (%u) => %u (%u) ... last is subset of this\n", $off, $len, $last[0], $last[2]);
+			$last = [$off, $m[2], $len];
+			continue;
+		}
+		else {
+			++$n;
+			$ins->execute([$n, $last[0], $last[1]]);
+
+			if ($i % 10000 == 0) {
+				$db->commit();
+				$db->beginTransaction();
+			}
+
+			$last = [$off, $m[2], $len];
+		}
 	}
 }
+
+++$n;
+$ins->execute([$n, $last[0], $last[1]]);
 
 $db->commit();
 $db->exec("PRAGMA ignore_check_constraints = OFF");

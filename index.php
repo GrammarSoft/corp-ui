@@ -340,7 +340,7 @@ XSH;
 				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -c 0 -a word,pos '-l\t' $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2sqlite' $hash-$corp.sqlite >$hash-$corp.err 2>&1 &
 fi
 
 XSH;
@@ -387,7 +387,7 @@ XSH;
 				$sh .= <<<XSH
 
 if [ ! -s '$hash-$corp.ngrams-$field.sqlite' ]; then
-	/usr/bin/time -f '%e' -o $hash-$corp.ngrams-$field.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -a $field -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2ngrams' $hash-$corp.ngrams-$field.sqlite >$hash-$corp.ngrams-$field.err 2>&1 &
+	/usr/bin/time -f '%e' -o $hash-$corp.ngrams-$field.time timeout -k 7m 5m corpquery '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query -a $field,pos '-l\t' -c 0 $subc | '{$GLOBALS['WEB_ROOT']}/_bin/query2ngrams' $hash-$corp.ngrams-$field.sqlite >$hash-$corp.ngrams-$field.err 2>&1 &
 fi
 
 XSH;
@@ -1112,6 +1112,11 @@ Other <i class="bi bi-sliders"></i>
 </div>
 <div class="card-body">
 <div class="mb-3"><label for="qpagesize" class="form-label">Page size</label><select class="form-select" id="qpagesize"><option value="50">50</option><option value="100">100</option><option value="200">200</option><option value="300">300</option><option value="400">400</option><option value="500">500</option><option value="1000">1000</option><option value="2000">2000</option><option value="3000">3000</option><option value="4000">4000</option><option value="5000">5000</option></select></div>
+<div class="mb-3"><label for="qcontextsize" class="form-label">Context letters</label><select class="form-select" id="qcontextsize"><option value="60">60</option><option value="120">120</option><option value="180">180</option><option value="240">240</option><option value="300">300</option><option value="500">500</option><option value="1000">1000</option></select></div>
+<div class="my-3 form-check">
+<input class="form-check-input" type="checkbox" name="context-span" id="qcontextspan">
+<label class="form-check-label" for="qcontextspan">Show context beyond boundaries</label>
+</div>
 XHTML;
 	if ($_REQUEST['s'] === 's') {
 		echo '<div class="my-3"><label class="form-label" for="qfocus">Focus field</label><select class="form-select" id="qfocus">'.$fields.'</select></div>';
@@ -1301,6 +1306,10 @@ else {
 		<div class="row">
 			<div class="col-3"><label class="form-label" for="meta-year">Year</label></div>
 			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-year" data-sattr="year"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-year-neg">¬</label></div>
+		</div>
+		<div class="row">
+			<div class="col-3"><label class="form-label" for="meta-gender">Gender</label></div>
+			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-gender" data-sattr="gender"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-gender-neg">¬</label></div>
 		</div>
 		<div class="row">
 			<div class="col-3"><label class="form-label" for="meta-publisher">Publisher</label></div>

@@ -17,6 +17,8 @@ foreach ($GLOBALS['-corpora'] as $g => $cs) {
 	}
 }
 
+$GLOBALS['-context-max'] = 150;
+
 putenv('LC_ALL=C.UTF-8');
 setlocale(LC_ALL, 'C.UTF-8');
 $GLOBALS['WEB_ROOT'] = dirname(__DIR__);

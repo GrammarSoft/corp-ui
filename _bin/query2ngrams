@@ -31,14 +31,42 @@ $db->beginTransaction();
 $ins = $db->prepare("INSERT INTO hits (hit_id, hit_text, hit_count) VALUES (?, ?, ?)");
 
 $ngrams = [];
+$last = null;
 
 while ($line = fgets(STDIN)) {
 	if (!preg_match('~^#(\d+) < (.+?) >\s*$~', $line, $m)) {
 		fprintf(STDERR, "No match: %s", $line);
 		continue;
 	}
-	$ngrams[$m[2]] = ($ngrams[$m[2]] ?? 0) + 1;
+
+	$m[2] = preg_replace('~<\d+: (.+?) /[A-Z]+ > \t?~', "$1\t", $m[2]);
+	$m[2] = preg_replace('~<\d+: (.+?) /[A-Z]+ >$~', "$1", $m[2]);
+	$m[2] = preg_replace('~ /[A-Z]+ \t~', "\t", $m[2]);
+	$m[2] = preg_replace('~ /[A-Z]+ ~', "\t", $m[2]);
+	$m[2] = preg_replace('~ /[A-Z]+$~', '', $m[2]);
+
+	$off = intval($m[1]);
+	$len = substr_count($m[2], "\t");
+
+	if (empty($last)) {
+		$last = [$off, $m[2], $len];
+	}
+	else {
+		if ($off >= $last[0] && $off + $len <= $last[0] + $last[2]) {
+			continue;
+		}
+		else if ($off <= $last[0] && $off + $len >= $last[0] + $last[2]) {
+			$last = [$off, $m[2], $len];
+			continue;
+		}
+		else {
+			$ngrams[$last[1]] = ($ngrams[$last[1]] ?? 0) + 1;
+			$last = [$off, $m[2], $len];
+		}
+	}
 }
+
+$ngrams[$last[1]] = ($ngrams[$last[1]] ?? 0) + 1;
 
 arsort($ngrams);
 
