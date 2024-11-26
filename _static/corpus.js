@@ -568,7 +568,7 @@
 
 		src = $.trim(src.replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%'));
 
-		let re_fld = /^([a-z_]+)(!?)=/;
+		let re_fld = /^([a-z_]+)(!?)=(=?)/;
 		let re_val = /"([^"]+)"/;
 
 		let meta = null;
@@ -580,9 +580,10 @@
 			let fld = null;
 			while ((fld = re_fld.exec(meta)) !== null) {
 				let not = fld[2] ? true : false;
+				let vbtm = fld[3] ? true : false;
 				fld = fld[1];
 				//console.log(fld);
-				meta = meta.substr(fld.length + not*1 + 1);
+				meta = meta.substr(fld.length + not*1 + vbtm*1 + 1);
 				//console.log(meta);
 
 				let val = re_val.exec(meta);
@@ -593,7 +594,7 @@
 
 				meta = $.trim(meta.substr(val[0].length));
 				//console.log(meta);
-				rv.meta.push({k: fld, i: not, v: val[0]});
+				rv.meta.push({k: fld, i: not, r: vbtm, v: val[0]});
 
 				if (meta.indexOf('& ') === 0) {
 					meta = $.trim(meta.substr(2));
@@ -614,25 +615,26 @@
 			let fld = null;
 			while ((fld = re_fld.exec(src)) !== null) {
 				let not = fld[2] ? true : false;
+				let vbtm = fld[3] ? true : false;
 				fld = fld[1];
 				//console.log(fld);
-				src = src.substr(fld.length + not*1 + 1);
+				src = src.substr(fld.length + not*1 + vbtm*1 + 1);
 				//console.log(src);
 
 				let val = re_val.exec(src);
-				//console.log(val);
+				console.log(val);
 				if (!val) {
 					break;
 				}
 
 				src = $.trim(src.substr(val[0].length));
-				token.push({k: fld, i: not, v: val[0]});
+				token.push({k: fld, i: not, r: vbtm, v: val[0]});
 
 				if (src.indexOf('& ') === 0) {
 					src = $.trim(src.substr(2));
 				}
-				//console.log(val);
-				//console.log(src);
+				console.log(val);
+				console.log(src);
 			}
 
 			if (src.indexOf(']') === 0) {
@@ -665,6 +667,9 @@
 					rv += '!';
 				}
 				rv += '=';
+				if (field.r) {
+					rv += '=';
+				}
 				rv += field.v;
 				rv += ' & ';
 			}
@@ -684,6 +689,9 @@
 					rv += '!';
 				}
 				rv += '=';
+				if (field.r) {
+					rv += '=';
+				}
 				rv += field.v;
 				rv += ' & ';
 			}

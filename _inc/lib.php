@@ -120,7 +120,7 @@ function parse_query($src) {
 	$src = str_replace('_PCNT_', '%', $src);
 	$src = trim($src);
 
-	$re_fld = '~^([a-z_]+)(!?)=~';
+	$re_fld = '~^([a-z_]+)(!?)=(=?)~';
 	$re_val = '~"([^"]+)"~';
 
 	$meta = null;
@@ -132,9 +132,10 @@ function parse_query($src) {
 		$fld = null;
 		while (preg_match($re_fld, $meta, $fld)) {
 			$not = $fld[2] ? true : false;
+			$vbtm = $fld[2] ? true : false;
 			$fld = $fld[1];
 			//console.log(fld);
-			$meta = mb_substr($meta, mb_strlen($fld) + $not*1 + 1);
+			$meta = mb_substr($meta, mb_strlen($fld) + $not*1 + $vbtm*1 + 1);
 			//console.log(meta);
 
 			$val = null;
@@ -145,7 +146,7 @@ function parse_query($src) {
 
 			$meta = trim(mb_substr($meta, mb_strlen($val[0])));
 			//console.log(meta);
-			$rv['meta'][] = ['k' => $fld, 'i' => $not, 'v' => $val[0]];
+			$rv['meta'][] = ['k' => $fld, 'i' => $not, 'r' => $vbtm, 'v' => $val[0]];
 
 			if (mb_substr($meta, 0, 2) === '& ') {
 				$meta = trim(mb_substr($meta, 2));
@@ -166,9 +167,10 @@ function parse_query($src) {
 		$fld = null;
 		while (preg_match($re_fld, $src, $fld)) {
 			$not = $fld[2] ? true : false;
+			$vbtm = $fld[2] ? true : false;
 			$fld = $fld[1];
 			//console.log(fld);
-			$src = mb_substr($src, mb_strlen($fld) + $not*1 + 1);
+			$src = mb_substr($src, mb_strlen($fld) + $not*1 + $vbtm*1 + 1);
 			//console.log(src);
 
 			$val = null;
@@ -178,7 +180,7 @@ function parse_query($src) {
 			//console.log(val);
 
 			$src = trim(mb_substr($src, mb_strlen($val[0])));
-			$token[] = ['k' => $fld, 'i' => $not, 'v' => $val[0]];
+			$token[] = ['k' => $fld, 'i' => $not, 'r' => $vbtm, 'v' => $val[0]];
 
 			if (mb_substr($src, 0, 2) === '& ') {
 				$src = trim(mb_substr($src, 2));
@@ -217,6 +219,9 @@ function render_query($q) {
 				$rv .= '!';
 			}
 			$rv .= '=';
+			if ($field['r']) {
+				$rv .= '=';
+			}
 			$rv .= $field['v'];
 			$rv .= ' & ';
 		}
@@ -236,6 +241,9 @@ function render_query($q) {
 				$rv .= '!';
 			}
 			$rv .= '=';
+			if ($field['r']) {
+				$rv .= '=';
+			}
 			$rv .= $field['v'];
 			$rv .= ' & ';
 		}
@@ -272,6 +280,9 @@ function siblingify($q, $off=0) {
 						$sc .= '!';
 					}
 					$sc .= '=';
+					if ($field['r']) {
+						$sc .= '=';
+					}
 					$sc .= $field['v'];
 					$sc .= ' & ';
 					unset($fields[$j]);
@@ -293,6 +304,9 @@ function siblingify($q, $off=0) {
 				$rv .= '!';
 			}
 			$rv .= '=';
+			if ($field['r']) {
+				$rv .= '=';
+			}
 			$rv .= $field['v'];
 			$rv .= ' & ';
 		}
@@ -314,6 +328,9 @@ function siblingify($q, $off=0) {
 				$rv .= '!';
 			}
 			$rv .= '=';
+			if (!$field['r']) {
+				$rv .= '=';
+			}
 			$rv .= $field['v'];
 			$rv .= ' & ';
 		}

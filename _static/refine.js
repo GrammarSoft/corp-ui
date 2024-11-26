@@ -231,6 +231,7 @@
 
 			let fields = {};
 			let inv = {};
+			let vbtms = {};
 			let cd = {};
 
 			if (which === rs2) {
@@ -249,13 +250,19 @@
 				if (!fields[attr]) {
 					fields[attr] = [];
 					inv[attr] = false;
+					vbtms[attr] = false;
 					cd[attr] = '';
 				}
 				fields[attr].push(val);
 
-				let neg = inp.closest('tr').find('input[type="checkbox"]').first();
+				let neg = inp.closest('tr').find('.chkInvert');
 				if (neg && neg.prop('checked')) {
 					inv[attr] = true;
+				}
+
+				let vbtm = inp.closest('tr').find('.chkVerbatim');
+				if (vbtm && vbtm.prop('checked')) {
+					vbtms[attr] = true;
 				}
 
 				let trans = inp.closest('tr').next().find('input[type="checkbox"]');
@@ -285,6 +292,7 @@
 				if (!fields[attr]) {
 					fields[attr] = [];
 					inv[attr] = false;
+					vbtms[attr] = true;
 					cd[attr] = '';
 				}
 				fields[attr].push(val);
@@ -311,7 +319,8 @@
 					}
 				}
 				let neg = inv[attr] ? '!' : '';
-				joins.push(attr + cd[attr] + neg + '="'+ fields[attr].join('|') +'"');
+				let vbtm = vbtms[attr] ? '=' : '';
+				joins.push(attr + cd[attr] + neg + '=' + vbtm + '"'+ fields[attr].join('|') +'"');
 			}
 
 			tbl += joins.join(' & ');
@@ -447,6 +456,7 @@
 				let field = fields[j];
 				let fld = field.k;
 				let not = field.i;
+				let vbtm = field.r;
 
 				if (fld.indexOf('h_') == 0) {
 					had_head = true;
@@ -463,6 +473,12 @@
 				if (/_lc$/.test(fld)) {
 					fld = fld.substr(0, fld.length-3);
 					$(tbl).find('[name="'+fld+'_c_'+(rn-1)+'"]').prop('checked', true);
+				}
+				if (vbtm) {
+					$(tbl).find('[name="'+fld+'_vbtm_'+(rn-1)+'"]').prop('checked', true);
+				}
+				if (not) {
+					$(tbl).find('[name="'+fld+'_neg_'+(rn-1)+'"]').prop('checked', true);
 				}
 
 				if (fld === 'word' || fld === 'lex' || fld == 'h_word' || fld == 'h_lex' || fld == 's_word' || fld == 's_lex') {
@@ -605,7 +621,8 @@
 						let sz = f.attr('negatable') ? 10 : 20;
 						tf += '</label></td></td><td><input type="text" size="'+sz+'" name="'+attr+'" id="'+attr+'"'+extra+'>';
 						if (f.attr('negatable')) {
-							tf += ' <label title="Invert match"><input type="checkbox" name="'+attr+'_neg">¬</label>';
+							tf += ' <label title="Verbatim match"><input class="chkVerbatim" type="checkbox" name="'+attr+'_vbtm"><i class="bi bi-exclamation-lg"></i></label>';
+							tf += ' <label title="Invert match"><input class="chkInvert" type="checkbox" name="'+attr+'_neg">¬</label>';
 						}
 					}
 					else if (tfs[i].nodeName === 'expandlist') {
