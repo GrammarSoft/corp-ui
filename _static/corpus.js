@@ -1248,13 +1248,16 @@
 		if (offset < 0) {
 			bits.tokens.unshift([{k: hfield, i: false, v: '"{TOKEN}"'}]);
 			for (let i=offset ; i<-1 ; ++i) {
+				bits.quants.unshift('');
 				bits.tokens.unshift([]);
 			}
 		}
 		else if (offset >= bits.tokens.length) {
 			for (let i=bits.tokens.length ; i<offset ; ++i) {
+				bits.quants.push('');
 				bits.tokens.push([]);
 			}
+			bits.quants.push('');
 			bits.tokens.push([{k: hfield, i: false, v: '"{TOKEN}"'}]);
 		}
 		else {
