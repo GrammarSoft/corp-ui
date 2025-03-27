@@ -16,7 +16,7 @@ a {
 	max-width: 250px;
 }
 
-tr:target, td:target, th:target {
+tr:target, td:target, th:target, tr:target td, tr:target th {
 	background-color: #ffa;
 }
 

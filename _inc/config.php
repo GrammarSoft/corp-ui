@@ -408,6 +408,9 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Reddit',
 			'group_by' => ['year', 'month', 'day'],
 			],
+		'epo_error' => [
+			'name' => 'EspEraro',
+			],
 		'epo_crawl' => [
 			'name' => 'Internet',
 			'group_by' => ['publisher', 'year', 'month', 'day', 'hour', 'minute', 'second'],

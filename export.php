@@ -80,7 +80,7 @@ if (!empty($_REQUEST['c']) && !empty($_REQUEST['ids'])) {
 		}
 
 		$s_query = escapeshellarg('<s id="('.$_REQUEST['ids'].')"/> containing []');
-		$line = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query");
+		$line = shell_exec("'{$GLOBALS['WEB_ROOT']}/_bin/corpquery-histogram' '{$GLOBALS['CORP_ROOT']}/registry/$s_corp' $s_query | '{$GLOBALS['WEB_ROOT']}/_bin/normalize-export' '$s_corp'") ?? '';
 
 		$lines = explode("\n", trim($line));
 		foreach ($lines as $line) {
