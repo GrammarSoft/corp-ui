@@ -1246,6 +1246,7 @@
 		}
 		// Create query template to be filled with the found token
 		if (offset < 0) {
+			bits.quants.unshift('');
 			bits.tokens.unshift([{k: hfield, i: false, v: '"{TOKEN}"'}]);
 			for (let i=offset ; i<-1 ; ++i) {
 				bits.quants.unshift('');
