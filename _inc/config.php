@@ -45,6 +45,7 @@ $GLOBALS['-groups'] = [
 	'deu' => ['name' => 'German', 'flag' => 'de'],
 	'ice' => ['name' => 'Icelandic', 'flag' => 'is'],
 	'ita' => ['name' => 'Italian', 'flag' => 'it'],
+	//'kal' => ['name' => 'Greenlandic', 'flag' => 'gl'],
 	'nor' => ['name' => 'Norwegian', 'flag' => 'no'],
 	'por' => ['name' => 'Portuguese', 'flag' => 'pt'],
 	'ron' => ['name' => 'Romanian', 'flag' => 'ro'],
@@ -490,6 +491,48 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Literature 1840-1930',
 			'group_by' => ['author', 'title', 'year', 'gender'],
 			'word2vec' => ['donna_N;ragazza_N', 'uomo_N;ragazzo_N', 'povero_ADJ', 'ricco_ADJ'],
+			],
+		],
+	'kal' => [
+		'kal_literature' => [
+			'name' => 'Literature',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_knr' => [
+			'name' => 'KNR',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_saq' => [
+			'name' => 'Sermitsiaq.AQ',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_magazines' => [
+			'name' => 'Magazines',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_newspapers' => [
+			'name' => 'Newspapers',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_laws' => [
+			'name' => 'Laws',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_lyrics' => [
+			'name' => 'Lyrics',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
+			],
+		'kal_religion' => [
+			'name' => 'Religion',
+			'group_by' => ['title', 'year'],
+			'percent_combo' => 100,
 			],
 		],
 	'nor' => [

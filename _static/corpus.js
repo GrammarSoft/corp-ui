@@ -2567,6 +2567,17 @@
 			$('#refine').show().get(0).scrollIntoView(true);
 		});
 
+		$('.btnBack').click(function() {
+			window.history.back();
+		});
+
+		if ($('.qgroup').length) {
+			$('.btnRefine').hide();
+		}
+		else {
+			$('.btnBack').hide();
+		}
+
 		$('.arrOptVisible').change(changeOption);
 
 		$('#br').change(function() {
@@ -2725,7 +2736,7 @@
 			state.focus_n = fields[state.focus];
 			let url = new URL(window.location);
 			url.searchParams.set('focus', state.focus);
-			if (state.focus = Defs.focus) {
+			if (state.focus == Defs.focus) {
 				url.searchParams.delete('focus');
 			}
 			window.history.pushState({}, '', url);

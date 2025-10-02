@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<advancedmenu width="200" height="450">
+
+
+<textfield name="Word" attr="word" negatable="true"/>
+<textfield name="Base" attr="lex" negatable="true"/>
+<textfield name="Extra" attr="extra" negatable="true"/>
+<textfield name="Sem" attr="sem" negatable="true"/>
+
+<expandlist name="Part of Speech" negatable="true">
+  <multiselect name="Noun" attr="pos" value="N">
+     <select ref="Morphology.Noun Number"/>
+     <select ref="Morphology.Case"/>
+  </multiselect>
+
+  <multiselect name="Proper Noun" attr="pos" value="Prop">
+     <select ref="Morphology.Noun Number"/>
+     <select ref="Morphology.Case"/>
+  </multiselect>
+
+  <multiselect name="Pronoun" attr="pos" value="Pron">
+     <select ref="Morphology.Noun Number"/>
+     <select ref="Morphology.Case"/>
+  </multiselect>
+
+  <multiselect name="Verb" attr="pos" value="V">
+    <select ref="Morphology.Verb Number"/>
+    <select ref="Morphology.Mood"/>
+  </multiselect>
+
+  <multiselect name="Adverb" attr="pos" value="Adv">
+  </multiselect>
+
+  <multiselect name="Others" >
+     <checkbox name="Particle-like" attr="pos" value="Pali"/>
+     <checkbox name="Conjunction" attr="pos" value="Conj"/>
+     <checkbox name="Interjection" attr="pos" value="Interj"/>
+     <checkbox name="Numeral" attr="pos" value="Num"/>
+     <checkbox name="Symbol" attr="pos" value="Symbol"/>
+  </multiselect>
+
+</expandlist>
+
+<expandlist name="Morphology" negatable="true" and="true">
+  <multiselect name="Case" mustselect="true">
+    <checkbox attr="morph" value="Abs" name="Abs"/>
+    <checkbox attr="morph" value="Rel" name="Rel"/>
+    <checkbox attr="morph" value="Trm" name="Trm"/>
+    <checkbox attr="morph" value="Abl" name="Abl"/>
+    <checkbox attr="morph" value="Lok" name="Lok"/>
+    <checkbox attr="morph" value="Aeq" name="Aeq"/>
+    <checkbox attr="morph" value="Ins" name="Ins"/>
+    <checkbox attr="morph" value="Via" name="Via"/>
+    <checkbox attr="morph" value="Nom" name="Nom"/>
+    <checkbox attr="morph" value="Akk" name="Akk"/>
+  </multiselect>
+  <multiselect name="Mood" mustselect="true">
+    <checkbox attr="morph" value="Ind" name="Ind"/>
+    <checkbox attr="morph" value="Int" name="Int"/>
+    <checkbox attr="morph" value="Imp" name="Imp"/>
+    <checkbox attr="morph" value="Opt" name="Opt"/>
+    <checkbox attr="morph" value="Cau" name="Cau"/>
+    <checkbox attr="morph" value="Con" name="Con"/>
+    <checkbox attr="morph" value="Par" name="Par"/>
+    <checkbox attr="morph" value="Cont" name="Cont"/>
+    <checkbox attr="morph" value="ContNeg" name="ContNeg"/>
+    <checkbox attr="morph" value="IteCau" name="IteCau"/>
+  </multiselect>
+  <multiselect name="Noun Number" mustselect="true">
+    <checkbox attr="morph" value="Sg" name="Sg"/>
+    <checkbox attr="morph" value="Du" name="Du"/>
+    <checkbox attr="morph" value="Pl" name="Pl"/>
+  </multiselect>
+  <multiselect name="Verb Number" mustselect="true">
+    <checkbox attr="morph" value="1Sg" name="1Sg"/>
+    <checkbox attr="morph" value="2Sg" name="2Sg"/>
+    <checkbox attr="morph" value="3Sg" name="3Sg"/>
+    <checkbox attr="morph" value="4Sg" name="4Sg"/>
+    <checkbox attr="morph" value="1Du" name="1Du"/>
+    <checkbox attr="morph" value="2Du" name="2Du"/>
+    <checkbox attr="morph" value="3Du" name="3Du"/>
+    <checkbox attr="morph" value="4Du" name="4Du"/>
+    <checkbox attr="morph" value="1Pl" name="1Pl"/>
+    <checkbox attr="morph" value="2Pl" name="2Pl"/>
+    <checkbox attr="morph" value="3Pl" name="3Pl"/>
+    <checkbox attr="morph" value="4Pl" name="4Pl"/>
+    <checkbox attr="morph" value="1SgO" name="1SgO"/>
+    <checkbox attr="morph" value="2SgO" name="2SgO"/>
+    <checkbox attr="morph" value="3SgO" name="3SgO"/>
+    <checkbox attr="morph" value="4SgO" name="4SgO"/>
+    <checkbox attr="morph" value="1DuO" name="1DuO"/>
+    <checkbox attr="morph" value="2DuO" name="2DuO"/>
+    <checkbox attr="morph" value="3DuO" name="3DuO"/>
+    <checkbox attr="morph" value="4DuO" name="4DuO"/>
+    <checkbox attr="morph" value="1PlO" name="1PlO"/>
+    <checkbox attr="morph" value="2PlO" name="2PlO"/>
+    <checkbox attr="morph" value="3PlO" name="3PlO"/>
+    <checkbox attr="morph" value="4PlO" name="4PlO"/>
+    <checkbox attr="morph" value="1SgPoss" name="1SgPoss"/>
+    <checkbox attr="morph" value="2SgPoss" name="2SgPoss"/>
+    <checkbox attr="morph" value="3SgPoss" name="3SgPoss"/>
+    <checkbox attr="morph" value="4SgPoss" name="4SgPoss"/>
+    <checkbox attr="morph" value="1PlPoss" name="1PlPoss"/>
+    <checkbox attr="morph" value="2PlPoss" name="2PlPoss"/>
+    <checkbox attr="morph" value="3PlPoss" name="3PlPoss"/>
+    <checkbox attr="morph" value="4PlPoss" name="4PlPoss"/>
+  </multiselect>
+</expandlist>
+
+<expandlist name="Function" negatable="true">
+  <multiselect name="Subject" >
+     <checkbox attr="func" value="<?SUBJ>*" name="Full Subject"/>
+     <checkbox attr="func" value="F-<?SUBJ>?" name="Provisional Subject"/>
+     <checkbox attr="func" value="S-<?SUBJ>?" name="Situational Subject"/>
+  </multiselect>
+  <multiselect name="Object" >
+     <checkbox attr="func" value="<?ACC>*.*" name="Accusative Object"/>
+     <checkbox attr="func" value="<?DAT>*.*" name="Dative Object"/>
+     <checkbox attr="func" value="<?PIV>*.*" name="Prepositional Object"/>
+  </multiselect>
+  <multiselect  name="Predicative" >
+     <checkbox attr="func" value="<?SC>?.*" name="Subject Predicative"/>
+     <checkbox attr="func" value="<?OC>?.*" name="Object Predicative"/>
+     <checkbox attr="func" value="<?PRED>?" name="Free Predicative"/>
+  </multiselect>
+  <multiselect name="Adverbial" >
+     <checkbox attr="func" value="<?ADVL>?.*" name="Free Adverbial"/>
+     <checkbox attr="func" value="<?SA>?" name="Subject Bound Adverbial"/>
+     <checkbox attr="func" value="<?OA>?" name="Object Bound Adverbial"/>
+  </multiselect>
+  <multiselect  name="Arg. of prep." >
+     <checkbox attr="func" value="P<.*" name="Argument of Prepostion"/>
+     <checkbox attr="func" value=">>P.*" name="Fronted Argument of Preposition"/>
+  </multiselect>
+  <multiselect name="Adnominal" >
+     <checkbox attr="func" value=">N" name="Prenominal"/>
+     <checkbox attr="func" value="N<" name="Postnominal"/>
+  </multiselect>
+  <multiselect name="Apposition" >
+     <checkbox attr="func" value="APP" name="Identifying Apposition"/>
+     <checkbox attr="func" value="N<PRED" name="Predicating Apposition"/>
+  </multiselect>
+  <multiselect name="Adverbial Adject" >
+     <checkbox attr="func" value=">A" name="Preadject"/>
+     <checkbox attr="func" value="A<.*" name="Postadject"/>
+  </multiselect>
+
+  <multiselect attr="func" value="KOMP<" name="Argument of Comparison"/>
+  <multiselect name="Predicator" >
+     <checkbox attr="func" value="[FI]MV.*" name="Main Verb"/>
+     <checkbox attr="func" value="[FI]AUX.*" name="Auxiliary"/>
+     <checkbox attr="func" value="FS.*" name="Finite subclause"/>
+     <checkbox attr="func" value="ICL.*" name="Non-finite subclause"/>
+     <checkbox attr="func" value=".*(ICL-)?AUX<" name="Auxiliary Complement"/>
+     <checkbox attr="func" value="INFM" name="Infinitive Marker"/>
+     <checkbox attr="func" value="MV<" name="Verbal Particle"/>
+  </multiselect>
+  <multiselect name="Others" >
+     <checkbox attr="func" value="SUB( .*)?" name="Subordinator"/>
+     <checkbox attr="func" value="CO" name="Coordinator"/>
+     <checkbox attr="func" value="TOP" name="Topic"/>
+     <checkbox attr="func" value="FOC>?" name="Focus"/>
+     <checkbox attr="func" value="VOK" name="Vocative"/>
+  </multiselect>
+
+</expandlist>
+
+
+</advancedmenu>

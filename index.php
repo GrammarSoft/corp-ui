@@ -192,7 +192,7 @@ if (!empty($_REQUEST['c'])) {
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.7/dist/jquery.min.js"></script>
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/css/bootstrap.min.css">
 	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3/dist/js/bootstrap.bundle.min.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11/font/bootstrap-icons.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13/font/bootstrap-icons.css">
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4/dist/chart.umd.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3/dist/chartjs-plugin-annotation.min.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/hammerjs@2"></script>
@@ -950,9 +950,9 @@ N-grams <i class="bi bi-list-ol"></i>
 <button class="btn btn-sm btn-success mb-1" type="submit" name="s" value="ngrams">N-grams</button>
 </div>
 <div class="my-3">
-<label class="form-label" for="freq_field">Field</label>
+<label class="form-label" for="ng_field">Field</label>
 <a tabindex="0" role="button" class="float-right" data-bs-toggle="popover" data-bs-container="body" data-bs-content="The field to show"><i class="bi bi-question-square"></i></a>
-<select class="form-select" name="f" id="freq_field">
+<select class="form-select" name="f" id="ng_field">
 	{$freq_fields}
 </select>
 </div>
@@ -1144,7 +1144,7 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnRefine">Show refine <i class="bi bi-funnel"></i></button></div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnRefine">Show refine <i class="bi bi-funnel"></i></button> <button class="btn btn-outline-primary my-1 btnBack">Back <i class="bi bi-arrow-left"></i></button></div></div>';
 	echo <<<XHTML
 <div class="row align-items-start my-3" id="customize-freq" style="display: none">
 <h5 class="fw-bold fs-5">Toggle columns</h5>
