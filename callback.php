@@ -291,10 +291,12 @@ while ($a === 'freq') {
 	$rv['n'] = $pagesize;
 	$br = trim($_REQUEST['br'] ?? '');
 
+	/*
 	if (!empty($_REQUEST['tsv'])) {
 		$offset = 0;
 		$pagesize = 10000;
 	}
+	//*/
 
 	$corps = [];
 	$cs = [];
@@ -342,9 +344,11 @@ while ($a === 'freq') {
 	}
 
 	foreach ($cs as $corp) {
+		/*
 		if (!empty($_REQUEST['tsv']) && $corp !== $_REQUEST['tsv']) {
 			continue;
 		}
+		//*/
 
 		$rv['cs'][$corp] = [
 			'n' => 0,
@@ -403,6 +407,7 @@ while ($a === 'freq') {
 		}
 	}
 
+	/*
 	if (!empty($_REQUEST['tsv'])) {
 		header('Content-Type: text/tab-separated-values; charset=UTF-8');
 		header('Content-disposition: attachment; filename=freq.tsv');
@@ -423,6 +428,7 @@ while ($a === 'freq') {
 		}
 		exit();
 	}
+	//*/
 
 	break;
 }

@@ -1330,7 +1330,10 @@
 					continue;
 				}
 
-				let button = '<a href="./callback.php?a=freq&amp;cs[]='+Object.keys(state.corps).join('&amp;cs[]=')+'&amp;h='+rq.h+'&amp;hf='+rq.hf+'&amp;hc='+rq.hc+'&amp;t='+rq.t+'&amp;tsv='+corp+'" class="btn btn-outline-success my-3">Download TSV <i class="bi bi-download"></i></a>';
+				let tsv = '# '+corp+'\n';
+				tsv += '# total-hits:' + rv.cs[corp].t + '\n';
+				tsv += 'Token';
+				let button = '<button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
 				c.find('.qtsv').html(button);
 
 				if (wv) {
@@ -1360,23 +1363,30 @@
 				html += '<thead><tr><th>Token</th>';
 				if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 					html += '<th class="text-vertical qcol-grf" title="Global relative frequency"><span class="color-red">G: freq²∕norm</span></th>';
+					tsv += '\tRelG';
 					if (!combo) {
 						html += '<th class="text-vertical qcol-crf" title="Corpus relative frequency"><span class="color-red">C: freq²∕norm</span></th>';
+						tsv += '\tRelC';
 					}
 					if (corp.indexOf('-') !== -1) {
 						html += '<th class="text-vertical qcol-scrf" title="Sub-corpus relative frequency"><span class="color-red">S: freq²∕norm</span></th>';
+						tsv += '\tRelG';
 					}
 				}
 				if (!combo) {
 					html += '<th class="text-vertical qcol-nf" title="Corpus normalized frequency"><span class="color-orange">C: freq∕corp · 10⁸</span></th>';
+					tsv += '\tNormC';
 				}
 				else {
 					html += '<th class="text-vertical qcol-nf" title="Global normalized frequency"><span class="color-orange">G: freq∕corp · 10⁸</span></th>';
+					tsv += '\tNormG';
 				}
 				if (corp.indexOf('-') !== -1) {
 					html += '<th class="text-vertical qcol-scnf" title="Sub-corpus normalized frequency"><span class="color-orange">S: freq∕corp · 10⁸</span></th>';
+					tsv += '\tNormS';
 				}
 				html += '<th class="text-vertical qcol-pcnt" title="Percentage of total hits"><span class="color-green">freq∕conc</span></th><th class="text-vertical qcol-num" title="Number of hits">num</th>';
+				tsv += '\tPcnt\tHits\n';
 				if (wv) {
 					html += '<th class="text-vertical" title="Add to vector plot">Vector?</th>';
 				}
@@ -1398,20 +1408,27 @@
 					url.searchParams.set('q', search1.replace('{TOKEN}', rpl));
 					url.searchParams.set('q2', search2.replace('{TOKEN}', rpl));
 					html += '<tr><td><a href="'+escHTML(url.toString())+'" target="'+corp+'">'+escHTML(rv.cs[corp].f[i][0])+'</a></td>';
+					tsv += rv.cs[corp].f[i][0];
 					if (/^(?:h_)?(word|lex)(_nd|_lc|$)/.test(field)) {
 						html += '<td class="text-end qcol-grf">'+escHTML(rv.cs[corp].f[i][2].toFixed(2))+'</td>';
+						tsv += '\t' + rv.cs[corp].f[i][2];
 						if (!combo) {
 							html += '<td class="text-end qcol-crf">'+escHTML(rv.cs[corp].f[i][3].toFixed(2))+'</td>';
+							tsv += '\t' + rv.cs[corp].f[i][3];
 						}
 						if (corp.indexOf('-') !== -1) {
 							html += '<td class="text-end qcol-scrf">'+escHTML(rv.cs[corp].f[i][4].toFixed(2))+'</td>';
+							tsv += '\t' + rv.cs[corp].f[i][4];
 						}
 					}
 					html += '<td class="text-end qcol-nf">'+(rv.cs[corp].f[i][1] / rv.cs[corp].w * 100000000).toFixed(2)+'</td>';
+					tsv += '\t' + (rv.cs[corp].f[i][1] / rv.cs[corp].w * 100000000);
 					if (corp.indexOf('-') !== -1) {
 						html += '<td class="text-end qcol-scnf">'+(rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000).toFixed(2)+'</td>';
+						tsv += '\t' + (rv.cs[corp].f[i][1] / rv.cs[corp].ws * 100000000);
 					}
 					html += '<td class="text-end qcol-pcnt">'+(rv.cs[corp].f[i][1] / rv.cs[corp].t * 100).toFixed(1)+'%</td><td class="text-end qcol-num">'+rv.cs[corp].f[i][1]+'</td>';
+					tsv += '\t' + (rv.cs[corp].f[i][1] / rv.cs[corp].t * 100) + '\t' + rv.cs[corp].f[i][1] + '\n';
 					if (wv) {
 						html += '<td><input type="checkbox" class="form-check-input chkVector" data-word="'+escHTML(rv.cs[corp].f[i][0].replace(/\t/g, '_'))+'" data-num="'+rv.cs[corp].f[i][1]+'"></td>';
 					}
@@ -1420,8 +1437,13 @@
 					}
 					html += '</tr>';
 				}
-				html += '</tbody></table>';
+				state.tsv = tsv;
+				html += '</tbody></table><button class="btn btn-outline-success my-3 btnGetTSV">Download TSV <i class="bi bi-download"></i></button>';
 				c.find('.qbody').html(html);
+
+				c.find('.btnGetTSV').click(function() {
+					saveAs(new Blob([state.tsv], {type: 'text/tab-separated-values'}), 'freq.tsv');
+				});
 
 				c.find('.chkCompare').off().click(chkCompare);
 				let comps = ss_get('compare-checked-' + state.hash + '-' + state.hash_freq, []);
