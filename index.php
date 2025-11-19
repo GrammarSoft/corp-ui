@@ -111,7 +111,7 @@ $arr_query2 = explode('~|~', $_REQUEST['q2']);
 header('X-Q: '.count($arr_query));
 
 foreach ($arr_query as $hk => $query) {
-	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[.*\]~', $query)) {
+	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[[^=]+=.*\]~', $query)) {
 		$qs = explode(' ', $query);
 		if (!empty($_REQUEST['nd'])) {
 			$query = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';
@@ -129,7 +129,7 @@ foreach ($arr_query as $hk => $query) {
 	$arr_query[$hk] = $query;
 }
 foreach ($arr_query2 as $hk => $query2) {
-	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[.*\]~', $query2)) {
+	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[[^=]+=.*\]~', $query2)) {
 		$qs = explode(' ', $query2);
 		if (!empty($_REQUEST['nd'])) {
 			$query2 = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';

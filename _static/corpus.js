@@ -1338,7 +1338,7 @@
 
 				if (wv) {
 					c.find('.qtsv').append('<button class="btn btn-outline-success btnPopupVector">Vector plot <i class="bi bi-pin-map"></i></button>');
-					$('.btnPopupVector').click(popupVector);
+					c.find('.btnPopupVector').click(popupVector);
 				}
 
 				let combo = false;
@@ -1351,6 +1351,7 @@
 						}
 					}
 					url.searchParams.delete('c['+corp+']');
+					c.find('.btnPopupVector').addClass('disabled').prop('disabled', true).off();
 				}
 
 				c.find('.qrange').text(rv.s+' to '+Math.min(rv.s + rv.n, rv.cs[corp].n));
