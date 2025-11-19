@@ -11,6 +11,7 @@ while ($line = fgets(STDIN)) {
 	$line = preg_replace('~([^>])\s\)~u', '$1)', $line);
 	$line = preg_replace('~([^>])\s([,.;:?!])~u', '$1$2', $line);
 
+	/*
 	if ($lang === 'epo' && !preg_match('~[ŭŬĉĈĝĜĥĤĵĴŝŜ]~u', $line)) {
 		$line = preg_replace('~ux~u', 'ŭ', $line);
 		$line = preg_replace('~U[Xx]~u', 'Ŭ', $line);
@@ -25,6 +26,7 @@ while ($line = fgets(STDIN)) {
 		$line = preg_replace('~sx~u', 'ŝ', $line);
 		$line = preg_replace('~S[Xx]~u', 'Ŝ', $line);
 	}
+	//*/
 
 	echo $line;
 }

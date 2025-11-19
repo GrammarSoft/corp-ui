@@ -359,16 +359,20 @@ $GLOBALS['-corpora'] = [
 		'epo_elibrejo' => [
 			'name' => 'Esperanto literature',
 			'percent_combo' => 30,
+			'word2vec' => ['_N'],
 			],
 		//*/
 		'epo_eventoj' => [
 			'name' => 'Eventoj news letter',
+			'word2vec' => ['_N'],
 			],
 		'epo_frazoj' => [
 			'name' => 'TTT 2004',
+			'word2vec' => ['_N'],
 			],
 		'epo_monato' => [
 			'name' => 'Monato magazine',
+			'word2vec' => ['_N'],
 			],
 		'epo_uniq_ttt' => [
 			'name' => 'TTT 2009',
@@ -380,37 +384,45 @@ $GLOBALS['-corpora'] = [
 			'name' => 'Wikipedia 2005',
 			'percent_combo' => 0,
 			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
+			'word2vec' => ['_N'],
 			],
 		'epo_wiki_2010' => [
 			'name' => 'Wikipedia 2010',
 			'percent_combo' => 0,
 			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
+			'word2vec' => ['_N'],
 			],
 		'epo_wikipedia' => [
 			'name' => 'Wikipedia 2023',
 			'percent_combo' => 20,
 			'infolink' => 'https://corp.visl.dk/copyright.html#epo_wiki',
 			'group_by' => ['title'],
+			'word2vec' => ['_N'],
 			],
 		'epo_zamenhof' => [
 			'name' => 'Zamenhof classics',
+			'word2vec' => ['_N'],
 			],
 		'epo_literature' => [
 			'name' => 'Original & translated literature',
 			'percent_combo' => 30,
 			'group_by' => ['author', 'title', 'year', 'tra', 'trayear', 'orilang'],
+			'word2vec' => ['_N'],
 			],
 		'epo_periodicals' => [
 			'name' => 'Periodicals',
 			'percent_combo' => 25,
 			'group_by' => ['publisher', 'author', 'title', 'year'],
+			'word2vec' => ['_N'],
 			],
 		'epo_reddit' => [
 			'name' => 'Reddit',
 			'group_by' => ['year', 'month', 'day'],
+			'word2vec' => ['_N'],
 			],
 		'epo_error' => [
 			'name' => 'EspEraro',
+			'word2vec' => ['_N'],
 			],
 		'epo_crawl' => [
 			'name' => 'Internet',
