@@ -36,6 +36,7 @@
 	let values = [];
 	let form = null;
 	let update_timer = null;
+	let attrs = new Set();
 
 	let verbatims = {
 		'word': true, 'lex': true, 'pos': true,
@@ -64,7 +65,7 @@
 			$(this).attr('id', $(this).attr('id') + '_' + rn);
 		});
 		++rn;
-		nr.find('input').change(update_search);
+		nr.find('input').change(update_search).keyup(update_search);
 		return nr;
 	}
 
@@ -223,6 +224,26 @@
 
 	function _update_search_helper(which, where) {
 		let search = '';
+		let rid = which.attr('id');
+
+		which.find('.s_begin').each(function() {
+			let e = $(this);
+			search += '<s';
+			let na = '';
+			attrs.forEach(function(a) {
+				let v = $('#'+rid+'_sbegin_'+a).val();
+				if (!v) {
+					return;
+				}
+				let neg = $('#'+rid+'_sbegin_'+a+'_neg').prop('checked');
+				na += a + (neg ? '!' : '') + '="' + v + '"';
+				na += ' & ';
+			});
+			if (na) {
+				na = ' ' + na.replace(/ & $/, '');
+			}
+			search += na + '> [word="¤"]* ';
+		});
 
 		which.find('.etable').each(function() {
 			let e = $(this);
@@ -332,6 +353,25 @@
 		//search = search.replace(/</g, 'lltt').replace(/>/g, 'ggtt').replace(/&/g, '_AND_');
 		search = $.trim(search);
 
+		which.find('.s_end').each(function() {
+			let e = $(this);
+			search += ' </s';
+			let na = '';
+			attrs.forEach(function(a) {
+				let v = $('#'+rid+'_send_'+a).val();
+				if (!v) {
+					return;
+				}
+				let neg = $('#'+rid+'_send_'+a+'_neg').prop('checked');
+				na += a + (neg ? '!' : '') + '="' + v + '"';
+				na += ' & ';
+			});
+			if (na) {
+				na = ' ' + na.replace(/ & $/, '');
+			}
+			search += na + '>';
+		});
+
 		if (where === '#query') {
 			let joins = [];
 			$('[data-sattr]').each(function() {
@@ -430,10 +470,103 @@
 		return vals;
 	}
 
+	function update_attrs() {
+		let corps = new Set();
+		$('.chkCorpus:checked').each(function() {
+			corps.add($(this).attr('name').slice(2, -1).replace(/-.*$/, ''));
+		});
+		corps = Array.from(corps);
+		attrs = new Set(g_config.attrs[corps.shift()]);
+		corps.forEach(function(c) {
+			let ns = new Set(g_config.attrs[c]);
+			attrs = new Set([...attrs].filter((x) => ns.has(x)));
+		});
+	}
+
+	function add_s_begin_end(where, which) {
+		update_attrs();
+		let title = 'Beginning of sentence';
+		if (which == 'end') {
+			title = 'End of sentence';
+		}
+
+		let html = '<table class="s_'+which+'"><tr><td>'
+		html += '<table class="colored"><tr><th colspan="3" class="center">'+title+' <a href="https://www.sketchengine.eu/documentation/cql-search-structures/" target="_blank"><i class="bi bi-question-square"></i></a></th></tr>';
+		attrs.forEach(function(a) {
+			html += '<tr>';
+			html += '<td class="ps-1">'+a.slice(0,1).toUpperCase()+a.slice(1)+'</td>';
+			html += '<td><input id="'+where.slice(1)+'_s'+which+'_'+a+'" value=""></td>';
+			html += '<td class="pe-1"><label title="Negate match"><input id="'+where.slice(1)+'_s'+which+'_'+a+'_neg" type="checkbox">¬</label></td>';
+			html += '</tr>';
+		});
+		html += '</table>';
+		html += '</td></tr><tr><td class="center"><button type="button" class="deleter">Delete</button></td></tr></table>';
+
+		if (which == 'begin') {
+			$(where).find('.etable').first().before(html);
+		}
+		else {
+			$(where).find('.etable').last().after(html);
+		}
+		$(where).find('.s_'+which).find('input').change(update_search).keyup(update_search);
+		$(where).find('.s_'+which).find('.deleter').click(function() {
+			$(where).find('.s_'+which).remove();
+			if (which == 'begin') {
+				maybe_s_begin(where);
+			}
+			else {
+				maybe_s_end(where);
+			}
+		});
+		update_search();
+	}
+
+	function maybe_s_begin(where, q) {
+		if (typeof q === 'undefined' || !q.begin) {
+			$(where).find('.etable').first().before('<button type="button" id="'+where.slice(1)+'_add_s_begin">&lt;s&gt;</button>');
+			$(where+'_add_s_begin').off().click(function() {
+				add_s_begin_end(where, 'begin');
+				$(this).remove();
+			});
+		}
+		else {
+			add_s_begin_end(where, 'begin');
+			q.begin.forEach(function(f) {
+				$(where+'_sbegin_'+f.k).val(f.v.slice(1, -1));
+				if (f.i) {
+					$(where+'_sbegin_'+f.k+'_neg').prop('checked', true);
+				}
+			});
+		}
+		update_search();
+	}
+
+	function maybe_s_end(where, q) {
+		if (typeof q === 'undefined' || !q.end) {
+			$(where).find('.etable').last().after('<button type="button" id="'+where.slice(1)+'_add_s_end">&lt;/s&gt;</button>');
+			$(where+'_add_s_end').off().click(function() {
+				add_s_begin_end(where, 'end');
+				$(this).remove();
+			});
+		}
+		else {
+			add_s_begin_end(where, 'end');
+			q.end.forEach(function(f) {
+				$(where+'_send_'+f.k).val(f.v.slice(1, -1));
+				if (f.i) {
+					$(where+'_send_'+f.k+'_neg').prop('checked', true);
+				}
+			});
+		}
+		update_search();
+	}
+
 	function parse_search(where, q) {
 		if (!q) {
 			if (where !== '#rs2') {
 				$(where).append(create_table());
+				maybe_s_begin(where, q);
+				maybe_s_end(where, q);
 			}
 			return;
 		}
@@ -532,6 +665,9 @@
 			$(where).append(create_table());
 		}
 
+		maybe_s_begin(where, q);
+		maybe_s_end(where, q);
+
 		if (q.meta.length) {
 			$('.meta-fields.show').remove();
 			$('.meta-fields').addClass('show');
@@ -566,9 +702,6 @@
 			}
 			update_search();
 		});
-
-		$('input[data-sattr]').change(update_search);
-		$('.meta-neg').change(update_search);
 
 		let config = '_static/refine/default.xml';
 		let cs = $('.chkCorpus:checked');
@@ -700,6 +833,17 @@
 			parse_search('#rs2', qs[1]);
 			update_search();
 			$('#rs').find('input[type="text"]').first().focus();
+
+			let html = '';
+			attrs.forEach(function(a) {
+				let ua = a.slice(0, 1).toUpperCase() + a.slice(1);
+				html += `<div class="row"><div class="col-3"><label class="form-label" for="meta-${a}">${ua}</label></div><div class="col"><input type="text" class="form-control d-inline-block" id="meta-${a}" data-sattr="${a}"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-${a}-neg">¬</label></div></div>`;
+
+			});
+			$('#meta-fields').html(html);
+
+			$('input[data-sattr]').change(update_search).keyup(update_search);
+			$('.meta-neg').change(update_search);
 		}, 'html');
 	}
 
@@ -714,5 +858,6 @@
 		toggle_dependency: toggle_dependency,
 		toggle_sibling: toggle_sibling,
 		delete_table: delete_table,
+		add_s_begin: add_s_begin_end,
 		};
 }));

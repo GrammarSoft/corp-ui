@@ -2,6 +2,8 @@
 declare(strict_types=1);
 require_once __DIR__.'/_inc/lib.php';
 
+maybe_export_config();
+
 $_REQUEST['c'] = filter_corpora_k($_REQUEST['c'] ?? []);
 $_REQUEST['q'] = trim(preg_replace('~[\r\n\t\s\pZ]+~su', ' ', $_REQUEST['q'] ?? ''));
 $_REQUEST['q2'] = trim(preg_replace('~[\r\n\t\s\pZ]+~su', ' ', $_REQUEST['q2'] ?? ''));
@@ -111,7 +113,7 @@ $arr_query2 = explode('~|~', $_REQUEST['q2']);
 header('X-Q: '.count($arr_query));
 
 foreach ($arr_query as $hk => $query) {
-	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[[^=]+=.*\]~', $query)) {
+	if (empty($_REQUEST['vt']) && !empty($query) && !preg_match('~\[[^=]+=.*\]~', $query) && !preg_match('~<s[ >/]~', $query)) {
 		$qs = explode(' ', $query);
 		if (!empty($_REQUEST['nd'])) {
 			$query = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';
@@ -129,7 +131,7 @@ foreach ($arr_query as $hk => $query) {
 	$arr_query[$hk] = $query;
 }
 foreach ($arr_query2 as $hk => $query2) {
-	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[[^=]+=.*\]~', $query2)) {
+	if (empty($_REQUEST['vt']) && !empty($query2) && !preg_match('~\[[^=]+=.*\]~', $query2) && !preg_match('~<s[ >/]~', $query)) {
 		$qs = explode(' ', $query2);
 		if (!empty($_REQUEST['nd'])) {
 			$query2 = '[word_nd="'.implode('"] [word_nd="', $qs).'"]';
@@ -201,6 +203,7 @@ if (!empty($_REQUEST['c'])) {
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
 
 	<script>let g_corps = {}; let g_hash = ''; let g_hash_freq = ''; let g_hash_combo = '';</script>
+	<script src="_static/config.js?<?=filemtime(__DIR__.'/_static/config.js');?>"></script>
 	<link href="_static/refine.css?<?=filemtime(__DIR__.'/_static/refine.css');?>" rel="stylesheet">
 	<script src="_static/refine.js?<?=filemtime(__DIR__.'/_static/refine.js');?>"></script>
 	<link href="_static/corpus.css?<?=filemtime(__DIR__.'/_static/corpus.css');?>" rel="stylesheet">
@@ -1295,34 +1298,7 @@ else {
 	<div class="mx-3 collapse show meta-fields"><button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target=".meta-fields">Show meta attributes</button></div>
 	<div class="mx-3 collapse meta-fields">
 		<h5>Meta attributes <a href="https://www.sketchengine.eu/documentation/cql-search-structures/" target="_blank"><i class="bi bi-question-square"></i></a></h5>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-author">Author</label></div>
-			<div class="col"><input type="text" class="form-control d-inline-block" id="meta-author" data-sattr="author"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-author-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-title">Title</label></div>
-			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-title" data-sattr="title"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-title-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-year">Year</label></div>
-			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-year" data-sattr="year"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-year-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-gender">Gender</label></div>
-			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-gender" data-sattr="gender"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-gender-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-publisher">Publisher</label></div>
-			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-publisher" data-sattr="publisher"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-publisher-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-translator">Translator</label></div>
-			<div class="col text-nowrap"><input type="text" class="form-control d-inline-block" id="meta-translator" data-sattr="translator"></div><div class="col-1 text-nowrap"><label title="Invert match"><input type="checkbox" class="form-check-input meta-neg" id="meta-translator-neg">¬</label></div>
-		</div>
-		<div class="row">
-			<div class="col-3"><label class="form-label" for="meta-translated">Translated</label></div>
-			<div class="col"><select class="form-select meta-neg" id="meta-translated" data-sattr="translated"><option value=""></option><option value="1">Yes</option><option value="0">No</option></select></div><div class="col-1"></div>
-		</div>
+		<span id="meta-fields"></span>
 	</div>
 </div>
 </div>

@@ -3,3 +3,4 @@
 /.vscode
 *.lock
 auth-impl.php
+config.js

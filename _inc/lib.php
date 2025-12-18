@@ -54,6 +54,32 @@ else {
 }
 $GLOBALS['-auth']->lock();
 
+function maybe_export_config() {
+	if (!file_exists(__DIR__.'/../_static/config.js') || filemtime(__DIR__.'/config.php') > filemtime(__DIR__.'/../_static/config.js')) {
+		$conf = "'use strict';\n\nlet g_config = {\n\tfields: ";
+		$conf .= json_encode_vb($GLOBALS['-fields']);
+		$conf .= ",\n\tscale: ";
+		$conf .= json_encode_vb($GLOBALS['-scale']);
+		$conf .= ",\n\tgroups: ";
+		$conf .= json_encode_vb($GLOBALS['-groups']);
+		$conf .= ",\n\tcorpora: ";
+		$conf .= json_encode_vb($GLOBALS['-corplist']);
+		$attrs = [];
+		foreach ($GLOBALS['-corplist'] as $c => $_) {
+			$attrs[$c] = [];
+			foreach (glob("{$GLOBALS['CORP_ROOT']}/corpora/{$c}/s.*.lex") as $f) {
+				if (preg_match('~/s\.([a-z0-9]+)\.lex$~', $f, $m)) {
+					$attrs[$c][] = $m[1];
+				}
+			}
+		}
+		$conf .= ",\n\tattrs: ";
+		$conf .= json_encode_vb($attrs);
+		$conf .= "\n}\n";
+		file_put_contents(__DIR__.'/../_static/config.js', $conf);
+	}
+}
+
 function b64_slug($rv): string {
 	$rv = base64_encode($rv);
 	$rv = trim($rv, '=');
@@ -107,11 +133,37 @@ function format_corpsize($ws): string {
 	return number_format($ws/1000000.0, 1, '.', '');
 }
 
+function parse_fields(&$dest, $src) {
+	$fld = null;
+	while (preg_match('~^([a-z_]+)(!?)=(=?)~', $src, $fld)) {
+		$not = $fld[2] ? true : false;
+		$vbtm = $fld[2] ? true : false;
+		$fld = $fld[1];
+		$src = mb_substr($src, mb_strlen($fld) + $not*1 + $vbtm*1 + 1);
+
+		$val = null;
+		if (!preg_match('~"([^"]+)"~', $src, $val)) {
+			break;
+		}
+
+		$src = trim(mb_substr($src, mb_strlen($val[0])));
+		$dest[] = ['k' => $fld, 'i' => $not, 'r' => $vbtm, 'v' => $val[0]];
+
+		if (mb_substr($src, 0, 2) === '& ') {
+			$src = trim(mb_substr($src, 2));
+		}
+	}
+
+	return $src;
+}
+
 function parse_query($src) {
 	$rv = [
 		'tokens' => [],
 		'quants' => [],
 		'meta' => [],
+		'begin' => null,
+		'end' => null,
 	];
 
 	$src = str_replace('_PLUS_', '+', $src);
@@ -120,40 +172,30 @@ function parse_query($src) {
 	$src = str_replace('_PCNT_', '%', $src);
 	$src = trim($src);
 
-	$re_fld = '~^([a-z_]+)(!?)=(=?)~';
-	$re_val = '~"([^"]+)"~';
-
 	$meta = null;
-	$re_meta = '~^\((.+)\) within <s (.+?)\/>$~';
-	while (preg_match($re_meta, $src, $meta)) {
+	while (preg_match('~^\((.+)\) within <s (.+?)\/>$~', $src, $meta)) {
 		$src = $meta[1];
 		$meta = $meta[2];
 
-		$fld = null;
-		while (preg_match($re_fld, $meta, $fld)) {
-			$not = $fld[2] ? true : false;
-			$vbtm = $fld[2] ? true : false;
-			$fld = $fld[1];
-			//console.log(fld);
-			$meta = mb_substr($meta, mb_strlen($fld) + $not*1 + $vbtm*1 + 1);
-			//console.log(meta);
+		parse_fields($rv['meta'], $meta);
+	}
 
-			$val = null;
-			if (!preg_match($re_val, $meta, $val)) {
-				break;
-			}
-			//console.log(val);
+	$s_begin = null;
+	while (preg_match('~^<s\b ?(.+?)> ?(?:\[word="¤"\]\*)?(.*)$~', $src, $s_begin)) {
+		$src = trim($s_begin[2]);
+		$s_begin = $s_begin[1];
 
-			$meta = trim(mb_substr($meta, mb_strlen($val[0])));
-			//console.log(meta);
-			$rv['meta'][] = ['k' => $fld, 'i' => $not, 'r' => $vbtm, 'v' => $val[0]];
+		$rv['begin'] = [];
+		parse_fields($rv['begin'], $s_begin);
+	}
 
-			if (mb_substr($meta, 0, 2) === '& ') {
-				$meta = trim(mb_substr($meta, 2));
-			}
-			//console.log(val);
-			//console.log(meta);
-		}
+	$s_end = null;
+	while (preg_match('~^(.*) <\/s\b ?(.+?)>$~', $src, $s_end)) {
+		$src = trim($s_end[1]);
+		$s_end = $s_end[2];
+
+		$rv['end'] = [];
+		parse_fields($rv['end'], $s_end);
 	}
 
 	if (mb_substr($src, 0, 1) !== '[') {
@@ -164,30 +206,7 @@ function parse_query($src) {
 		$token = [];
 		$src = mb_substr($src, 1);
 
-		$fld = null;
-		while (preg_match($re_fld, $src, $fld)) {
-			$not = $fld[2] ? true : false;
-			$vbtm = $fld[2] ? true : false;
-			$fld = $fld[1];
-			//console.log(fld);
-			$src = mb_substr($src, mb_strlen($fld) + $not*1 + $vbtm*1 + 1);
-			//console.log(src);
-
-			$val = null;
-			if (!preg_match($re_val, $src, $val)) {
-				break;
-			}
-			//console.log(val);
-
-			$src = trim(mb_substr($src, mb_strlen($val[0])));
-			$token[] = ['k' => $fld, 'i' => $not, 'r' => $vbtm, 'v' => $val[0]];
-
-			if (mb_substr($src, 0, 2) === '& ') {
-				$src = trim(mb_substr($src, 2));
-			}
-			//console.log(val);
-			//console.log(src);
-		}
+		$src = parse_fields($token, $meta);
 
 		if (mb_substr($src, 0, 1) === ']') {
 			$src = trim(mb_substr($src, 1));
@@ -203,7 +222,20 @@ function parse_query($src) {
 		$rv['tokens'][] = $token;
 	}
 
-	//console.log(rv);
+	return $rv;
+}
+
+function render_field($field) {
+	$rv = $field['k'];
+	if ($field['i']) {
+		$rv .= '!';
+	}
+	$rv .= '=';
+	if ($field['r']) {
+		$rv .= '=';
+	}
+	$rv .= $field['v'];
+	$rv .= ' & ';
 	return $rv;
 }
 
@@ -212,18 +244,8 @@ function render_query($q) {
 	for ($i=0, $ie=count($q['tokens']) ; $i<$ie ; ++$i) {
 		$fields = $q['tokens'][$i];
 		$rv .= '[';
-		for ($j=0, $je=count($fields) ; $j<$je ; ++$j) {
-			$field = $fields[$j];
-			$rv .= $field['k'];
-			if ($field['i']) {
-				$rv .= '!';
-			}
-			$rv .= '=';
-			if ($field['r']) {
-				$rv .= '=';
-			}
-			$rv .= $field['v'];
-			$rv .= ' & ';
+		foreach ($fields as $f) {
+			$rv .= render_field($f);
 		}
 		$rv = preg_replace('~ & $~', '', $rv);
 		$rv .= ']';
@@ -232,20 +254,34 @@ function render_query($q) {
 	}
 	$rv = trim($rv);
 
+	if (is_array($q['begin'])) {
+		$s = '<s';
+		if (count($q['begin'])) {
+			$s .= ' ';
+			foreach ($q['begin'] as $f) {
+				$s .= render_field($f);
+			}
+			$s = preg_replace('~ & $~', '', $s);
+		}
+		$rv = $s . '> [word="¤"]* ' . $rv;
+	}
+
+	if (is_array($q['end'])) {
+		$rv .= ' </s';
+		if (count($q['end'])) {
+			$rv .= ' ';
+			foreach ($q['end'] as $f) {
+				$rv .= render_field($f);
+			}
+			$rv = preg_replace('~ & $~', '', $rv);
+		}
+		$rv .= '>';
+	}
+
 	if (!empty($q['meta'])) {
 		$rv = '(' . $rv . ') within <s ';
-		for ($j=0, $je=count($q['meta']) ; $j<$je ; ++$j) {
-			$field = $q['meta'][$j];
-			$rv .= $field['k'];
-			if ($field['i']) {
-				$rv .= '!';
-			}
-			$rv .= '=';
-			if ($field['r']) {
-				$rv .= '=';
-			}
-			$rv .= $field['v'];
-			$rv .= ' & ';
+		foreach ($q['meta'] as $f) {
+			$rv .= render_field($f);
 		}
 		$rv = preg_replace('~ & $~', '', $rv);
 		$rv .= '/>';

@@ -48,3 +48,4 @@ cd ~/storage/corpora/dan_literature/meta
 * N-grams should be clickable - this will need query results as tab-separated
 * Multi-word expressions are hard to search for without CQP-speak - maybe have a per-corpus/language list of them
 * When coming from group-by or histogram, freq and ngrams should be disabled, with a message
+* Parallel-corpora and other that need different segments (chapter, speaker, language, etc) can use `<s>` attributes `par_id="123"` plus `par_begin="1"` and `par_end="1"` - single-sentence paragraphs are both begin and end

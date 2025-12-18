@@ -559,17 +559,43 @@
 		return '';
 	}
 
+	function parse_fields(dest, src) {
+		let re_fld = /^([a-z_]+)(!?)=(=?)/;
+		let re_val = /"([^"]+)"/;
+
+		let fld = null;
+		while ((fld = re_fld.exec(src)) !== null) {
+			let not = fld[2] ? true : false;
+			let vbtm = fld[3] ? true : false;
+			fld = fld[1];
+			src = src.substr(fld.length + not*1 + vbtm*1 + 1);
+
+			let val = re_val.exec(src);
+			if (!val) {
+				break;
+			}
+
+			src = $.trim(src.substr(val[0].length));
+			dest.push({k: fld, i: not, r: vbtm, v: val[0]});
+
+			if (src.indexOf('& ') === 0) {
+				src = $.trim(src.substr(2));
+			}
+		}
+
+		return src;
+	}
+
 	function parse_query(src) {
 		let rv = {
 			tokens: [],
 			quants: [],
 			meta: [],
+			begin: null,
+			end: null,
 		};
 
 		src = $.trim(src.replace(/_PLUS_/g, '+').replace(/_HASH_/g, '#').replace(/_AND_/g, '&').replace(/_PCNT_/g, '%'));
-
-		let re_fld = /^([a-z_]+)(!?)=(=?)/;
-		let re_val = /"([^"]+)"/;
 
 		let meta = null;
 		let re_meta = /^\((.+)\) within <s (.+?)\/>$/;
@@ -577,31 +603,27 @@
 			src = meta[1];
 			meta = meta[2];
 
-			let fld = null;
-			while ((fld = re_fld.exec(meta)) !== null) {
-				let not = fld[2] ? true : false;
-				let vbtm = fld[3] ? true : false;
-				fld = fld[1];
-				//console.log(fld);
-				meta = meta.substr(fld.length + not*1 + vbtm*1 + 1);
-				//console.log(meta);
+			parse_fields(rv.meta, meta);
+		}
 
-				let val = re_val.exec(meta);
-				//console.log(val);
-				if (!val) {
-					break;
-				}
+		let s_begin = null;
+		let re_begin = /^<s\b ?(.+?)> ?(?:\[word="¤"\]\*)?(.*)$/;
+		while ((s_begin = re_begin.exec(src)) !== null) {
+			src = $.trim(s_begin[2]);
+			s_begin = s_begin[1];
 
-				meta = $.trim(meta.substr(val[0].length));
-				//console.log(meta);
-				rv.meta.push({k: fld, i: not, r: vbtm, v: val[0]});
+			rv.begin = [];
+			parse_fields(rv.begin, s_begin);
+		}
 
-				if (meta.indexOf('& ') === 0) {
-					meta = $.trim(meta.substr(2));
-				}
-				//console.log(val);
-				//console.log(meta);
-			}
+		let s_end = null;
+		let re_end = /^(.*) <\/s\b ?(.+?)>$/;
+		while ((s_end = re_end.exec(src)) !== null) {
+			src = $.trim(s_end[1]);
+			s_end = s_end[2];
+
+			rv.end = [];
+			parse_fields(rv.end, s_end);
 		}
 
 		if (src.charAt(0) !== '[') {
@@ -612,30 +634,7 @@
 			let token = [];
 			src = src.substr(1);
 
-			let fld = null;
-			while ((fld = re_fld.exec(src)) !== null) {
-				let not = fld[2] ? true : false;
-				let vbtm = fld[3] ? true : false;
-				fld = fld[1];
-				//console.log(fld);
-				src = src.substr(fld.length + not*1 + vbtm*1 + 1);
-				//console.log(src);
-
-				let val = re_val.exec(src);
-				console.log(val);
-				if (!val) {
-					break;
-				}
-
-				src = $.trim(src.substr(val[0].length));
-				token.push({k: fld, i: not, r: vbtm, v: val[0]});
-
-				if (src.indexOf('& ') === 0) {
-					src = $.trim(src.substr(2));
-				}
-				console.log(val);
-				console.log(src);
-			}
+			src = parse_fields(token, src);
 
 			if (src.indexOf(']') === 0) {
 				src = $.trim(src.substr(1));
@@ -655,23 +654,27 @@
 		return rv;
 	}
 
+	function render_field(field) {
+		let rv = field.k;
+		if (field.i) {
+			rv += '!';
+		}
+		rv += '=';
+		if (field.r) {
+			rv += '=';
+		}
+		rv += field.v;
+		rv += ' & ';
+		return rv;
+	}
+
 	function render_query(q) {
 		let rv = '';
 		for (let i=0 ; i<q.tokens.length ; ++i) {
 			let fields = q.tokens[i];
 			rv += '[';
 			for (let j=0 ; j<fields.length ; ++j) {
-				let field = fields[j];
-				rv += field.k;
-				if (field.i) {
-					rv += '!';
-				}
-				rv += '=';
-				if (field.r) {
-					rv += '=';
-				}
-				rv += field.v;
-				rv += ' & ';
+				rv += render_field(fields[j]);
 			}
 			rv = rv.replace(/ & $/, '');
 			rv += ']';
@@ -680,20 +683,34 @@
 		}
 		rv = rv.replace(/ $/, '');
 
+		if (q.begin) {
+			let s = '<s';
+			if (q.begin.length) {
+				s += ' ';
+				for (let i=0 ; i<q.begin.length ; ++i) {
+					s += render_field(q.begin[i]);
+				}
+				s = s.replace(/ & $/, '');
+			}
+			rv = s + '> [word="¤"]* ' + rv;
+		}
+
+		if (q.end) {
+			rv += ' </s';
+			if (q.end.length) {
+				rv += ' ';
+				for (let i=0 ; i<q.end.length ; ++i) {
+					rv += render_field(q.end[i]);
+				}
+				rv = rv.replace(/ & $/, '');
+			}
+			rv += '>';
+		}
+
 		if (q.meta.length) {
 			rv = '(' + rv + ') within <s ';
 			for (let j=0 ; j<q.meta.length ; ++j) {
-				let field = q.meta[j];
-				rv += field.k;
-				if (field.i) {
-					rv += '!';
-				}
-				rv += '=';
-				if (field.r) {
-					rv += '=';
-				}
-				rv += field.v;
-				rv += ' & ';
+				rv += render_field(q.meta[j]);
 			}
 			rv = rv.replace(/ & $/, '');
 			rv += '/>';
