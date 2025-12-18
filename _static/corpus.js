@@ -607,7 +607,7 @@
 		}
 
 		let s_begin = null;
-		let re_begin = /^<s\b ?(.+?)> ?(?:\[word="¤"\]\*)?(.*)$/;
+		let re_begin = /^<s\b ?(.*?)> ?(?:\[word="¤"\]\*)?(.*)$/;
 		while ((s_begin = re_begin.exec(src)) !== null) {
 			src = $.trim(s_begin[2]);
 			s_begin = s_begin[1];
@@ -617,7 +617,7 @@
 		}
 
 		let s_end = null;
-		let re_end = /^(.*) <\/s\b ?(.+?)>$/;
+		let re_end = /^(.*) <\/s\b ?(.*?)>$/;
 		while ((s_end = re_end.exec(src)) !== null) {
 			src = $.trim(s_end[1]);
 			s_end = s_end[2];
