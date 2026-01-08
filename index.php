@@ -200,7 +200,7 @@ if (!empty($_REQUEST['c'])) {
 	<script src="https://cdn.jsdelivr.net/npm/hammerjs@2"></script>
 	<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2/dist/chartjs-plugin-zoom.min.js"></script>
 
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6/css/flag-icons.min.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@7/css/flag-icons.min.css">
 
 	<script>let g_corps = {}; let g_hash = ''; let g_hash_freq = ''; let g_hash_combo = '';</script>
 	<script src="_static/config.js?<?=filemtime(__DIR__.'/_static/config.js');?>"></script>
@@ -1248,7 +1248,7 @@ if (empty($h_language)) {
 
 		echo '<div class="col-3 my-3"><a class="text-decoration-none fs-3" href="./?l='.$group.'">'.$flag.' '.htmlspecialchars($g['name']).'</a></div>';
 	}
-	echo '<div class="col-12 my-3"><a class="text-decoration-none fs-3" href="./?l=mul"><i class="bi bi-translate"></i> All languages</a></div>';
+	echo '<div class="col-12 my-3"><a class="text-decoration-none fs-3" href="./?l=mul"><i class="fi fi-un"></i> All languages</a></div>';
 	echo '</div>';
 }
 else {
