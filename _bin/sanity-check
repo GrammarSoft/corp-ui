@@ -1,0 +1,58 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$fields = array_keys($GLOBALS['-fields']);
+$fields = array_flip($fields);
+$nf = count($fields);
+
+$corp = trim($argv[1]);
+if (!array_key_exists($corp, $GLOBALS['-corplist'])) {
+	fprintf(STDERR, "ERROR: No such corpus: %s\n", $corp);
+	exit(-1);
+}
+
+$gb = $GLOBALS['-corplist'][$corp]['group_by'] ?? [];
+
+$i = 0;
+$n = 0;
+while ($line = fgets(STDIN)) {
+	++$n;
+
+	if (str_starts_with($line, '<s ')) {
+		++$i;
+		if (strpos($line, " id=\"$i\"") === false) {
+			fprintf(STDERR, "ERROR: Did not find expected id=\"%u\" on line %u!\n", $i, $n);
+			exit(-2);
+		}
+		foreach ($gb as $a) {
+			if (strpos($line, " $a=\"") === false) {
+				fprintf(STDERR, "ERROR: Did not find expected group-by attribute %s=\" on line %u!\n", $a, $n);
+				exit(-4);
+			}
+		}
+	}
+	else if (str_starts_with($line, '</s>')) {
+	}
+	else {
+		$fs = explode("\t", trim($line, "\n"));
+		$nfs = count($fs);
+		if ($nfs != $nf) {
+			fprintf(STDERR, "ERROR: Expected %u fields but got %u on line %u!\n", $nf, $nfs, $n);
+			exit(-3);
+		}
+		foreach (['word', 'lex', 'pos', 'dself', 'dparent'] as $f) {
+			if (strlen($fs[$fields[$f]]) == 0) {
+				fprintf(STDERR, "WARNING: Field %u '%s' was empty on line %u!\n", $fields[$f], $f, $n);
+				//exit(-5);
+			}
+		}
+	}
+	if ($n%100000 == 0) {
+		fprintf(STDERR, "Checking line %u\r", $n);
+	}
+}
+fprintf(STDERR, "Checked %u lines\n", $n);
+
+echo "GOOD";

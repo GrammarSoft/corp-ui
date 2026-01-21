@@ -1,0 +1,25 @@
+#!/usr/bin/php -d memory_limit=8G
+<?php
+declare(strict_types=1);
+require_once __DIR__.'/../_inc/lib.php';
+
+$corp = trim($argv[1]);
+if (!array_key_exists($corp, $GLOBALS['-corplist'])) {
+	fprintf(STDERR, "ERROR: No such corpus: %s\n", $corp);
+	exit(-1);
+}
+
+$cf = $GLOBALS['CORP_ROOT'].'/../sources/'.$corp.'.zst';
+if (!file_exists($cf)) {
+	fprintf(STDERR, "ERROR: No such corpus input file: sources/%s.zst\n", $corp);
+	exit(-1);
+}
+
+$skip = readline('Run sanity check? y/n defaults to y: ');
+if ($skip != 'n') {
+	$check = trim(shell_exec("zstdcat '$cf' | {$GLOBALS['WEB_ROOT']}/_bin/sanity-check '$corp'"));
+	if ($check != 'GOOD') {
+		fprintf(STDERR, "ERROR: Corpus failed sanity check!\n");
+		exit(-2);
+	}
+}
