@@ -3,23 +3,116 @@
 declare(strict_types=1);
 require_once __DIR__.'/../_inc/lib.php';
 
+chdir('/tmp');
+
 $corp = trim($argv[1]);
 if (!array_key_exists($corp, $GLOBALS['-corplist'])) {
 	fprintf(STDERR, "ERROR: No such corpus: %s\n", $corp);
 	exit(-1);
 }
 
-$cf = $GLOBALS['CORP_ROOT'].'/../sources/'.$corp.'.zst';
-if (!file_exists($cf)) {
-	fprintf(STDERR, "ERROR: No such corpus input file: sources/%s.zst\n", $corp);
+$lang = substr($corp, 0, 3);
+
+$rf = $GLOBALS['CORP_ROOT'].'/registry/'.$corp;
+if (!file_exists($rf)) {
+	fprintf(STDERR, "ERROR: Corpus has no registry file at tmp/storage/registry/%s\n", $corp);
 	exit(-1);
 }
 
-$skip = readline('Run sanity check? y/n defaults to y: ');
-if ($skip != 'n') {
-	$check = trim(shell_exec("zstdcat '$cf' | {$GLOBALS['WEB_ROOT']}/_bin/sanity-check '$corp'"));
-	if ($check != 'GOOD') {
+$conf = file_get_contents($rf);
+if (strpos($conf, 'NAME "'.$corp.'"') === false) {
+	fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing NAME\n", $corp);
+	exit(-1);
+}
+if (strpos($conf, 'ENCODING "UTF-8"') === false) {
+	fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing ENCODING\n", $corp);
+	exit(-1);
+}
+if (strpos($conf, "PATH {$GLOBALS['CORP_ROOT']}/corpora/{$corp}") === false) {
+	fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing PATH\n", $corp);
+	exit(-1);
+}
+foreach ($GLOBALS['-fields'] as $f => $_) {
+	if (!preg_match('~ATTRIBUTE \Q'.$f.'\E\s~us', $conf)) {
+		fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing ATTRIBUTE %s\n", $corp, $f);
+		exit(-1);
+	}
+}
+foreach (['endmark', 'h_endmark', 'word_lc', 'word_nd', 'lex_lc', 'lex_nd'] as $f) {
+	if (!preg_match('~ATTRIBUTE \Q'.$f.'\E\s~us', $conf)) {
+		fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing ATTRIBUTE %s\n", $corp, $f);
+		exit(-1);
+	}
+}
+foreach ($GLOBALS['-corplist'][$corp]['group_by'] as $f) {
+	if (!preg_match('~ATTRIBUTE \Q'.$f.'\E\s~us', $conf)) {
+		fprintf(STDERR, "ERROR: Registry tmp/storage/registry/%s has wrong or missing S ATTRIBUTE %s\n", $corp, $f);
+		exit(-1);
+	}
+}
+
+$sf = $GLOBALS['CORP_ROOT'].'/../sources/'.$corp.'.zst';
+if (!file_exists($sf)) {
+	fprintf(STDERR, "ERROR: No such corpus input file: tmp/sources/%s.zst\n", $corp);
+	exit(-1);
+}
+
+$stop = readline('Run sanity check? y/n defaults to y: ');
+if ($stop === false) {
+	exit(0);
+}
+if ($stop != 'n') {
+	$check = shell_exec("zstdcat '$sf' | nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/sanity-check '$corp'");
+	if (empty($check) || trim($check) != 'GOOD') {
 		fprintf(STDERR, "ERROR: Corpus failed sanity check!\n");
 		exit(-2);
 	}
 }
+
+$dir = $GLOBALS['CORP_ROOT'].'/corpora/'.$corp;
+$stop = 'y';
+if (file_exists($dir)) {
+	$stop = readline("Output folder tmp/storage/corpora/{$corp} exists - append? y/n defaults to y: ");
+}
+if ($stop === false || $stop === 'n') {
+	exit(0);
+}
+
+echo "\n";
+echo "ENCODING CONFIGURATION:\n";
+echo "Corpus: {$corp}\n";
+echo "Group-By: ".(empty($GLOBALS['-corplist'][$corp]['group_by']) ? '[disabled]' : implode(', ', $GLOBALS['-corplist'][$corp]['group_by']))."\n";
+echo "Word2vec: ".(empty($GLOBALS['-corplist'][$corp]['word2vec']) ? 'No' : 'Yes')."\n";
+echo "\n";
+$stop = readline('Continue with encoding? y/n defaults to y: ');
+if ($stop === false || $stop === 'n') {
+	exit(0);
+}
+shell_exec("zstdcat '{$sf}' | nice -n20 encodevert -c '{$rf}'");
+
+$pf = "{$GLOBALS['CORP_ROOT']}/../sources/$corp.word-lex-pos.zst";
+
+echo shell_exec("mkdir -pv '$dir/meta' '$dir/tmp'");
+chdir("$dir/tmp");
+echo shell_exec("nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/decodevert-word-lex-pos '$rf' | grep -v '===NONE===' | zstd -T0 -8 -c > '$pf'");
+echo shell_exec("zstdcat '$pf' | nice -n20 {$GLOBALS['WEB_ROOT']}/_src/build/index-corpus-total");
+echo shell_exec('cat commands.sql | sqlite3 stats.sqlite');
+echo shell_exec("nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/stats-calc stats.sqlite");
+rename("stats.sqlite", "../meta/stats.sqlite");
+chdir('../meta');
+echo shell_exec("rm -rfv '$dir/tmp'");
+
+if (!empty($GLOBALS['-corplist'][$corp]['group_by'])) {
+	echo shell_exec("zstdcat '$pf' | nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/group-by group-by.sqlite '".implode(':', $GLOBALS['-corplist'][$corp]['group_by'])."'");
+}
+
+if (!empty($GLOBALS['-corplist'][$corp]['word2vec'])) {
+	$wf = "{$GLOBALS['CORP_ROOT']}/../sources/$corp.w2v.txt";
+	echo shell_exec("zstdcat '$sf' | nice -n20 {$GLOBALS['CORP_ROOT']}/../bin/word2vec/conv.php > '$wf'");
+	$wdir = $GLOBALS['CORP_ROOT'].'/word2vec/'.$corp;
+	echo shell_exec("mkdir -pv '$wdir'");
+	chdir($wdir);
+	echo shell_exec("nice -n20 {$GLOBALS['CORP_ROOT']}/../bin/word2vec/train-sg.py '$wf' model.300.sg.w2v");
+}
+
+//echo shell_exec("nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/stats-combine '$lang'");
