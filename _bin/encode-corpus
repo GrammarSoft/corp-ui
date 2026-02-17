@@ -115,4 +115,4 @@ if (!empty($GLOBALS['-corplist'][$corp]['word2vec'])) {
 	echo shell_exec("nice -n20 {$GLOBALS['CORP_ROOT']}/../bin/word2vec/train-sg.py '$wf' model.300.sg.w2v");
 }
 
-//echo shell_exec("nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/stats-combine '$lang'");
+echo shell_exec("nice -n20 {$GLOBALS['WEB_ROOT']}/_bin/stats-combine '$lang'");

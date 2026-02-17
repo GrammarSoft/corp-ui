@@ -767,13 +767,24 @@ XSH;
 
 				$xs = escapeshellarg(str_replace(' ', '=', implode('~', $xs)));
 
-				$sh .= <<<XSH
+				if (file_exists("{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.sg.w2v")) {
+					$sh .= <<<XSH
+
+if [ ! -s '$hash-$hash_q-$s_corp.wv' ]; then
+	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m python3 '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.sg.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
+fi
+
+XSH;
+				}
+				else {
+					$sh .= <<<XSH
 
 if [ ! -s '$hash-$hash_q-$s_corp.wv' ]; then
 	/usr/bin/time -f '%e' -o $hash-$hash_q-$s_corp.wv.time timeout -k 7m 5m ssh 'manatee@backends.gramtrans.com' '{$GLOBALS['CORP_ROOT']}/venv/bin/python3' '{$GLOBALS['WEB_ROOT']}/_bin/word2vec-query' '{$GLOBALS['CORP_ROOT']}/word2vec/$s_corp/model.300.sg.w2v' $xs $ws >$hash-$hash_q-$s_corp.wv 2>$hash-$hash_q-$s_corp.wv.err &
 fi
 
 XSH;
+				}
 		}
 
 		$sh .= <<<XSH
