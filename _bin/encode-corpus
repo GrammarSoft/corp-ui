@@ -72,10 +72,13 @@ if ($stop != 'n') {
 $dir = $GLOBALS['CORP_ROOT'].'/corpora/'.$corp;
 $stop = 'y';
 if (file_exists($dir)) {
-	$stop = readline("Output folder tmp/storage/corpora/{$corp} exists - append? y/n defaults to y: ");
+	$stop = readline("Output folder tmp/storage/corpora/{$corp} exists - delete and overwrite? y/n defaults to y: ");
 }
 if ($stop === false || $stop === 'n') {
 	exit(0);
+}
+if (file_exists($dir)) {
+	shell_exec("rm -rf '$dir'");
 }
 
 echo "\n";
