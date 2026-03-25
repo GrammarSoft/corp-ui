@@ -834,6 +834,7 @@
 			update_search();
 			$('#rs').find('input[type="text"]').first().focus();
 
+			update_attrs();
 			let html = '';
 			attrs.forEach(function(a) {
 				let ua = a.slice(0, 1).toUpperCase() + a.slice(1);
