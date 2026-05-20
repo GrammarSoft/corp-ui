@@ -63,6 +63,7 @@
 		popup: null,
 		popup_info: null,
 		modal_v: null,
+		modal_png: null,
 		url: null,
 		params: null,
 		};
@@ -375,6 +376,32 @@
 		}
 
 		state.popup_info = window.open(href, 'corp_info', 'left=100,top=100,width=900,height=700,popup');
+	}
+
+	function setupExportPNG(e, chart) {
+		e.find('.btnPopupPNG').click(function() {
+			$('.btnExportPNG').off().click(function() {
+				let ow = chart.width;
+				let oh = chart.height;
+
+				chart.options.devicePixelRatio = parseInt($('#ex_pr').val());
+				let w = parseInt($('#ex_w').val());
+				let h = parseInt($('#ex_h').val());
+				chart.resize(w, h);
+				let a = document.createElement('a');
+				a.href = chart.toBase64Image();
+				a.download = 'exported.png';
+				a.click();
+
+				chart.options.devicePixelRatio = window.devicePixelRatio;
+				chart.resize(ow, oh);
+				state.modal_png.hide();
+			});
+
+			$('#ex_w').val(chart.width);
+			$('#ex_h').val(chart.height);
+			state.modal_png.show();
+		});
 	}
 
 	function repaginate() {
@@ -1727,7 +1754,7 @@
 						++i;
 					}
 				}
-				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+' ('+years.join('-')+')</div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div>';
+				html += '<div class="my-3" style="max-width: 75vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+' ('+years.join('-')+')</div><div><canvas id="chart-'+corp+'-'+k+'" style="width: '+(gs[k].length*5)+'px;"></canvas></div><div class="text-center"><a class="btn btn-outline-primary btnPopupPNG">Export PNG</a></div></div>';
 			}
 			c.find('.qbody').html(html);
 
@@ -1812,6 +1839,7 @@
 						},
 					});
 				chart.resize(gs[k].length*10, 300);
+				setupExportPNG($('#graph-'+corp), chart);
 			}
 		}
 
@@ -2084,7 +2112,7 @@
 				datasets.push(dataset);
 			}
 
-			$('#graph-'+corp).html('<div class="my-3" style="max-width: 90vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+'</div><canvas id="chart-'+corp+'" style="width: '+(g_keys.length*5)+'px;"></canvas></div>');
+			$('#graph-'+corp).html('<div class="my-3" style="max-width: 90vw; overflow-x: scroll;"><div class="ghead fw-bold fs-4 text-begin">'+corp+'</div><div><canvas id="chart-'+corp+'" style="width: '+(g_keys.length*5)+'px;"></canvas></div><div class="text-center"><a class="btn btn-outline-primary btnPopupPNG">Export PNG</a></div></div>');
 
 			let ce = document.getElementById('chart-'+corp);
 			let chart = new Chart(ce,
@@ -2134,6 +2162,7 @@
 					},
 				});
 			chart.resize(Math.max(800, $(ce).closest('.row').width(), g_keys.length*10), 600);
+			setupExportPNG($('#graph-'+corp), chart);
 		}
 
 		if (retry) {
@@ -2159,7 +2188,7 @@
 			let w = Math.max(window.innerWidth - 300, 800);
 			let h = Math.max(window.innerHeight - 100, 600);
 
-			e.find('.qbody').html('<div><canvas id="chart-'+corp+'" style="width: '+w+'px; height: '+h+'px;"></canvas></div><div><a class="btn btn-outline-primary btnZoomReset">Reset zoom</a></div><div id="data-'+corp+'"></div>');
+			e.find('.qbody').html('<div style="position: relative; width: '+w+'px; height: '+h+'px;"><canvas id="chart-'+corp+'"></canvas></div><div><a class="btn btn-outline-primary btnZoomReset">Reset zoom</a> &nbsp; <a class="btn btn-outline-primary btnPopupPNG">Export PNG</a></div><div id="data-'+corp+'"></div>');
 
 			let params = (new URL(window.location)).searchParams;
 			let x1 = get(params, 'x1', '').replace(/ /g, '=').split(';');
@@ -2544,6 +2573,7 @@
 			e.find('.btnZoomReset').click(function() {
 				chart.resetZoom();
 			});
+			setupExportPNG(e, chart);
 		}
 	}
 
@@ -2884,6 +2914,7 @@
 			url.searchParams.set('ns', ns);
 			window.location = url;
 		});
+		state.modal_png = new bootstrap.Modal('#modalExportPNG');
 
 		loadOptions();
 	}

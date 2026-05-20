@@ -651,12 +651,12 @@ $GLOBALS['-corpora'] = [
 			'percent_combo' => 10,
 			],
 		'por_literature' => [
-			'name' => 'Portuguese literature',
+			'name' => 'Portuguese literature (mixed)',
 			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
 			'word2vec' => ['queijo_N'],
 			],
 		'por_eltec' => [
-			'name' => 'Literateca (Portuguese ELTeC)',
+			'name' => 'Literateca novels',
 			'group_by' => ['author', 'title', 'year', 'gender', 'lang'],
 			'word2vec' => ['queijo_N'],
 			],

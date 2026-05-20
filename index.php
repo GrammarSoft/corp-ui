@@ -211,14 +211,19 @@ if (!empty($_REQUEST['c'])) {
 </head>
 <body>
 <div id="logo" class="container-fluid my-3">
+<div class="row"><div class="col-3">
 <a href="/" class="me-5"><img src="https://corp.visl.dk/flags/corpuseye-flat-transparent.gif"></a>
+</div>
+<div class="col-9">
 <a href="https://corp.visl.dk/cqp_help.html">Help</a>
 - <a href="https://corp.visl.dk/corpuseye_manual.pdf">CorpusEye Manual</a> (pdf)
 - <a href="https://corp.visl.dk/Corpuseye_IKS.pdf">Use cases</a> (Powerpoint)
+- <a href="https://corp.visl.dk/copyright.html">Corpus sources</a> (all)
 - <a href="https://edu.visl.dk/tagset_cg_general.pdf">Taglist</a> (cross-language)
 - <a href="https://edu.visl.dk/tagset_cg_all.pdf">Development tags</a> (unabridged)
 - <a href="https://www.sketchengine.eu/documentation/corpus-querying/" target="_cql">CQL Documentation</a>
-<button class="btn btn-outline-primary mx-3 btnCustomize">Adjust view <i class="bi bi-wrench-adjustable"></i></button>
+</div>
+</div>
 </div>
 
 <?php
@@ -1158,7 +1163,7 @@ XHTML;
 	// Body of results
 	echo '<div class="col">';
 	echo '<div class="container-fluid my-3">';
-	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnRefine">Show refine <i class="bi bi-funnel"></i></button> <button class="btn btn-outline-primary my-1 btnBack">Back <i class="bi bi-arrow-left"></i></button></div></div>';
+	echo '<div class="row"><div class="col qpages">…</div><div class="col"><button class="btn btn-outline-primary mx-3 btnCustomize">Adjust view <i class="bi bi-wrench-adjustable"></i></button><button class="btn btn-outline-primary my-1 btnShowSearch">Show search <i class="bi bi-search"></i></button> <button class="btn btn-outline-primary my-1 btnRefine">Show refine <i class="bi bi-funnel"></i></button> <button class="btn btn-outline-primary my-1 btnBack">Back <i class="bi bi-arrow-left"></i></button></div></div>';
 	echo <<<XHTML
 <div class="row align-items-start my-3" id="customize-freq" style="display: none">
 <h5 class="fw-bold fs-5">Toggle columns</h5>
@@ -1466,6 +1471,25 @@ else {
 
 <div class="toast-container position-fixed bottom-0 end-0 m-3" id="toasts">
 <?=implode("\n", $toasts);?>
+</div>
+
+<div class="modal fade" id="modalExportPNG" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h1 class="modal-title fs-5">PNG export options</h1>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div class="row"><div class="col-2">Pixel ratio</div><div class="col"><input type="text" class="form-control" id="ex_pr" value="2"></div></div>
+				<div class="row"><div class="col-2">Width</div><div class="col"><input type="text" class="form-control" id="ex_w" value="1000"></div></div>
+				<div class="row"><div class="col-2">Height</div><div class="col"><input type="text" class="form-control" id="ex_h" value="1000"></div></div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-primary btnExportPNG">Export PNG</button>
+			</div>
+		</div>
+	</div>
 </div>
 
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-4QX6X7X8P8"></script>
